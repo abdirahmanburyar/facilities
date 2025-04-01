@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Facades\Kafka;
 use App\Models\Facility;
 use App\Models\Product;
 use App\Models\Warehouse;
@@ -11,13 +12,15 @@ use App\Http\Resources\OrderResource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Facades\Kafka;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
         $query = Order::with(['facility', 'user', 'items.product', 'warehouse'])
+            ->when($request->from && $request->to, function ($query) use ($request) {
+                $query->whereBetween('order_date', [$request->from, $request->to]);
+            })
             ->when($request->search, function ($query, $search) {
                 $query->where('order_number', 'like', "%{$search}%")
                     ->orWhereHas('facility', function ($q) use ($search) {
@@ -60,7 +63,7 @@ class OrderController extends Controller
             'stats' => $stats,
             'orders' => OrderResource::collection($orders),
             'facilities' => Facility::select('id', 'name')->get(),
-            'filters' => $request->only('search', 'status', 'page'),
+            'filters' => $request->only('search', 'status', 'page', 'from', 'to'),
             'warehouses' => Warehouse::select('id', 'name')->get(),
         ]);
     }
@@ -130,8 +133,8 @@ class OrderController extends Controller
                     ]);
                 }
             }
-
-            Kafka::publishOrderPlaced("Refreshed");
+            
+            Kafka::publishOrderPlaced('Refreshed');
 
             event(new OrderEvent('Refreshed'));
 
@@ -224,53 +227,42 @@ class OrderController extends Controller
         }
     }
 
-    public function approve(Order $order)
+    public function changeStatus(Request $request)
     {
-        if ($order->status !== 'pending') {
-            return back()->with('error', 'Only pending orders can be approved.');
-        }
-
         try {
             DB::beginTransaction();
+            $order = Order::findOrFail($request->id);
+            $allowedStatuses = [
+                'pending' => ['approved', 'rejected'],
+                'approved' => ['in processing'],
+                'in processing' => ['dispatched'],
+                'dispatched' => ['delivered']
+            ];
+
+            // Check if the current status can transition to the requested status
+            if (!isset($allowedStatuses[$order->status]) || !in_array($request->status, $allowedStatuses[$order->status])) {
+                return response()->json("Order cannot be changed from {$order->status} to {$request->status}", 500);
+            }        
 
             $order->update([
-                'status' => 'approved',
-                'approved_at' => now()
+                'status' => $request->status,
             ]);
 
-            // Trigger Kafka event for order approval
-            event(new OrderEvent($order));
+            // Trigger Kafka event for order status change
+            try {
+                Kafka::publishOrderPlaced("Refreshed");
+            } catch (\Throwable $e) {
+                return response()->json($e->getMessage(), 500);
+            }
+
+            event(new OrderEvent('Refreshed'));
 
             DB::commit();
-            return back()->with('success', 'Order approved successfully.');
-        } catch (\Exception $e) {
+            return response()->json('Order status updated successfully.', 200);
+        } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to approve order: ' . $e->getMessage());
+            return response()->json($e->getMessage(), 500);
         }
     }
 
-    public function reject(Order $order)
-    {
-        if ($order->status !== 'pending') {
-            return back()->with('error', 'Only pending orders can be rejected.');
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $order->update([
-                'status' => 'rejected',
-                'rejected_at' => now()
-            ]);
-
-            // Trigger Kafka event for order rejection
-            event(new OrderEvent($order));
-
-            DB::commit();
-            return back()->with('success', 'Order rejected successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Failed to reject order: ' . $e->getMessage());
-        }
-    }
 }

@@ -101,17 +101,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::delete('/{facility}', 'destroy')->name('facilities.destroy');
         });
 
-    Route::controller(OrderController::class)
+        Route::controller(OrderController::class)
         ->prefix('/orders')
         ->group(function () {
             Route::get('/', 'index')->name('orders.index');
             Route::post('/store', 'store')->name('orders.store');
             Route::get('/{order}', 'show')->name('orders.show');
             Route::delete('/{order}', 'destroy')->name('orders.destroy');
-            Route::post('/{order}/approve', 'approve')->name('orders.approve');
-            Route::post('/{order}/reject', 'reject')->name('orders.reject');
             Route::post('/bulk', 'bulk')->name('orders.bulk');
             Route::post('/search', 'searchProduct')->name('order.product.search');
+            Route::post('/status', 'changeStatus')->name('orders.change-status');   
         });
 });
 
