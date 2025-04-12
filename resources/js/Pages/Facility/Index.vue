@@ -1,5 +1,12 @@
 <template>
-    <AuthenticatedLayout title="Facilities">
+    <AuthenticatedLayout 
+        title="Facilities" 
+        :data="{
+            pageTitle: 'Facility Management',
+            description: 'Manage and monitor all healthcare facilities',
+            image: '/assets/images/facility.png'
+        }"
+    >
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Facilities</h2>
             <div class="flex items-center gap-2">

@@ -11,7 +11,6 @@ class FacilityInventory extends Model
 
     protected $fillable = [
         'product_id',
-        'warehouse_id',
         'quantity',
         'reorder_level',
         'manufacturing_date',
@@ -23,8 +22,6 @@ class FacilityInventory extends Model
     ];
 
     protected $casts = [
-        'manufacturing_date' => 'date',
-        'expiry_date' => 'date',
         'is_active' => 'boolean',
         'unit_cost' => 'decimal:2',
         'unit_price' => 'decimal:2',
@@ -33,10 +30,5 @@ class FacilityInventory extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function warehouse()
-    {
-        return $this->belongsTo(Warehouse::class);
     }
 }

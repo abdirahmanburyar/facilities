@@ -22,34 +22,22 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $query = FacilityInventory::query();
-
-        $user = auth()->user();
-
-        // if(!$user->hasRole('admin')) {
-            $query = $query->where('warehouse_id', $user->warehouse_id);
-        // }
-        
-        $query = $query->with(['product.dosage.category', 'warehouse']);
+        $query = $query->with(['product.dosage.category']);
 
         // Apply filters
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('product', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%")
-                  ->orWhere('barcode', 'like', "%{$search}%")
-                  ->orWhereHas('category', function ($q) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('product', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
-                  });
+                })
+                ->orWhere('batch_number', 'like', "%{$search}%")
+                ->orWhere('location', 'like', "%{$search}%");
             });
         }
         
         if ($request->has('product_id') && $request->product_id) {
             $query->where('product_id', $request->product_id);
-        }
-
-        if ($request->has('warehouse_id') && $request->warehouse_id) {
-            $query->where('warehouse_id', $request->warehouse_id);
         }
 
         if ($request->has('location') && $request->location) {
@@ -79,15 +67,12 @@ class InventoryController extends Controller
         // Get products for dropdown
         $products = Product::where('is_active', true)->select('id', 'name')->get();
 
-        // Get warehouses for dropdown
-        $warehouses = \App\Models\Warehouse::where('id', auth()->user()->warehouse_id)->select('id', 'name', 'code')->get();
-
         // Get inventory status counts
-        $inStockCount = FacilityInventory::where('warehouse_id', $user->warehouse_id)->where('quantity', '>', DB::raw('reorder_level'))->where('is_active', true)->count();
-        $lowStockCount = FacilityInventory::where('warehouse_id', $user->warehouse_id)->where('quantity', '>', 0)->where('quantity', '<=', DB::raw('reorder_level'))->where('is_active', true)->count();
-        $outOfStockCount = FacilityInventory::where('warehouse_id', $user->warehouse_id)->where('quantity', 0)->where('is_active', true)->count();
-        $soonExpiringCount = FacilityInventory::where('warehouse_id', $user->warehouse_id)->where('expiry_date', '>', now())->where('expiry_date', '<=', now()->addDays(30))->where('is_active', true)->count();
-        $expiredCount = FacilityInventory::where('warehouse_id', $user->warehouse_id)->where('expiry_date', '<', now())->where('is_active', true)->count();
+        $inStockCount = FacilityInventory::where('quantity', '>', DB::raw('reorder_level'))->where('is_active', true)->count();
+        $lowStockCount = FacilityInventory::where('quantity', '>', 0)->where('quantity', '<=', DB::raw('reorder_level'))->where('is_active', true)->count();
+        $outOfStockCount = FacilityInventory::where('quantity', 0)->where('is_active', true)->count();
+        $soonExpiringCount = FacilityInventory::where('expiry_date', '>', now())->where('expiry_date', '<=', now()->addDays(30))->where('is_active', true)->count();
+        $expiredCount = FacilityInventory::where('expiry_date', '<', now())->where('is_active', true)->count();
         
         $inventoryStatusCounts = [
             ['status' => 'in_stock', 'count' => $inStockCount],
@@ -103,8 +88,7 @@ class InventoryController extends Controller
         return Inertia::render('Inventory/Index', [
             'inventories' => InventoryResource::collection($inventories),
             'products' => $products,
-            'warehouses' => $warehouses,
-            'filters' => $request->all(['search', 'product_id', 'warehouse_id', 'location', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'sort_field', 'sort_direction', 'per_page', 'page']),
+            'filters' => $request->all(['search', 'product_id', 'location', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'sort_field', 'sort_direction', 'per_page', 'page']),
             'inventoryStatusCounts' => $inventoryStatusCounts,
         ]);
     }

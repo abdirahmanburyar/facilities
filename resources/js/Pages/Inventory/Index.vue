@@ -19,7 +19,6 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     inventories: Object,
     products: Array,
-    warehouses: Array,
     filters: Object,
     inventoryStatusCounts: Array
 });
@@ -35,7 +34,6 @@ const expiryDateFrom = ref(props.filters.expiry_date_from || '');
 const expiryDateTo = ref(props.filters.expiry_date_to || '');
 const sortField = ref(props.filters.sort_field || 'created_at');
 const sortDirection = ref(props.filters.sort_direction || 'desc');
-const warehouse_id = ref(props.filters.warehouse_id || '');
 const perPage = ref(props.filters.per_page || 6);
 const isSubmitting = ref(false);
 
@@ -43,6 +41,7 @@ const isSubmitting = ref(false);
 const showAddModal = ref(false);
 const showDeleteModal = ref(false);
 const inventoryToDelete = ref(null);
+
 
 // Bulk delete states
 const selectedItems = ref([]);
@@ -53,11 +52,8 @@ const showBulkDeleteModal = ref(false);
 const form = ref({
     product_id: null,
     product: null,
-    warehouse_id: '',
     quantity: 0,
     reorder_level: 10,
-    manufacturing_date: '',
-    expiry_date: '',
     batch_number: '',
     location: '',
     notes: '',
@@ -115,7 +111,6 @@ const resetFilters = () => {
     batchNumber.value = '';
     expiryDateFrom.value = '';
     expiryDateTo.value = '';
-    warehouse_id.value = '';
     applyFilters();
 };
 
@@ -132,14 +127,13 @@ const applyFilters = () => {
     if (sortField.value) query.sort_field = sortField.value
     if (sortDirection.value) query.sort_direction = sortDirection.value
     if (perPage.value) query.per_page = perPage.value
-    if (warehouse_id.value) query.warehouse_id = warehouse_id.value
 
     router.get(
         route('inventories.index'), query,
         {
             preserveState: true,
             preserveScroll: true,
-            only: ['inventories', 'products', 'warehouses', 'filters', 'inventoryStatusCounts'],
+            only: ['inventories', 'products', 'filters', 'inventoryStatusCounts'],
         }
     );
 };
@@ -164,7 +158,6 @@ watch([
     () => sortField.value,
     () => sortDirection.value,
     () => perPage.value,
-    () => warehouse_id.value,
 ], () => {
     debouncedSearch();
 }, { deep: true });
@@ -182,7 +175,6 @@ const addInventory = () => {
     form.value = {
         product_id: null,
         product: null,
-        warehouse_id: '',
         quantity: 0,
         reorder_level: 10,
         manufacturing_date: '',
@@ -302,7 +294,6 @@ function editInventory(inventory) {
             product_id: inventory.product?.id
         },
         product_id: inventory.product_id,
-        warehouse_id: inventory.warehouse_id,
         quantity: inventory.quantity,
         reorder_level: inventory.reorder_level,
         manufacturing_date: inventory.manufacturing_date,
@@ -415,21 +406,6 @@ const echo = ref(null);
                     </div>
 
                     <div class="flex flex-wrap items-center gap-4">
-                        <div class="w-48">
-                            <select v-model="warehouse_id"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                @change="applyFilters">
-                                <option value="">All Warehouses</option>
-                                <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-                                    {{ warehouse.name }}
-                                </option>
-                            </select>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <TextInput v-model="expiryDateFrom" type="date" class="w-40" @change="applyFilters" />
-                            <span>to</span>
-                            <TextInput v-model="expiryDateTo" type="date" class="w-40" @change="applyFilters" />
-                        </div>
                         <div class="w-48">
                             <TextInput v-model="location" type="text" class="w-full" placeholder="Filter by location"
                                 @keyup.enter="applyFilters" />
@@ -738,16 +714,6 @@ const echo = ref(null);
                     <h2 class="text-lg font-medium text-gray-900">{{ showEditModal ? 'Edit' : 'Add' }} Inventory Item
                     </h2>
                     <div class="mt-6 space-y-4">
-                        <div>
-                            <InputLabel for="warehouse_id" value="Warehouse" />
-                            <select id="warehouse_id" v-model="form.warehouse_id"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Select Warehouse</option>
-                                <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-                                    {{ warehouse.name }} ({{ warehouse.code }})
-                                </option>
-                            </select>
-                        </div>
                         <div>
                             <InputLabel for="product_id" value="Product" />
                             <Multiselect id="product_id" v-model="form.product" :options="products" option-label="name"

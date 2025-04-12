@@ -33,7 +33,7 @@
                     :class="{ active: route().current('facilities.*') }" @click="setCurrentPage('facilities')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img src="/assets/images/facility.png" class="facility-icon" style="height: 24px" />
+                        <img :src="route().current('facilities.*') ? '/assets/images/facility.png' : '/assets/images/facility-w.png'" class="facility-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Facilities</span>
                 </div>
@@ -43,7 +43,7 @@
                     :class="{ active: route().current('orders.*') }" @click="setCurrentPage('orders')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <i class="fas fa-clipboard-list text-xl"></i>
+                        <img :src="route().current('orders.*') ? '/assets/images/tracking-b.png' : '/assets/images/tracking-w.png'" class="order-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Track</span>
                 </div>
@@ -53,7 +53,7 @@
                     :class="{ active: route().current('inventories.*') }" @click="setCurrentPage('inventories')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img src="/assets/images/inventory.png" class="inventory-icon" style="height: 24px" />
+                        <img :src="route().current('inventories.*') ? '/assets/images/inventory-b.png' : '/assets/images/inventory-w.png'" class="inventory-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Inventory</span>
                 </div>
@@ -63,7 +63,7 @@
                     :class="{ active: route().current('settings.*') }" @click="setCurrentPage('settings')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img src="/assets/images/settings.png" class="settings-icon" style="height: 24px" />
+                        <img :src="route().current('settings.*') ? '/assets/images/setting-b.png' : '/assets/images/setting-w.png'" class="setting-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Settings</span>
                 </div>
@@ -93,6 +93,8 @@
                                 <p>"Keeping Essentials Ready, Every Time"</p>
                             </div>
                         </div>
+
+                        {{  data }}
 
                         <img src="/assets/images/10873037.webp" alt="Inventory illustration" class="svg-image" />
                     </div>
@@ -163,6 +165,9 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+
+
+const { data } = usePage();
 
 export default {
     components: {
