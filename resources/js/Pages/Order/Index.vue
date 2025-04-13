@@ -246,11 +246,22 @@ const props = defineProps({
 
 currentOrder.value = props.currentOrder;
 
+const form = ref({
+    id: null,
+    product_id: null,
+    product_name: null,
+    quantity: 0,
+    order_id: null
+});
+
 watch(() => props.currentOrder, (newOrder) => {
     currentOrder.value = newOrder;
     if (newOrder) {
         selectedOrderId.value = newOrder.id;
+        form.value.order_id = newOrder.id;  
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
+    } else {
+        resetForm();  
     }
 }, { immediate: true });
 
@@ -276,46 +287,6 @@ const tabs = [
 ];
 
 const currentTab = computed(() => props.tab || 'items');
-
-const form = ref({
-    product_id: null,
-    product_name: null,
-    quantity: 0,
-    order_id: props.currentOrder?.id,
-});
-
-async function removeItem(order) {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, remove'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            axios.get(route('orders.remove', { id: order.id }))
-                .then((response) => {
-                    reloadOrder();
-                    Swal.fire({
-                        icon: 'success',
-                        title: response.data,
-                        showConfirmButton: false,
-                        timer: 1500
-                    });
-                })
-                .catch((error) => {
-                    console.error(error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error removing item',
-                        text: error.response.data
-                    });
-                });
-        }
-    });
-}
 
 const orderSubmitted = ref(false);
 
@@ -346,39 +317,58 @@ const handleOrderSubmit = () => {
 const order_type = ref(currentOrder.value?.order_type || 'Monthly');
 
 const confirmCreateOrder = () => {
+    if (!order_type.value) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Please select an order type'
+        });
+        return;
+    }
+
     Swal.fire({
         title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
+        text: 'This will create a new order',
+        icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
         confirmButtonText: 'Yes, create order'
     }).then((result) => {
         if (result.isConfirmed) {
             axios.post(route('orders.create', { order_type: order_type.value }))
                 .then(response => {
-                    // Save order to localStorage
-                    currentOrder.value = response.data.order;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(response.data.order));
-                    form.value.order_id = response.data.order.id;
-
-                    reloadOrder(response.data.order.id);
-                    resetForm();
+                    const newOrder = response.data.order;
+                    
+                    // Update all order-related states
+                    currentOrder.value = newOrder;
+                    selectedOrderId.value = newOrder.id;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
+                    
+                    // Update form with new reactive object
+                    form.value = Object.assign({}, form.value, {
+                        id: null,
+                        product_id: null,
+                        product_name: null,
+                        quantity: 0,
+                        order_id: newOrder.id
+                    });
+                    
+                    // Reload the page with new order
+                    reloadOrder(newOrder.id);
 
                     Swal.fire({
                         icon: 'success',
-                        title: response.data.message,
-                        showConfirmButton: false,
-                        timer: 1500
+                        title: 'Success',
+                        text: response.data.message,
+                        timer: 1500,
+                        showConfirmButton: false
                     });
                 })
                 .catch(error => {
-                    const errors = error.response.data;
+                    console.error(error);
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error creating order',
-                        text: errors
+                        title: 'Error',
+                        text: error.response?.data || 'Failed to create order'
                     });
                 });
         }
@@ -422,13 +412,47 @@ const switchTab = (tab) => {
 
 function resetForm() {
     form.value = {
+        id: null,
         product_id: null,
         product_name: null,
         quantity: 0,
-        order_id: props.currentOrder?.id
+        order_id: currentOrder.value?.id || null
     };
     searchQuery.value = '';
     selectedProduct.value = null;
+}
+
+async function removeItem(order) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, remove'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.get(route('orders.remove', { id: order.id }))
+                .then((response) => {
+                    reloadOrder();
+                    Swal.fire({
+                        icon: 'success',
+                        title: response.data,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                })
+                .catch((error) => {
+                    console.error(error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error removing item',
+                        text: error.response.data
+                    });
+                });
+        }
+    });
 }
 
 async function searchProduct(event) {
