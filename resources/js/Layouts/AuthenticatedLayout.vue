@@ -93,9 +93,6 @@
                                 <p>"Keeping Essentials Ready, Every Time"</p>
                             </div>
                         </div>
-
-                        {{  data }}
-
                         <img src="/assets/images/10873037.webp" alt="Inventory illustration" class="svg-image" />
                     </div>
                     <div class="user-section">

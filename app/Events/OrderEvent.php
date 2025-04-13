@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Facades\Kafka;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,9 +15,17 @@ class OrderEvent implements ShouldBroadcast
 
     public $message;
 
-    public function __construct($message = 'Refreshed')
+    public function __construct($message)
     {
         $this->message = $message;
+
+        if ($message === "refreshed") {
+            try {
+                app('kafka')->publishOrderUpdated($message);
+            } catch (\Exception $e) {
+                Log::error('Error in OrderEvent: ' . $e->getMessage());
+            }
+        }
     }
 
     public function broadcastOn()

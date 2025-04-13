@@ -90,9 +90,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-
-
-
     Route::controller(FacilityController::class)
         ->prefix('/facilities')
         ->group(function () {
@@ -106,11 +103,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         ->group(function () {
             Route::get('/', 'index')->name('orders.index');
             Route::post('/store', 'store')->name('orders.store');
-            Route::get('/{order}', 'show')->name('orders.show');
-            Route::delete('/{order}', 'destroy')->name('orders.destroy');
-            Route::post('/bulk', 'bulk')->name('orders.bulk');
-            Route::post('/search', 'searchProduct')->name('order.product.search');
-            Route::post('/status', 'changeStatus')->name('orders.change-status');   
+            Route::get('/search', 'search')->name('orders.search');
+            Route::post('/create', 'createOrder')->name('orders.create');
+            Route::get('/remove', 'remove')->name('orders.remove');
+            Route::post('/submit', 'submitOrder')->name('orders.submit');
         });
 });
 

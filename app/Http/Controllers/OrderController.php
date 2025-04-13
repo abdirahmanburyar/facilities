@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Facades\Kafka;
-use App\Models\Facility;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Events\OrderEvent;
@@ -12,216 +11,52 @@ use App\Http\Resources\OrderResource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Carbon\Carbon;
+use App\Models\OrderItem;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['facility', 'user', 'items.product', 'warehouse'])
-            ->when($request->from && $request->to, function ($query) use ($request) {
-                $query->whereBetween('order_date', [$request->from, $request->to]);
-            })
-            ->when($request->search, function ($query, $search) {
-                $query->where('order_number', 'like', "%{$search}%")
-                    ->orWhereHas('facility', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%");
-                    });
-            })
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->latest();
-
-        $orders = $query->paginate($request->input('perPage', 7), ['*'], 'page', $request->input('page', 1))
-            ->withQueryString();
-
-        $orders->setPath(url()->current());
-
-        // Get order statistics
-        $stats = Order::select('status', DB::raw('count(*) as count'))
-            ->where('warehouse_id', auth()->user()->warehouse_id)
-            ->groupBy('status')
-            ->get()
-            ->mapWithKeys(function ($item) {
-                return [$item->status => $item->count];
-            })
-            ->toArray();
-
-        // Ensure all statuses have a value
-        $defaultStats = [
-            'pending' => 0,
-            'approved' => 0,
-            'rejected' => 0,
-            'in processing' => 0,
-            'dispatched' => 0,
-            'delivered' => 0
-        ];
-
-        $stats = array_merge($defaultStats, $stats);
-
-        return Inertia::render('Order/Index', [
-            'stats' => $stats,
-            'orders' => OrderResource::collection($orders),
-            'facilities' => Facility::select('id', 'name')->get(),
-            'filters' => $request->only('search', 'status', 'page', 'from', 'to'),
-            'warehouses' => Warehouse::select('id', 'name')->get(),
-        ]);
-    }
-
-    public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'warehouse_id' => 'required|exists:warehouses,id',
-                'facility_id' => 'required|exists:facilities,id',
-                'order_date' => 'required|date',
-                'expected_date' => 'nullable|date|after_or_equal:order_date',
-                'notes' => 'nullable|string',
-                'items' => 'required|array|min:1',
-                'items.*.id' => 'nullable|exists:order_items,id',
-                'items.*.product_id' => 'required|exists:products,id',
-                'items.*.quantity' => 'required|numeric|min:1',
-            ]);
-
-            DB::beginTransaction();
-
-            // Create or update order
-            $order = Order::updateOrCreate(
-                ['id' => $request->id],
-                [
-                    'warehouse_id' => $validated['warehouse_id'],
-                    'facility_id' => $validated['facility_id'],
-                    'user_id' => auth()->id(),
-                    'order_number' => $request->id ? Order::find($request->id)->order_number : 'ORD-' . strtoupper(uniqid()),
-                    'status' => $request->id ? Order::find($request->id)->status : 'pending',
-                    'number_items' => collect($validated['items'])->sum('quantity'),
-                    'notes' => $validated['notes'] ?? null,
-                    'order_date' => $validated['order_date'],
-                    'expected_date' => $validated['expected_date'] ?? null,
-                ]
-            );
-
-            // Get current item IDs
-            $currentItemIds = collect($validated['items'])
-                ->pluck('id')
-                ->filter()
-                ->toArray();
-
-            // Delete items that are not in the request (only pending orders)
-            if ($request->id) {
-                $order->items()
-                    ->whereNotIn('id', $currentItemIds)
-                    ->where('order_id', $order->id)
-                    ->delete();
-            }
-
-            // Process each item
-            foreach ($validated['items'] as $itemData) {
-                if (!empty($itemData['id'])) {
-                    // Update existing item
-                    $order->items()
-                        ->where('id', $itemData['id'])
-                        ->update([
-                            'product_id' => $itemData['product_id'],
-                            'quantity' => $itemData['quantity'],
-                        ]);
-                } else {
-                    // Create new item
-                    $order->items()->create([
-                        'product_id' => $itemData['product_id'],
-                        'quantity' => $itemData['quantity']
-                    ]);
-                }
-            }
-            
-            Kafka::publishOrderPlaced('Refreshed');
-
-            event(new OrderEvent('Refreshed'));
-
-            DB::commit();
-            return response()->json('Order ' . ($request->id ? 'updated' : 'created') . ' successfully');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json($e->getMessage(), 500);
-        }
-    }
-
-    public function show(Order $order)
-    {
-        $order->load(['facility', 'user', 'items.product']);
+        $tab = $request->query('tab', 'recent');
         
-        return Inertia::render('Order/Show', [
-            'order' => new OrderResource($order)
+        $order = Order::where('id', $request->id)->with(['user', 'items.product'])
+            ->when($tab === 'pending', function($query) {
+                return $query->where('status', 'pending');
+            })
+            ->when($tab === 'completed', function($query) {
+                return $query->where('status', 'completed');
+            })
+            ->latest()
+            ->first();
+        return inertia('Order/Index', [
+            'orders' => Order::whereDate('order_date', Carbon::now()->toDateString())->get(),
+            'currentOrder' => $order,
+            'products' => Product::get(),
+            'tab' => $tab
         ]);
     }
 
-
-    public function destroy(Order $order)
-    {
-        if ($order->status !== 'pending') {
-            return back()->with('error', 'Only pending orders can be deleted.');
-        }
-
-        $order->items()->delete();
-        $order->delete();
-
-        return back()->with('success', 'Order deleted successfully.');
-    }
-
-    public function bulk(Request $request)
-    {
+    public function createOrder(Request $request){
         try {
-            $orderIds = $request->input('orderIds');
+            return DB::transaction(function () use ($request) {
+                $orderNumber = 'ORD-' . date('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+                
+                $order = Order::create([
+                    'user_id' => auth()->user()->id,
+                    'facility_id' => auth()->user()->facility_id,
+                    'order_type' => $request->order_type,
+                    'status' => 'pending',
+                    'order_number' => $orderNumber,
+                    'order_date' => Carbon::now()->toDateString(),
+                    'expected_date' => now()->addDays(7), // Default 7 days expectation
+                ]);
 
-            // Validate that at least one order is selected
-            if (empty($orderIds)) {
-                return response()->json('Please select at least one order', 400);
-            }
-            
-            // Get all selected orders
-            $orders = Order::whereIn('id', $orderIds)->get();
-            
-            // Check if any order has non-pending items and collect their IDs
-            $nonPendingOrders = [];
-            foreach ($orders as $order) {
-                if ($order->status !== 'pending') {
-                    $nonPendingOrders[] = $order->id;
-                }
-            }
-            
-            if (!empty($nonPendingOrders)) {
-                return response()->json('Cannot delete orders that are not in pending status', 500);
-            }
-            
-            // Delete orders if all are pending
-            $orders->each(function ($order) {
-                $order->items()->delete();
-                $order->delete();
+                // Dispatch order event if needed
+                event(new OrderEvent("refreshed"));
+
+                return response()->json(["message" => "Order created successfully", 'order' => $order], 200);
             });
-            
-            return response()->json('Selected orders deleted successfully', 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
-
-    public function searchProduct(Request $request)
-    {
-        try {
-            $search = $request->input('search');
-            $products = Product::where('name', 'like', '%' . $search . '%')
-                ->orWhere('barcode', 'like', '%' . $search . '%')
-                ->select('id', 'name', 'barcode')
-                ->get()
-                ->map(function ($product) {
-                    return [
-                        'id' => $product->id,
-                        'name' => $product->name,
-                    ];
-                });
-                    
-            return response()->json($products, 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }
@@ -262,6 +97,82 @@ class OrderController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json($e->getMessage(), 500);
+        }
+    }
+
+    public function store(Request $request){
+        try {
+            return DB::transaction(function () use ($request) {
+                $request->validate([
+                    'id' => 'nullable|exists:order_items,id',
+                    'product_id' => 'required|exists:products,id',
+                    'quantity' => 'required',
+                    'order_id' => 'required'
+                ]);
+
+                // Check for duplicate product in same order, excluding current item if updating
+                $query = OrderItem::where('product_id', $request->product_id)
+                    ->where('order_id', $request->order_id);
+                
+                if ($request->id) {
+                    $query->where('id', '!=', $request->id);
+                }
+
+                if ($query->exists()) {
+                    return response()->json(Product::find($request->product_id)->name . ' already exists in this order.', 409);
+                }
+
+                OrderItem::updateOrCreate(
+                    ['id' => $request->id],
+                    [
+                        'product_id' => $request->product_id,
+                        'quantity' => $request->quantity,
+                        'order_id' => $request->order_id,
+                        'user_id' => auth()->user()->id
+                    ]
+                );
+
+                event(new OrderEvent("refreshed"));
+                return response()->json("Order item " . ($request->id ? "updated" : "added") . " successfully", 200);
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function search(Request $request){
+        try {
+            $barcode = $request->barcode;
+            $product = Product::where('barcode', $barcode)->first();
+            return response()->json($product, 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function remove(Request $request){
+        try {
+            return DB::transaction(function () use ($request) {
+                $orderItem = OrderItem::findOrFail($request->id);
+                if($orderItem->order->status !== 'pending') {
+                    return response()->json('Order item cannot be removed', 409);
+                }
+                $orderItem->delete();
+                return response()->json("Order item removed successfully", 200);
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function submitOrder(Request $request){
+        try {
+            return DB::transaction(function () use ($request) {
+                event(new OrderEvent("refreshed"));
+                return response()->json("Order submitted successfully", 200);
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
         }
     }
 

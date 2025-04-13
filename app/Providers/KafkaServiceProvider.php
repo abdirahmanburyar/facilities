@@ -13,10 +13,10 @@ class KafkaServiceProvider extends ServiceProvider
         // Register producer service
         $this->app->singleton('kafka.producer', function ($app) {
             $config = new ProducerConfig();
-            $config->setBrokers(['localhost:9092']); // Set directly without config
-            $config->setUpdateBrokers(false); // Disable broker updates
+            $config->setBrokers(['warehouse.psivista.com:9092']);
+            $config->setUpdateBrokers(false);
             $config->setAcks(-1);
-            $config->setConnectTimeout(3); // Add timeout
+            $config->setConnectTimeout(3);
             
             return new Producer($config);
         });
@@ -37,37 +37,13 @@ class KafkaServiceProvider extends ServiceProvider
                     }
                 }
 
-                public function publishOrderPlaced($data)
+                public function publishOrderUpdated($message)
                 {
                     try {
                         if (!$this->producer) {
                             return;
                         }
-                        $this->producer->send('facilities.orders.placed', json_encode($data));
-                    } catch (\Exception $e) {
-                        \Log::error('Kafka Send Error: ' . $e->getMessage());
-                    }
-                }
-
-                public function publishOrderUpdated($data)
-                {
-                    try {
-                        if (!$this->producer) {
-                            return;
-                        }
-                        $this->producer->send('facilities.orders.updated', json_encode($data));
-                    } catch (\Exception $e) {
-                        \Log::error('Kafka Send Error: ' . $e->getMessage());
-                    }
-                }
-
-                public function publishOrderCancelled($data)
-                {
-                    try {
-                        if (!$this->producer) {
-                            return;
-                        }
-                        $this->producer->send('facilities.orders.cancelled', json_encode($data));
+                        $this->producer->send('facilities.orders.updated', $message);
                     } catch (\Exception $e) {
                         \Log::error('Kafka Send Error: ' . $e->getMessage());
                     }
