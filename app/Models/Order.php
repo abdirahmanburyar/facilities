@@ -24,21 +24,6 @@ class Order extends Model
         'order_number',
         'order_date',
         'expected_date',
-        'approved_at',
-        'rejected_at',
-        'processed_at',
-        'dispatched_at',
-        'delivered_at'
-    ];
-
-    protected $casts = [
-        'approved_at' => 'datetime',
-        'rejected_at' => 'datetime',
-        'processed_at' => 'datetime',
-        'dispatched_at' => 'datetime',
-        'delivered_at' => 'datetime',
-        'order_date' => 'datetime',
-        'expected_date' => 'datetime'
     ];
 
     public function facility()

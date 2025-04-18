@@ -20,12 +20,12 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $tab = $request->query('tab', 'recent');
-        
+
         $order = Order::where('id', $request->id)->with(['user', 'items.product'])
-            ->when($tab === 'pending', function($query) {
+            ->when($tab === 'pending', function ($query) {
                 return $query->where('status', 'pending');
             })
-            ->when($tab === 'completed', function($query) {
+            ->when($tab === 'completed', function ($query) {
                 return $query->where('status', 'completed');
             })
             ->latest()
@@ -38,11 +38,12 @@ class OrderController extends Controller
         ]);
     }
 
-    public function createOrder(Request $request){
+    public function createOrder(Request $request)
+    {
         try {
             return DB::transaction(function () use ($request) {
-                $orderNumber = 'ORD-' . date('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
-                
+                $orderNumber = 'OR-' . date('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+
                 $order = Order::create([
                     'user_id' => auth()->user()->id,
                     'facility_id' => auth()->user()->facility_id,
@@ -78,7 +79,7 @@ class OrderController extends Controller
             // Check if the current status can transition to the requested status
             if (!isset($allowedStatuses[$order->status]) || !in_array($request->status, $allowedStatuses[$order->status])) {
                 return response()->json("Order cannot be changed from {$order->status} to {$request->status}", 500);
-            }        
+            }
 
             $order->update([
                 'status' => $request->status,
@@ -101,7 +102,8 @@ class OrderController extends Controller
         }
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+    {
         try {
             return DB::transaction(function () use ($request) {
                 $request->validate([
@@ -114,7 +116,7 @@ class OrderController extends Controller
                 // Check for duplicate product in same order, excluding current item if updating
                 $query = OrderItem::where('product_id', $request->product_id)
                     ->where('order_id', $request->order_id);
-                
+
                 if ($request->id) {
                     $query->where('id', '!=', $request->id);
                 }
@@ -141,7 +143,8 @@ class OrderController extends Controller
         }
     }
 
-    public function search(Request $request){
+    public function search(Request $request)
+    {
         try {
             $request->validate([
                 'barcode' => 'required',
@@ -151,40 +154,41 @@ class OrderController extends Controller
             $facilityId = auth()->user()->facility_id;
             $tag = $request->tag;
             $exist = EligibleItem::where('facility_id', $facilityId)->first();
-            if(!$exist && $tag == 'allow') {
+            if (!$exist && $tag == 'allow') {
                 return response()->json(["message" => "Facility does not have an eligible item", "product" => null], 200);
             }
-            
+
             // Find the product by barcode or name
             $product = Product::where('barcode', $barcode)->orWhere('name', 'like', '%' . $barcode . '%')->first();
             logger()->info($product);
-            
+
             // Check if product exists in inventory with quantity > 0
             if ($product) {
                 $inventory = DB::table('inventories')
                     ->where('product_id', $product->id)
                     ->where('quantity', '>', 0)
                     ->first();
-                
+
                 if (!$inventory) {
                     return response()->json([
-                        "message" => "Product is out of stock", 
+                        "message" => "Product is out of stock",
                         "product" => null
                     ], 200);
                 }
             }
-            
+
             return response()->json(["product" => $product, "message" => "success"], 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }
     }
 
-    public function remove(Request $request){
+    public function remove(Request $request)
+    {
         try {
             return DB::transaction(function () use ($request) {
                 $orderItem = OrderItem::findOrFail($request->id);
-                if($orderItem->order->status !== 'pending') {
+                if ($orderItem->order->status !== 'pending') {
                     return response()->json('Order item cannot be removed', 409);
                 }
                 $orderItem->delete();
@@ -195,7 +199,8 @@ class OrderController extends Controller
         }
     }
 
-    public function submitOrder(Request $request){
+    public function submitOrder(Request $request)
+    {
         try {
             return DB::transaction(function () use ($request) {
                 event(new OrderEvent("refreshed"));
@@ -205,5 +210,4 @@ class OrderController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
-
 }

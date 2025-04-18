@@ -102,6 +102,7 @@
                                             ).toLocaleDateString()
                                         }}</span>
                                         <button
+                                            v-if="currentOrder.status !== 'completed'"
                                             @click="handleOrderSubmit"
                                             :disabled="orderSubmitted"
                                             class="font-medium text-indigo-600 hover:text-indigo-900"
@@ -118,7 +119,7 @@
 
                             <!-- Add Item Form -->
                             <div
-                                v-if="currentOrder"
+                                v-if="currentOrder && currentOrder.status !== 'completed'"
                                 class="p-3 text-xs border-t border-gray-200"
                             >
                                 <h3
