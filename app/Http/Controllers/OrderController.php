@@ -7,6 +7,7 @@ use App\Facades\Kafka;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Events\OrderEvent;
+use App\Models\EligibleItem;
 use App\Http\Resources\OrderResource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -142,9 +143,38 @@ class OrderController extends Controller
 
     public function search(Request $request){
         try {
+            $request->validate([
+                'barcode' => 'required',
+                'tag' => 'required'
+            ]);
             $barcode = $request->barcode;
-            $product = Product::where('barcode', $barcode)->first();
-            return response()->json($product, 200);
+            $facilityId = auth()->user()->facility_id;
+            $tag = $request->tag;
+            $exist = EligibleItem::where('facility_id', $facilityId)->first();
+            if(!$exist && $tag == 'allow') {
+                return response()->json(["message" => "Facility does not have an eligible item", "product" => null], 200);
+            }
+            
+            // Find the product by barcode or name
+            $product = Product::where('barcode', $barcode)->orWhere('name', 'like', '%' . $barcode . '%')->first();
+            logger()->info($product);
+            
+            // Check if product exists in inventory with quantity > 0
+            if ($product) {
+                $inventory = DB::table('inventories')
+                    ->where('product_id', $product->id)
+                    ->where('quantity', '>', 0)
+                    ->first();
+                
+                if (!$inventory) {
+                    return response()->json([
+                        "message" => "Product is out of stock", 
+                        "product" => null
+                    ], 200);
+                }
+            }
+            
+            return response()->json(["product" => $product, "message" => "success"], 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }

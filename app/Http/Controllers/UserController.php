@@ -18,7 +18,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query()->with(['roles', 'warehouse']);
+        $query = User::query()->with(['roles', 'facility']);
         
         // Search functionality
         if ($request->has('search')) {

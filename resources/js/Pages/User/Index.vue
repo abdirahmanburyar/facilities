@@ -73,7 +73,7 @@
                                     </th>
                                     <th class="group px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition">
                                         <div class="flex items-center">
-                                            <span>Warehouse</span>
+                                            <span>Health Facility</span>
                                         </div>
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -87,8 +87,8 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ user.email }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ formatDate(user.created_at) }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        <span v-if="user.warehouse" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            {{ user.warehouse.name }}
+                                        <span v-if="user.facility" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            {{ user.facility.name }}
                                         </span>
                                         <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                             Global

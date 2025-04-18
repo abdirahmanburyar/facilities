@@ -21,19 +21,18 @@ class KafkaConsume extends Command
 
         try {
             $config = new ConsumerConfig();
-            $config->setBroker('localhost:9092');
-            $config->setBrokers(['localhost:9092']);
-            $config->setTopic('facilities.orders.placed');
-            $config->setGroupId('facilities_group');
-            $config->setClientId('facilities_client_' . Str::random(8));
-            $config->setGroupInstanceId('facilities_instance_' . Str::random(8));
+            $config->setBrokers(['warehouse.psivista.com:9092']);
+            $config->setTopic('facilities.orders.updated');
+            $config->setGroupId('warehouse_group');
+            $config->setClientId('warehouse_client_' . Str::random(8));
+            $config->setGroupInstanceId('warehouse_instance_' . Str::random(8));
             $config->setAutoCommit(false);
-            
+
             $consumer = new Consumer($config);
             $this->info('Consumer configured and ready');
             Log::info('Kafka consumer started', [
-                'topic' => 'facilities.orders.placed',
-                'group' => 'facilities_group'
+                'topic' => 'facilities.orders.updated',
+                'group' => 'warehouse_group'
             ]);
 
             while (true) {
@@ -48,7 +47,7 @@ class KafkaConsume extends Command
                         event(new OrderEvent('Refreshed'));
                         $this->info('Decoded message: ' . json_encode($data));
                         Log::info('Decoded Kafka message', ['data' => $data]);
-                        
+
                         $consumer->ack($message);
                         $this->info('Message processed and acknowledged');
                         Log::info('Kafka message processed and acknowledged');

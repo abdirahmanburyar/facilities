@@ -19,7 +19,7 @@ class SettingsController extends Controller
         $tab = $request->query('tab', 'General');
         
         // Get users with filtering if tab is 'users'
-        $users = User::with('roles', 'warehouse');
+        $users = User::with('roles', 'facility');
         
         if ($tab === 'users') {
             // Apply search filter if provided
