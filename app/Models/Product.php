@@ -15,4 +15,9 @@ class Product extends Model
         'dosage_id',
         'is_active',
     ];
+
+    public function eligibleItems()
+    {
+        return $this->hasMany(EligibleItem::class);
+    }
 }

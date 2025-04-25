@@ -18,12 +18,12 @@ class ExpiredResource extends JsonResource
         // return parent::toArray($request);
         $expiryDate = $this->expiry_date ? Carbon::parse($this->expiry_date) : null;
         $today = Carbon::now();
-        
+
         // Calculate expiry status
         $isExpired = $expiryDate && $expiryDate < $today;
         $isNearExpiry = !$isExpired && $expiryDate && $expiryDate <= $today->copy()->addDays(30);
         $daysUntilExpiry = $expiryDate ? $expiryDate->diffInDays($today, false) : null;
-        
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
@@ -37,16 +37,16 @@ class ExpiredResource extends JsonResource
             'expiry_date' => $this->expiry_date,
             'is_active' => $this->is_active,
             'notes' => $this->notes,
-            
+
             // Pre-computed status information
             'is_expired' => $isExpired,
             'is_near_expiry' => $isNearExpiry,
             'days_until_expiry' => $daysUntilExpiry,
             'status' => !$this->is_active ? 'disposed' : ($isExpired ? 'expired' : ($isNearExpiry ? 'near' : 'active')),
-            
+
             // Include relationships if loaded
             'product' => $this->whenLoaded('product'),
             'warehouse' => $this->whenLoaded('warehouse'),
         ];
     }
-} 
+}

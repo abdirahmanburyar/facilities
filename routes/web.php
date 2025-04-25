@@ -7,6 +7,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -103,10 +104,18 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         ->group(function () {
             Route::get('/', 'index')->name('orders.index');
             Route::post('/store', 'store')->name('orders.store');
-            Route::get('/search', 'search')->name('orders.search');
+            Route::post('/search', 'search')->name('orders.search');
             Route::post('/create', 'createOrder')->name('orders.create');
             Route::get('/remove', 'remove')->name('orders.remove');
             Route::post('/submit', 'submitOrder')->name('orders.submit');
+        });
+
+        Route::controller(PosController::class)
+        ->prefix('/pos')
+        ->group(function () {
+            Route::get('/', 'index')->name('pos.index');
+            Route::post('/store', 'store')->name('pos.store');
+            Route::get('/facility-inventories', 'getFacilityInventories')->name('pos.inventories');
         });
 });
 

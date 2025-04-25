@@ -11,13 +11,11 @@ class FacilityInventory extends Model
 
     protected $fillable = [
         'product_id',
+        'facility_id',
         'quantity',
-        'reorder_level',
-        'manufacturing_date',
         'expiry_date',
         'batch_number',
         'location',
-        'notes',
         'is_active',
     ];
 
@@ -30,5 +28,10 @@ class FacilityInventory extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function facility()
+    {
+        return $this->belongsTo(Facility::class);
     }
 }

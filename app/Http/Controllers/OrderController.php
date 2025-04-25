@@ -21,17 +21,18 @@ class OrderController extends Controller
     {
         $tab = $request->query('tab', 'recent');
 
-        $order = Order::where('id', $request->id)->with(['user', 'items.product'])
+        $order = Order::where('facility_id', auth()->user()->facility_id)->where('id', $request->id)->with(['user', 'items.product'])
             ->when($tab === 'pending', function ($query) {
                 return $query->where('status', 'pending');
             })
             ->when($tab === 'completed', function ($query) {
                 return $query->where('status', 'completed');
             })
+            ->where('facility_id', auth()->user()->facility_id)
             ->latest()
             ->first();
         return inertia('Order/Index', [
-            'orders' => Order::whereDate('order_date', Carbon::now()->toDateString())->get(),
+            'orders' => Order::where('facility_id', auth()->user()->facility_id)->whereDate('order_date', Carbon::now()->toDateString())->get(),
             'currentOrder' => $order,
             'products' => Product::get(),
             'tab' => $tab
@@ -42,7 +43,7 @@ class OrderController extends Controller
     {
         try {
             return DB::transaction(function () use ($request) {
-                $orderNumber = 'OR-' . date('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+                $orderNumber = 'OR-' . Carbon::now()->format('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
 
                 $order = Order::create([
                     'user_id' => auth()->user()->id,
@@ -51,7 +52,7 @@ class OrderController extends Controller
                     'status' => 'pending',
                     'order_number' => $orderNumber,
                     'order_date' => Carbon::now()->toDateString(),
-                    'expected_date' => now()->addDays(7), // Default 7 days expectation
+                    'expected_date' => Carbon::now()->addDays(7), // Default 7 days expectation
                 ]);
 
                 // Dispatch order event if needed
@@ -110,6 +111,7 @@ class OrderController extends Controller
                     'id' => 'nullable|exists:order_items,id',
                     'product_id' => 'required|exists:products,id',
                     'quantity' => 'required',
+                    'quantity_on_order' => 'required',
                     'order_id' => 'required'
                 ]);
 
@@ -122,7 +124,7 @@ class OrderController extends Controller
                 }
 
                 if ($query->exists()) {
-                    return response()->json(Product::find($request->product_id)->name . ' already exists in this order.', 409);
+                    return response()->json(Product::find($request->product_id)->name . ' already exists in this order.', 500);
                 }
 
                 OrderItem::updateOrCreate(
@@ -130,6 +132,7 @@ class OrderController extends Controller
                     [
                         'product_id' => $request->product_id,
                         'quantity' => $request->quantity,
+                        'quantity_on_order' => $request->quantity_on_order,
                         'order_id' => $request->order_id,
                         'user_id' => auth()->user()->id
                     ]
@@ -148,36 +151,94 @@ class OrderController extends Controller
         try {
             $request->validate([
                 'barcode' => 'required',
-                'tag' => 'required'
             ]);
+
             $barcode = $request->barcode;
-            $facilityId = auth()->user()->facility_id;
-            $tag = $request->tag;
-            $exist = EligibleItem::where('facility_id', $facilityId)->first();
-            if (!$exist && $tag == 'allow') {
-                return response()->json(["message" => "Facility does not have an eligible item", "product" => null], 200);
+            $facility = auth()->user()->facility;
+
+            $exist = EligibleItem::where('facility_type', $facility->facility_type)->first();
+            if (!$exist) {
+                return response()->json([
+                    'message' => "No eligible items assigned for this facility type",
+                    'product' => null
+                ], 500);
             }
 
-            // Find the product by barcode or name
-            $product = Product::where('barcode', $barcode)->orWhere('name', 'like', '%' . $barcode . '%')->first();
-            logger()->info($product);
+            // Find the product by barcode or name, but only if it's eligible for this facility
+            $product = Product::whereHas('eligibleItems', function($query) use ($facility) {
+                $query->where('facility_type', $facility->facility_type);
+            })->where(function($query) use ($barcode) {
+                $query->where('barcode', $barcode)
+                      ->orWhere('name', 'like', '%' . $barcode . '%');
+            })->latest()->first();
 
-            // Check if product exists in inventory with quantity > 0
-            if ($product) {
-                $inventory = DB::table('inventories')
-                    ->where('product_id', $product->id)
-                    ->where('quantity', '>', 0)
-                    ->first();
-
-                if (!$inventory) {
-                    return response()->json([
-                        "message" => "Product is out of stock",
-                        "product" => null
-                    ], 200);
-                }
+            if (!$product) {
+                return response()->json([
+                    'message' => 'Product not found',
+                    'product' => null
+                ], 500);
             }
 
-            return response()->json(["product" => $product, "message" => "success"], 200);
+            // Get the latest order date for this quarter
+            $latestOrder = DB::table('orders')
+                ->where('facility_id', $facility->id)
+                ->where('order_date', '>=', Carbon::now()->startOfQuarter()->toDateString())
+                ->where('order_date', '<=', Carbon::now()->endOfQuarter()->toDateString())
+                ->orderBy('order_date', 'desc')
+                ->first();
+
+            // Calculate days from the latest order
+            $daysFromLatestOrder = 0;
+            if ($latestOrder) {
+                $orderDate = Carbon::parse($latestOrder->order_date)->toDateString();
+                $currentDate = Carbon::now()->toDateString();
+                $daysFromLatestOrder = Carbon::parse($currentDate)->diffInDays(Carbon::parse($orderDate));
+            }
+            
+            // Calculate remaining days (120 - days from latest order)
+            $daysRemaining = 120 - $daysFromLatestOrder;
+
+            logger()->info($product->id);
+
+            // Get Stock on Hand (SOH) from facility inventories
+            $inventory = DB::table('facility_inventories')
+                ->where('product_id', $product->id)
+                ->where('facility_id', $facility->id)
+                ->first();
+            $stockOnHand = $inventory ? $inventory->quantity : 0;
+
+            // Set QOO to 0 as per requirement
+            $quantityOnOrder = 0;
+
+            // Use default AMC of 200
+            $amc = 200;
+
+            // Calculate the order quantity using the formula
+            // AMC * (120 - days from latest order) - SOH - QOO
+            $orderQuantity = max(0, ceil($amc * ($daysRemaining / 30) - $stockOnHand - $quantityOnOrder));
+
+            // \Log::info('Final Calculation:', [
+            //     'product_id' => $product->id,
+            //     'product_name' => $product->name,
+            //     'amc' => $amc,
+            //     'days_remaining' => $daysRemaining,
+            //     'stock_on_hand' => $stockOnHand,
+            //     'quantity_on_order' => $quantityOnOrder,
+            //     'formula' => "($amc * ($daysRemaining/30)) - $stockOnHand - $quantityOnOrder",
+            //     'suggested_quantity' => $orderQuantity
+            // ]);
+
+            $product->suggested_quantity = $orderQuantity;
+
+            return response()->json([
+                "product" => [
+                    "id" => $product->id,
+                    "name" => $product->name,
+                    "suggested_quantity" => $orderQuantity,
+                    'stock_on_hand' => $stockOnHand
+                ],
+                "message" => "success"
+            ], 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }

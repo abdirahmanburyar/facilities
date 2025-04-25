@@ -20,6 +20,7 @@ class OrderItem extends Model
         'in_process',
         'dispatched_by',
         'dispatched_at',
+        'quantity_on_order',
         'delivered',
     ];
 
