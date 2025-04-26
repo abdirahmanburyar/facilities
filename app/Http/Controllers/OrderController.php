@@ -21,16 +21,18 @@ class OrderController extends Controller
     {
         $tab = $request->query('tab', 'recent');
 
-        $order = Order::where('facility_id', auth()->user()->facility_id)->where('id', $request->id)->with(['user', 'items.product'])
+        $order = Order::where('facility_id', auth()->user()->facility_id)
+            ->where('id', $request->id)
+            ->with(['user', 'items.product'])
             ->when($tab === 'pending', function ($query) {
                 return $query->where('status', 'pending');
             })
             ->when($tab === 'completed', function ($query) {
                 return $query->where('status', 'completed');
             })
-            ->where('facility_id', auth()->user()->facility_id)
             ->latest()
             ->first();
+
         return inertia('Order/Index', [
             'orders' => Order::where('facility_id', auth()->user()->facility_id)->whereDate('order_date', Carbon::now()->toDateString())->get(),
             'currentOrder' => $order,
@@ -43,12 +45,17 @@ class OrderController extends Controller
     {
         try {
             return DB::transaction(function () use ($request) {
+                $request->validate([
+                    'order_type' => 'required',
+                    'expected_date' => 'required'
+                ]);
                 $orderNumber = 'OR-' . Carbon::now()->format('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
 
                 $order = Order::create([
                     'user_id' => auth()->user()->id,
                     'facility_id' => auth()->user()->facility_id,
                     'order_type' => $request->order_type,
+                    'expected_date' => $request->expected_date,
                     'status' => 'pending',
                     'order_number' => $orderNumber,
                     'order_date' => Carbon::now()->toDateString(),
@@ -156,30 +163,28 @@ class OrderController extends Controller
             $barcode = $request->barcode;
             $facility = auth()->user()->facility;
 
-            $exist = EligibleItem::where('facility_type', $facility->facility_type)->first();
-            if (!$exist) {
-                return response()->json([
-                    'message' => "No eligible items assigned for this facility type",
-                    'product' => null
-                ], 500);
-            }
-
             // Find the product by barcode or name, but only if it's eligible for this facility
-            $product = Product::whereHas('eligibleItems', function($query) use ($facility) {
-                $query->where('facility_type', $facility->facility_type);
-            })->where(function($query) use ($barcode) {
-                $query->where('barcode', $barcode)
-                      ->orWhere('name', 'like', '%' . $barcode . '%');
-            })->latest()->first();
-
+            $product = EligibleItem::where('facility_type', $facility->facility_type)
+                ->whereHas('product', function ($query) use ($barcode) {
+                    $query->where('barcode', 'like', '%' . $barcode . '%')
+                        ->orWhere('name', 'like', '%' . $barcode . '%');
+                })
+                ->with('product:id,name,barcode')
+                ->latest()
+                ->first();
+            logger()->info($product);
             if (!$product) {
-                return response()->json([
-                    'message' => 'Product not found',
-                    'product' => null
-                ], 500);
+                return response()->json(['message' => 'Product not found', 'product' => null], 500);
             }
 
-            // Get the latest order date for this quarter
+            // Get Stock on Hand (SOH) from facility inventories
+            $inventory = DB::table('facility_inventories')
+                ->where('product_id', $product->product->id)
+                ->where('facility_id', $facility->id)
+                ->first();
+            $stockOnHand = $inventory ? $inventory->quantity : 0;
+
+            // Calculate days from the latest order and remaining days...
             $latestOrder = DB::table('orders')
                 ->where('facility_id', $facility->id)
                 ->where('order_date', '>=', Carbon::now()->startOfQuarter()->toDateString())
@@ -187,53 +192,23 @@ class OrderController extends Controller
                 ->orderBy('order_date', 'desc')
                 ->first();
 
-            // Calculate days from the latest order
             $daysFromLatestOrder = 0;
             if ($latestOrder) {
                 $orderDate = Carbon::parse($latestOrder->order_date)->toDateString();
                 $currentDate = Carbon::now()->toDateString();
                 $daysFromLatestOrder = Carbon::parse($currentDate)->diffInDays(Carbon::parse($orderDate));
             }
-            
-            // Calculate remaining days (120 - days from latest order)
+
             $daysRemaining = 120 - $daysFromLatestOrder;
-
-            logger()->info($product->id);
-
-            // Get Stock on Hand (SOH) from facility inventories
-            $inventory = DB::table('facility_inventories')
-                ->where('product_id', $product->id)
-                ->where('facility_id', $facility->id)
-                ->first();
-            $stockOnHand = $inventory ? $inventory->quantity : 0;
-
-            // Set QOO to 0 as per requirement
             $quantityOnOrder = 0;
-
-            // Use default AMC of 200
             $amc = 200;
-
-            // Calculate the order quantity using the formula
-            // AMC * (120 - days from latest order) - SOH - QOO
             $orderQuantity = max(0, ceil($amc * ($daysRemaining / 30) - $stockOnHand - $quantityOnOrder));
-
-            // \Log::info('Final Calculation:', [
-            //     'product_id' => $product->id,
-            //     'product_name' => $product->name,
-            //     'amc' => $amc,
-            //     'days_remaining' => $daysRemaining,
-            //     'stock_on_hand' => $stockOnHand,
-            //     'quantity_on_order' => $quantityOnOrder,
-            //     'formula' => "($amc * ($daysRemaining/30)) - $stockOnHand - $quantityOnOrder",
-            //     'suggested_quantity' => $orderQuantity
-            // ]);
-
-            $product->suggested_quantity = $orderQuantity;
 
             return response()->json([
                 "product" => [
-                    "id" => $product->id,
-                    "name" => $product->name,
+                    "id" => $product->product->id,
+                    "name" => $product->product->name,
+                    "barcode" => $product->product->barcode,
                     "suggested_quantity" => $orderQuantity,
                     'stock_on_hand' => $stockOnHand
                 ],
