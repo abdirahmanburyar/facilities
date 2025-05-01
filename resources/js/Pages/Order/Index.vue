@@ -1,475 +1,566 @@
 <template>
+
     <Head title="Orders" />
-    <AuthenticatedLayout>
+    <AuthenticatedLayout title="Orders" description="Manage orders" img="/assets/image/order.png">
         <div class="min-h-screen bg-gray-50">
-            <div class="w-full px-4">
-                <!-- Main Grid Layout -->
-                <div class="grid grid-cols-1 gap-4 lg:grid-cols-6">
-                    <!-- Sidebar -->
-                    <div class="lg:col-span-2">
-                        <div
-                            class="overflow-hidden text-xs bg-white rounded-lg shadow-sm"
-                        >
-                            <!-- Order Selection -->
-                            <label
-                                class="block mb-2 text-sm font-medium text-gray-700"
-                                >Select Order Type</label
-                            >
-                            <select
-                                v-model="order_type"
-                                class="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                                <option value="">Select Order Type</option>
-                                <option value="Replenishment">
-                                    Replenishment
-                                </option>
-                            </select>
-                            <label
-                                class="block mb-2 text-sm font-medium text-gray-700"
-                                >Expected Date</label
-                            >
-                            <input
-                                type="date"
-                                v-model="expected_date"
-                                class="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                            <button
-                                @click="confirmCreateOrder"
-                                :disabled="order_type == '' || isCreated"
-                                class="flex justify-center w-full px-4 py-2 mt-2 text-lg font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                                {{
-                                    isCreated
-                                        ? "Processing..."
-                                        : "Create new order"
-                                }}
-                            </button>
+            <div class="max-w-full mx-auto">
+                <!-- Main Content -->
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">
+                        Select Order
+                    </h3>
 
-                            <div>
-                                <label
-                                    class="block mb-2 text-sm font-medium text-gray-700"
-                                    >Select Order</label
-                                >
-                                <select
-                                    v-model="selectedOrderId"
-                                    @change="handleOrderChange"
-                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                                >
-                                    <option value="">Choose an order...</option>
-                                    <option
-                                        v-for="order in props.orders"
-                                        :key="order.id"
-                                        :value="order.id"
-                                    >
-                                        {{ order.order_number }} ({{
-                                            order.status
-                                        }})
-                                    </option>
-                                </select>
+                    <select v-model="id"
+                        class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">Select an Order</option>
+                        <option v-for="order in orders" :key="order.id" :value="order.id">
+                            Order #{{ order.order_number }} - {{ order.order_type }}
+                        </option>
+                    </select>
+                    <button @click="showOrderModal = true"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                        Create New Order
+                    </button>
+                    <button
+                        v-if="props.currentOrder?.status == 'pending' && props.currentOrder?.order_type != 'quarterly'"
+                        @click="showAddItemModal = true"
+                        class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
+                        Add Item
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center bg-white">
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <h2 class="text-lg font-semibold mb-2">Order #{{ props.currentOrder?.id }}</h2>
+                        <!-- Current order details -->
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-lg font-medium text-gray-900">
+                                    Order #{{ props.currentOrder?.order_number }}
+                                </h2>
+
                             </div>
-
-                            <!-- Current Order Info -->
-                            <div
-                                v-if="currentOrder"
-                                class="p-4 text-sm bg-gradient-to-br from-blue-50 to-indigo-50"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <h3
-                                        class="mb-3 text-sm font-semibold tracking-wider text-gray-900 uppercase"
-                                    >
-                                        Current Order
-                                    </h3>
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-lg font-medium"
-                                        :class="{
-                                            'bg-yellow-100 text-yellow-800':
-                                                currentOrder.status ===
-                                                'pending',
-                                            'bg-green-100 text-green-800':
-                                                currentOrder.status ===
-                                                'completed',
-                                        }"
-                                    >
-                                        {{ currentOrder.status }}
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="text-sm text-gray-500">
+                                        Expected: {{ new
+                                            Date(props.currentOrder?.expected_date).toLocaleDateString() }}
+                                    </span>
+                                    <span :class="{
+                                        'px-2 py-1 text-sm font-medium rounded-full': true,
+                                        'bg-yellow-100 text-yellow-800': props.currentOrder?.status === 'pending',
+                                        'bg-green-100 text-green-800': props.currentOrder?.status === 'completed',
+                                        'bg-blue-100 text-blue-800': props.currentOrder?.status === 'processing'
+                                    }">
+                                        {{ props.currentOrder?.status }}
                                     </span>
                                 </div>
-                                <div class="space-y-3">
-                                    <div
-                                        class="flex items-center justify-between"
-                                    >
-                                        <span
-                                            class="font-medium text-gray-900"
-                                            >{{
-                                                currentOrder.order_number
-                                            }}</span
-                                        >
-                                        <span class="text-sm text-gray-900">{{
-                                            currentOrder.order_type
-                                        }}</span>
-                                    </div>
-                                    <div
-                                        class="flex items-center justify-between"
-                                    >
-                                        <span class="text-sm text-gray-900">{{
-                                            new Date(
-                                                currentOrder.order_date
-                                            ).toLocaleDateString()
-                                        }}</span>
-                                        <button
-                                            v-if="
-                                                currentOrder.status !==
-                                                'completed'
-                                            "
-                                            @click="handleOrderSubmit"
-                                            :disabled="orderSubmitted"
-                                            class="font-medium text-indigo-600 hover:text-indigo-900"
-                                        >
-                                            {{
-                                                orderSubmitted
-                                                    ? "Submitting..."
-                                                    : "Submit Order"
-                                            }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Add Item Form -->
-                            <div
-                                v-if="
-                                    currentOrder &&
-                                    currentOrder.status !== 'completed' &&
-                                    currentOrder.order_type === 'Replenishment'
-                                "
-                                class="p-3 text-lg border-t border-gray-200"
-                            >
-                                <h3
-                                    class="mb-2 text-lg font-semibold tracking-wider text-gray-900 uppercase"
-                                >
-                                    Add Item
-                                </h3>
-                                <form
-                                    @submit.prevent="submitOrder"
-                                    class="space-y-3"
-                                >
-                                    <div
-                                        v-if="err.message"
-                                        class="text-sm text-red-500"
-                                    >
-                                        {{ err.message }}
-                                    </div>
-                                    <div class="relative">
-                                        <div class="relative">
-                                            <div class="relative">
-                                                <input
-                                                    v-model="form.product_name"
-                                                    @input="onProductSearch"
-                                                    class="w-full pl-8 pr-2 py-1.5 text-lg border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                                    placeholder="Scan or type barcode/product name..."
-                                                />
-                                                <div
-                                                    v-if="
-                                                        productSuggestions.length >
-                                                        0
-                                                    "
-                                                    class="absolute z-10 w-full py-1 mt-1 text-sm bg-white rounded-md shadow-lg"
-                                                >
-                                                    <div
-                                                        v-for="suggestion in productSuggestions"
-                                                        :key="suggestion.id"
-                                                        @click="
-                                                            selectProduct(
-                                                                suggestion
-                                                            )
-                                                        "
-                                                        class="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                                    >
-                                                        <div
-                                                            class="flex items-center"
-                                                        >
-                                                            <span>{{
-                                                                suggestion.name
-                                                            }}</span>
-                                                            <span
-                                                                v-if="
-                                                                    suggestion.barcode
-                                                                "
-                                                                class="ml-2 text-lg text-gray-500"
-                                                                >({{
-                                                                    suggestion.barcode
-                                                                }})</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
-                                                >
-                                                    <svg
-                                                        class="w-4 h-4 text-gray-400"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                    >
-                                                        <path
-                                                            fill-rule="evenodd"
-                                                            d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                                                            clip-rule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex justify-between gap-2">
-                                        <div>
-                                            <label
-                                                for="quantity"
-                                                class="text-lg"
-                                                >Quantity</label
-                                            >
-                                            <input
-                                                type="number"
-                                                v-model="form.quantity"
-                                                readonly
-                                                class="w-full pl-8 pr-2 py-1.5 text-lg border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                                placeholder="Enter quantity"
-                                                required
-                                                min="1"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label
-                                                for="quantity_on_order"
-                                                class="text-lg"
-                                                >Quantity on Order</label
-                                            >
-                                            <input
-                                                type="number"
-                                                v-model="form.quantity_on_order"
-                                                class="w-full pl-8 pr-2 py-1.5 text-lg border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                                placeholder="Enter quantity on order"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between gap-2">
-                                        <label
-                                            for="stock_on_hand"
-                                            class="text-lg"
-                                            >Stock on Hand</label
-                                        >
-                                        <input
-                                            type="number"
-                                            readonly
-                                            v-model="form.stock_on_hand"
-                                            class="w-full pl-8 pr-2 py-1.5 text-lg border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                            placeholder="Enter quantity"
-                                            required
-                                            min="1"
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        :disabled="
-                                            isAdded ||
-                                            !form.product_id ||
-                                            form.quantity == 0
-                                        "
-                                        class="inline-flex justify-center items-center px-2.5 py-1.5 border border-transparent text-lg font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full"
-                                    >
-                                        <svg
-                                            class="h-3 w-3 mr-1.5"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                            />
-                                        </svg>
-                                        {{
-                                            isAdded
-                                                ? "Processing..."
-                                                : "Add to Order"
-                                        }}
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Main Content -->
-                    <div class="lg:col-span-4">
-                        <div
-                            class="overflow-hidden bg-white rounded-lg shadow-sm"
-                        >
-                            <!-- Header -->
-                            <div class="border-b border-gray-200">
-                                <div class="p-4">
-                                    <h1
-                                        class="text-2xl font-semibold text-gray-900"
-                                    >
-                                        Order Items
-                                    </h1>
+                    <div class=" p-4">
+                        <div class="flex justfiy-between gap-2 fade-in">
+                            <!-- Pending Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['Pending', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.pending || 0, (getTotalOrders || 1) - (props.stats?.pending || 0)],
+                                            backgroundColor: ['#eab308', '#fef3c7'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.pending) }}%</span>
+                                    </div>
                                 </div>
-                                <!-- Tabs -->
-                                <div class="mb-4 border-b border-gray-200">
-                                    <nav
-                                        class="flex -mb-px space-x-8"
-                                        aria-label="Tabs"
-                                    >
-                                        <button
-                                            v-for="tab in tabs"
-                                            :key="tab.key"
-                                            @click="switchTab(tab.key)"
-                                            class="px-1 py-4 text-sm font-medium border-b-2 whitespace-nowrap"
-                                            :class="[
-                                                currentTab === tab.key
-                                                    ? 'border-indigo-500 text-indigo-600'
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                                            ]"
-                                        >
-                                            <span class="flex items-center">
-                                                <i
-                                                    :class="['mr-2', tab.icon]"
-                                                ></i>
-                                                {{ tab.name }}
-                                                <span
-                                                    v-if="tab.count"
-                                                    class="ml-2 px-2 py-0.5 text-xs rounded-full"
-                                                    :class="[
-                                                        currentTab === tab.key
-                                                            ? 'bg-indigo-100 text-indigo-600'
-                                                            : 'bg-gray-100 text-gray-900',
-                                                    ]"
-                                                >
-                                                    {{ tab.count }}
-                                                </span>
-                                            </span>
-                                        </button>
-                                    </nav>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.pending || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">Pending</span>
                                 </div>
                             </div>
-                            <!-- Table -->
-                            <div class="overflow-x-auto">
-                                <table
-                                    class="min-w-full divide-y divide-gray-200"
-                                >
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                SN#
-                                            </th>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                Item
-                                            </th>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                Quantity
-                                            </th>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                QOO
-                                            </th>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                Status
-                                            </th>
-                                            <th
-                                                class="px-6 py-3 text-sm font-medium tracking-wider text-left uppercase"
-                                            >
-                                                Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody
-                                        class="bg-white divide-y divide-gray-200"
-                                    >
-                                        <tr
-                                            v-for="(order, i) in props
-                                                .currentOrder?.items"
-                                            :key="order.id"
-                                            class="transition-colors duration-150 hover:bg-gray-50"
-                                        >
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                {{ i + 1 }}
-                                            </td>
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                {{ order.product.name }}
-                                            </td>
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                {{ order.quantity }}
-                                            </td>
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                {{ order.quantity_on_order }}
-                                            </td>
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                {{ order.status }}
-                                            </td>
-                                            <td
-                                                class="px-6 py-4 text-lg whitespace-nowrap"
-                                            >
-                                                <button
-                                                    v-if="
-                                                        order.status ==
-                                                        'pending'
-                                                    "
-                                                    @click="removeItem(order)"
-                                                    class="text-red-600 hover:text-red-900"
-                                                >
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                                <button
-                                                    v-if="
-                                                        order.status ==
-                                                        'pending'
-                                                    "
-                                                    @click="editItem(order)"
-                                                    class="ml-2 text-blue-600 hover:text-blue-900"
-                                                >
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr
-                                            v-if="
-                                                !props.currentOrder?.items
-                                                    ?.length
-                                            "
-                                        >
-                                            <td
-                                                colspan="6"
-                                                class="px-6 py-8 text-lg text-center text-gray-500"
-                                            >
-                                                No items in the current order
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <!-- Approved Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['Approved', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.approved || 0, (getTotalOrders || 1) - (props.stats?.approved || 0)],
+                                            backgroundColor: ['#16a34a', '#dcfce7'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.approved) }}%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.approved || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">Approved</span>
+                                </div>
+                            </div>
+
+                            <!-- Rejected Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['Rejected', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.rejected || 0, (getTotalOrders || 1) - (props.stats?.rejected || 0)],
+                                            backgroundColor: ['#dc2626', '#fee2e2'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.rejected) }}%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.rejected || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">Rejected</span>
+                                </div>
+                            </div>
+
+                            <!-- In Processing Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['In Processing', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.['in processing'] || 0, (getTotalOrders || 1) - (props.stats?.['in processing'] || 0)],
+                                            backgroundColor: ['#2563eb', '#dbeafe'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.['in processing']) }}%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.['in processing']
+                                        || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">In Process</span>
+                                </div>
+                            </div>
+
+                            <!-- Dispatched Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['Dispatched', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.dispatched || 0, (getTotalOrders || 1) - (props.stats?.dispatched || 0)],
+                                            backgroundColor: ['#9333ea', '#f3e8ff'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.dispatched) }}%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.dispatched || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">Dispatched</span>
+                                </div>
+                            </div>
+
+                            <!-- Delivered Orders -->
+                            <div class="relative h-[100px] flex items-center">
+                                <div class="relative w-[100px]">
+                                    <Doughnut :data="{
+                                        labels: ['Delivered', 'Other'],
+                                        datasets: [{
+                                            data: [props.stats?.delivered || 0, (getTotalOrders || 1) - (props.stats?.delivered || 0)],
+                                            backgroundColor: ['#4b5563', '#f3f4f6'],
+                                            borderWidth: 0
+                                        }]
+                                    }" :options="{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        cutout: '80%',
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }" />
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-900">{{
+                                            getPercentage(props.stats?.delivered) }}%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-start flex-col">
+                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.delivered || 0
+                                    }}</span>
+                                    <span class="ml-3 text-xs text-gray-600">Delivered</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Main content area -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <input type="search" v-model="search" placeholder="Search products [name, barcode]"
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4 overflow-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    SN</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Product</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Quantity</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    QOO</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Lost Quantity</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Damaged Quantity</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-if="isLoading">
+                                <td colspan="4" class="px-6 py-4 text-center">
+                                    <span>Loading...</span>
+                                </td>
+                            </tr>
+                            <tr v-else v-for="(item, i) in filteredItems" :key="item.id"
+                                class="hover:bg-gray-50" :class="{
+                                    'bg-green-100': item.status === 'delivered',
+                                    'bg-yellow-100': item.status === 'pending',
+                                    'bg-red-100': item.status === 'processing',
+                                    'bg-grey-100': item.status === 'approved',
+                                }">
+                                <td class="px-6 py-4 whitespace-nowrap  w-[20px]">{{ i + 1 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap  w-[100px]">
+                                    <div class="flex flex-col">
+                                        <span class="text-dark-500">{{ item.product.name }}</span>
+                                        <span class="text-sm text-grey-500">Barcode: {{ item.product.barcode
+                                        }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item.quantity }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item.quantity_on_order }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item.lost_quantity }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item.damaged_quantity }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span :class="{
+                                        'px-2 py-1 text-sm font-medium rounded-full': true,
+                                        'bg-yellow-100 text-yellow-800': item.status === 'pending',
+                                        'bg-green-100 text-green-800': item.status === 'received',
+                                        'bg-blue-100 text-blue-800': item.status === 'processing',
+                                        'bg-blue-100 text-green': item.status === 'delivered',
+                                    }">
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center space-x-3">
+                                        <button
+                                            v-if="item.status == 'pending' || item.status == 'delivery_pending'"
+                                            @click="editItem(item)"
+                                            class="text-blue-600 hover:text-blue-900 mr-2" title="Edit Item">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button v-if="item.status === 'pending'" @click="removeItem(item)"
+                                            class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <button
+                                            v-if="item.status === 'dispatched' || item.status === 'delivery_pending'"
+                                            @click="openReceiveModal(item)"
+                                            class="text-green-600 hover:text-green-900" title="Receive Item">
+                                            Received
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Order Creation Modal -->
+            <div v-show="showOrderModal" class="relative z-50">
+                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
+                <div class="fixed inset-0 overflow-y-auto">
+                    <div class="flex min-h-full items-center justify-center p-4">
+                        <div
+                            class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all z-50">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">
+                                Create New Order
+                            </h3>
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Order Type</label>
+                                    <select v-model="order_type"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">Select Order Type</option>
+                                        <option value="Replenishment">Replenishment</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Expected Date</label>
+                                    <input type="date" v-model="expected_date"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button"
+                                    class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                    @click="showOrderModal = false">
+                                    Cancel
+                                </button>
+                                <button type="button"
+                                    class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                    :disabled="order_type == '' || isCreated" @click="confirmCreateOrder">
+                                    {{ isCreated ? "Processing..." : "Create Order" }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Item Modal -->
+            <div v-show="showAddItemModal" class="relative z-50">
+                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
+                <div class="fixed inset-0 overflow-y-auto">
+                    <div class="flex min-h-full items-center justify-center p-4">
+                        <div
+                            class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all z-50">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">
+                                Add Item to Order
+                            </h3>
+                            <div class="mt-4">
+                                <form @submit.prevent="addItem">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Product</label>
+                                            <Multiselect v-model="selectedProduct" :options="searchResults"
+                                                :custom-label="option => option ? `${option.name} - Stock: ${option.stock_on_hand}` : ''"
+                                                track-by="id" :searchable="true" :loading="isSearching"
+                                                :internal-search="false" :clear-on-select="false"
+                                                :close-on-select="true" :preserve-search="true" :preselect-first="true"
+                                                :options-limit="300" :limit="3" :max-height="600"
+                                                :show-no-results="true" :hide-selected="true"
+                                                @search-change="onProductSearch" @select="selectProduct"
+                                                @remove="clearProduct" placeholder="Search by name or scan barcode"
+                                                class="product-select">
+                                                <template v-slot:option="{ option }">
+                                                    <div v-if="option" class="flex justify-between items-center">
+                                                        <div>
+                                                            <div class="font-medium">{{ option.name }}</div>
+                                                            <div class="text-sm text-gray-500">Barcode: {{
+                                                                option.barcode }}</div>
+                                                        </div>
+                                                        <div class="text-sm">
+                                                            Stock: {{ option.stock_on_hand }}
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <template v-slot:noResult>
+                                                    <div class="text-sm text-gray-500 p-2">No products found</div>
+                                                </template>
+                                                <template v-slot:selection="{ option }">
+                                                    <div v-if="option" class="multiselect__single">
+                                                        <span class="font-medium">{{ option.name }}</span>
+                                                        <span class="text-sm text-gray-500 ml-2">Stock: {{
+                                                            option.stock_on_hand }}</span>
+                                                    </div>
+                                                </template>
+                                            </Multiselect>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="w-full">
+                                                <label class="block text-sm font-medium text-gray-700">Quantity</label>
+                                                <input type="number" v-model="form.quantity" readonly
+                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                    min="1" />
+                                            </div>
+                                            <div class="w-full">
+                                                <label class="block text-sm font-medium text-gray-700">Quantity on
+                                                    order</label>
+                                                <input type="number" v-model="form.quantity_on_order"
+                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                    min="0" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6 flex justify-end space-x-3">
+                                        <button type="button"
+                                            class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                            @click="showAddItemModal = false">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                            :disabled="!form.product_id || !form.quantity || isAdded">
+                                            {{ isAdded ? "Adding..." : "Add Item" }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Receive Item Modal -->
+            <div v-if="showReceiveModal" class="relative z-50">
+                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+                        <h2 class="text-lg font-semibold mb-4">Receive Item</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Product</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ selectedItem?.product.name }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Ordered Quantity</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ selectedItem?.quantity }}</p>
+                            </div>
+                            <div>
+                                <label for="lost_quantity" class="block text-sm font-medium text-gray-700">Lost
+                                    Quantity</label>
+                                <input type="number" id="lost_quantity" v-model="receiveForm.lost_quantity" min="0"
+                                    :max="maxLostQuantity"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    @input="validateQuantities" />
+                                <p v-if="receiveForm.lost_quantity > maxLostQuantity" class="mt-1 text-sm text-red-600">
+                                    Cannot exceed remaining quantity ({{ maxLostQuantity }})
+                                </p>
+                            </div>
+                            <div>
+                                <label for="damaged_quantity" class="block text-sm font-medium text-gray-700">Damaged
+                                    Quantity</label>
+                                <input type="number" id="damaged_quantity" v-model="receiveForm.damaged_quantity"
+                                    min="0" :max="maxDamagedQuantity"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    @input="validateQuantities" />
+                                <p v-if="receiveForm.damaged_quantity > maxDamagedQuantity"
+                                    class="mt-1 text-sm text-red-600">
+                                    Cannot exceed remaining quantity ({{ maxDamagedQuantity }})
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Received Quantity</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ receivedQuantity }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end space-x-3">
+                            <button @click="showReceiveModal = false"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Cancel
+                            </button>
+                            <button @click="confirmReceiveItem" :disabled="!isValidReceiveForm || isConfirmed"
+                                class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ isConfirmed ? 'Processing...' : 'Confirm' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Item Modal -->
+            <div v-if="showEditModal" class="relative z-50">
+                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+                        <h2 class="text-lg font-semibold mb-4">Edit Item</h2>
+                        <form @submit.prevent="updateItem" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Product</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ form.product_name }}</p>
+                            </div>
+                            <div>
+                                <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity</label>
+                                <input type="number" v-model="form.quantity" min="1"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            </div>
+                            <div>
+                                <label for="quantity_on_order" class="block text-sm font-medium text-gray-700">Quantity
+                                    on
+                                    order</label>
+                                <input type="number" v-model="form.quantity_on_order" min="0"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            </div>
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button" @click="showEditModal = false" :disabled="isSubmitting"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="isSubmitting"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    {{ isSubmitting ? "Please wait...." : "Update Item" }}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -477,30 +568,161 @@
     </AuthenticatedLayout>
 </template>
 
+<style>
+@import 'vue-multiselect/dist/vue-multiselect.css';
+
+.multiselect {
+    min-height: 45px;
+}
+
+.multiselect__tags {
+    min-height: 45px;
+    padding: 8px 40px 0 8px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.multiselect__input {
+    font-size: 14px;
+}
+
+.multiselect__single {
+    font-size: 14px;
+    padding-left: 5px;
+}
+
+.multiselect__tag {
+    background: #4f46e5;
+    color: white;
+    font-size: 14px;
+}
+
+.multiselect__option--highlight {
+    background: #4f46e5;
+    color: white;
+}
+
+.multiselect__option--selected.multiselect__option--highlight {
+    background: #ef4444;
+    color: white;
+}
+
+.multiselect__placeholder {
+    padding-left: 5px;
+    font-size: 14px;
+}
+
+.multiselect__content-wrapper {
+    border-radius: 0 0 6px 6px;
+    border: 1px solid #e5e7eb;
+    border-top: none;
+}
+
+.multiselect__option {
+    padding: 12px;
+    min-height: 40px;
+    line-height: 16px;
+    font-size: 14px;
+}
+</style>
+
 <script setup>
-import { Head } from "@inertiajs/vue3";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { ref, computed, onBeforeUnmount, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { Head } from "@inertiajs/vue3";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { debounce } from 'lodash';
+import { Multiselect } from 'vue-multiselect';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'vue-chartjs';
+import { useToast } from "vue-toastification";
+import { usePage } from '@inertiajs/vue3'
+
+const page = usePage();
+
+const toast = useToast();
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+onMounted(() => {
+    if (props.currentOrder && page.props.facility?.id != props.currentOrder?.facility_id) {
+        router.get(route('orders.index'), {}, {
+            preserveScroll: false,
+            preserveState: false,
+        })
+    }
+})
 
 const STORAGE_KEY = "current_order";
-const currentOrder = ref(null);
 const isAdded = ref(false);
-const searchQuery = ref("");
+const searchResults = ref([]);
 const selectedProduct = ref(null);
-const selectedOrderId = ref("");
-const err = ref({
-    message: "",
-});
+const search = ref("");
+const debouncedSearch = ref("");
+const isSearching = ref(false);
+
+// Create debounced search function
+const debouncedProductSearch = debounce(async (query) => {
+    if (!query) {
+        searchResults.value = [];
+        return;
+    }
+
+    isSearching.value = true;
+    try {
+        const response = await axios.post(route("orders.search"), {
+            barcode: query,
+            name: query
+        });
+
+        if (response.data.product) {
+            // Single product found (likely from barcode)
+            searchResults.value = [response.data.product];
+            // Auto-select if it's a barcode match
+            if (query.length > 8) {
+                selectProduct(response.data.product);
+            }
+        } else if (response.data.products?.length) {
+            searchResults.value = response.data.products;
+        } else {
+            searchResults.value = [];
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        searchResults.value = [];
+    } finally {
+        isSearching.value = false;
+    }
+}, 300);
+
+// Watch for search changes
+const onProductSearch = (query) => {
+    debouncedProductSearch(query);
+};
+
+const clearProduct = () => {
+    selectedProduct.value = null;
+    form.value.product_id = null;
+    form.value.product_name = '';
+    form.value.quantity = 0;
+    form.value.stock_on_hand = 0;
+};
+
+const selectProduct = (product) => {
+    if (!product) return;
+    selectedProduct.value = product;
+    form.value.product_id = product.id;
+    form.value.product_name = product.name;
+    form.value.quantity = product.suggested_quantity || 1;
+    form.value.stock_on_hand = product.stock_on_hand;
+};
 
 const props = defineProps({
-    orders: {
-        type: Array,
-        required: true,
+    stats: {
+        type: Object
     },
-    products: {
+    orders: {
         type: Array,
         required: true,
     },
@@ -508,80 +730,64 @@ const props = defineProps({
         type: Object,
         default: null,
     },
-    tab: {
-        type: String,
-        default: "items",
+    products: {
+        type: Array,
+        required: true,
+    },
+    filters: {
+        type: Object,
+        default: () => ({}),
     },
 });
 
-onMounted(() => {
-    currentOrder.value = props.currentOrder;
+
+const filteredItems = computed(() => {
+    if (!search.value) return props.currentOrder?.items || [];
+    return props.currentOrder?.items.filter(i => i.product?.name.toLowerCase().includes(search.value.toLowerCase()) || i.product?.barcode.toLowerCase().includes(search.value.toLowerCase())) || [];
 });
 
 const form = ref({
-    id: null,
+    order_id: props.currentOrder?.id || null,
     product_id: null,
-    product_name: null,
+    product_name: '',
     quantity: 0,
     quantity_on_order: 0,
     stock_on_hand: 0,
-    order_id: null,
 });
 
-const productSuggestions = ref([]);
+const id = ref(props.filters.id);
 
+// Update the form when currentOrder changes
 watch(
-    () => props.currentOrder,
-    (newOrder) => {
-        currentOrder.value = newOrder;
-        if (newOrder) {
-            selectedOrderId.value = newOrder.id;
-            form.value.order_id = newOrder.id;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
-        } else {
-            resetForm();
-        }
-    },
-    { immediate: true }
+    [() => id.value],
+    () => {
+        reloadOrder();
+    }
 );
 
-// Clear localStorage on unmount
-onBeforeUnmount(() => {
-    localStorage.removeItem(STORAGE_KEY);
+onMounted(() => {
+    // Initialize Echo listener for OrderEvent
+    window.Echo.channel("orders").listen(".order-received", (e) => {
+        // reload();
+        console.log(e);
+        reloadOrder();
+    });
 });
 
-const tabs = [{ key: "items", name: "Items", icon: "fas fa-box", count: null }];
+const getTotalOrders = computed(() => {
+    if (!props.stats) return 0;
+    return Object.values(props.stats).reduce((a, b) => a + b, 0);
+});
 
-const currentTab = computed(() => props.tab || "items");
+const getPercentage = (value) => {
+    if (!value || !getTotalOrders.value) return 0;
+    return Math.round((value / getTotalOrders.value) * 100);
+};
 
 const orderSubmitted = ref(false);
 
-const handleOrderSubmit = () => {
-    orderSubmitted.value = true;
-    axios
-        .post(route("orders.submit"))
-        .then((response) => {
-            orderSubmitted.value = false;
-            reloadOrder();
-            Swal.fire({
-                icon: "success",
-                title: response.data,
-                showConfirmButton: false,
-                timer: 1500,
-            });
-        })
-        .catch((error) => {
-            orderSubmitted.value = false;
-            Swal.fire({
-                icon: "error",
-                title: "Error submitting order",
-                text: error.response.data,
-            });
-        });
-};
-
-const order_type = ref(currentOrder.value?.order_type || "Replenishment");
-const expected_date = ref(currentOrder.value?.expected_date);
+const order_type = ref(props.currentOrder?.order_type || "Replenishment");
+const expected_date = ref(props.currentOrder?.expected_date);
 
 const isCreated = ref(false);
 const confirmCreateOrder = () => {
@@ -614,8 +820,7 @@ const confirmCreateOrder = () => {
                     const newOrder = response.data.order;
 
                     // Update all order-related states
-                    currentOrder.value = newOrder;
-                    selectedOrderId.value = newOrder.id;
+                    form.value.order_id = newOrder.id;
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
 
                     // Update form with new reactive object
@@ -625,16 +830,16 @@ const confirmCreateOrder = () => {
                         product_name: null,
                         quantity: 0,
                         quantity_on_order: 0,
+                        stock_on_hand: 0,
                         order_id: newOrder.id,
                     });
 
                     // Reload the page with new order
-                    reloadOrder(newOrder.id);
+                    reloadOrder();
 
                     Swal.fire({
                         icon: "success",
-                        title: "Success",
-                        text: response.data.message,
+                        title: response.data.message,
                         timer: 1500,
                         showConfirmButton: false,
                     });
@@ -653,72 +858,23 @@ const confirmCreateOrder = () => {
     });
 };
 
-function reloadOrder(id = null) {
+const isLoading = ref(false);
+const isConfirmed = ref(false);
+
+function reloadOrder() {
+    const query = {};
+    if (id.value) {
+        query.id = id.value;
+    }
     router.get(
         route("orders.index"),
-        {
-            id: id || selectedOrderId.value,
-            tab: currentTab.value,
-        },
+        query,
         {
             preserveState: true,
             preserveScroll: true,
-            only: ["currentOrder"],
+            only: ["currentOrder", "orders", "products", 'stats']
         }
     );
-    form.value.order_id = id || selectedOrderId.value;
-    form.value.product_id = null;
-    form.value.product_name = null;
-    form.value.quantity = 0;
-    form.value.quantity_on_order = 0;
-    form.value.stock_on_hand = 0;
-}
-
-function handleOrderChange() {
-    console.log(selectedOrderId.value);
-    if (selectedOrderId.value) {
-        reloadOrder(selectedOrderId.value);
-    } else {
-        currentOrder.value = null;
-        productSuggestions.value = [];
-        form.value = {
-            id: null,
-            product_id: null,
-            product_name: null,
-            quantity: 0,
-            quantity_on_order: 0,
-            stock_on_hand: 0,
-            order_id: null,
-        };
-        orderSubmitted.value = false;
-        reloadOrder();
-    }
-}
-
-const switchTab = (tab) => {
-    const query = { tab };
-    if (currentOrder.value?.id) {
-        query.id = currentOrder.value?.id;
-    }
-    router.get(route("orders.index"), query, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    });
-};
-
-function resetForm() {
-    form.value = {
-        id: null,
-        product_id: null,
-        product_name: null,
-        quantity: 0,
-        quantity_on_order: 0,
-        stock_on_hand: 0,
-        order_id: currentOrder.value?.id || null,
-    };
-    searchQuery.value = "";
-    selectedProduct.value = null;
 }
 
 async function removeItem(order) {
@@ -754,107 +910,202 @@ async function removeItem(order) {
     });
 }
 
-function editItem(order) {
-    form.value = {
-        id: order.id,
-        product_id: order.product_id,
-        product_name: order.product.name,
-        quantity: order.quantity,
-        quantity_on_order: order.quantity_on_order,
-        stock_on_hand: order.stock_on_hand,
-        order_id: order.order_id,
-    };
-}
+const showOrderModal = ref(false);
+const showSelectModal = ref(false);
+const showAddItemModal = ref(false);
 
-async function submitOrder() {
-    isAdded.value = true;
-    await axios
-        .post(route("orders.store"), form.value)
+const showReceiveModal = ref(false);
+const selectedItem = ref(null);
+const receiveForm = ref({
+    lost_quantity: 0,
+    damaged_quantity: 0
+});
+
+const maxLostQuantity = computed(() => {
+    if (!selectedItem.value) return 0;
+    const total = selectedItem.value.quantity;
+    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
+    return total - damaged;
+});
+
+const maxDamagedQuantity = computed(() => {
+    if (!selectedItem.value) return 0;
+    const total = selectedItem.value.quantity;
+    const lost = Number(receiveForm.value.lost_quantity) || 0;
+    return total - lost;
+});
+
+const receivedQuantity = computed(() => {
+    if (!selectedItem.value) return 0;
+    const total = selectedItem.value.quantity;
+    const lost = Number(receiveForm.value.lost_quantity) || 0;
+    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
+    return Math.max(0, total - lost - damaged);
+});
+
+const isValidReceiveForm = computed(() => {
+    if (!selectedItem.value) return false;
+    const total = selectedItem.value.quantity;
+    const lost = Number(receiveForm.value.lost_quantity) || 0;
+    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
+    return lost >= 0 && damaged >= 0 && (lost + damaged) <= total;
+});
+
+const validateQuantities = () => {
+    const total = selectedItem.value?.quantity || 0;
+    let lost = Number(receiveForm.value.lost_quantity);
+    let damaged = Number(receiveForm.value.damaged_quantity);
+
+    // Ensure values are not negative
+    lost = Math.max(0, lost);
+    damaged = Math.max(0, damaged);
+
+    // If sum exceeds total, adjust the last changed value
+    if (lost + damaged > total) {
+        if (lost > maxLostQuantity) {
+            receiveForm.value.lost_quantity = maxLostQuantity;
+        }
+        if (damaged > maxDamagedQuantity) {
+            receiveForm.value.damaged_quantity = maxDamagedQuantity;
+        }
+    }
+
+    // Update the form with validated values
+    receiveForm.value.lost_quantity = lost;
+    receiveForm.value.damaged_quantity = damaged;
+};
+
+const openReceiveModal = (item) => {
+    selectedItem.value = item;
+    receiveForm.value = {
+        lost_quantity: 0,
+        damaged_quantity: 0
+    };
+    showReceiveModal.value = true;
+};
+
+const confirmReceiveItem = () => {
+    if (!isValidReceiveForm.value) return;
+
+
+    Swal.fire({
+        title: 'Confirm Receipt',
+        html: `
+            <p>Are you sure you want to receive:</p>
+            <ul class="mt-2 text-left">
+                <li>Received: ${receivedQuantity.value}</li>
+                <li>Lost: ${receiveForm.value.lost_quantity}</li>
+                <li>Damaged: ${receiveForm.value.damaged_quantity}</li>
+            </ul>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, receive it',
+        cancelButtonText: 'No, cancel'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            isConfirmed.value = true;
+            await axios.post(route('orders.receivedItems'), {
+                id: selectedItem.value.id,
+                lost_quantity: receiveForm.value.lost_quantity,
+                damaged_quantity: receiveForm.value.damaged_quantity,
+                received_quantity: receivedQuantity.value,
+                status: 'delivered'
+            })
+                .then(() => {
+                    isConfirmed.value = false;
+                    showReceiveModal.value = false;
+                    Swal.fire(
+                        'Received!',
+                        'The item has been received successfully.',
+                        'success'
+                    );
+                    reloadOrder();
+                })
+                .catch((error) => {
+                    isConfirmed.value = false;
+                    Swal.fire(
+                        'Error!',
+                        error.response?.data || 'Failed to receive the item.',
+                        'error'
+                    );
+                });
+        }
+    });
+};
+
+const receiveOrderItem = (item) => {
+    Swal.fire({
+        title: 'Receive Item',
+        text: `Are you sure you want to receive ${item.quantity} ${item.product.name}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, receive it',
+        cancelButtonText: 'No, cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.post(route('orders.receive-item', { order: props.currentOrder.id, item: item.id }))
+                .then(() => {
+                    Swal.fire(
+                        'Received!',
+                        'The item has been received successfully.',
+                        'success'
+                    );
+                    reloadOrder();
+                })
+                .catch((error) => {
+                    Swal.fire(
+                        'Error!',
+                        error.response?.data?.message || 'Failed to receive the item.',
+                        'error'
+                    );
+                });
+        }
+    });
+};
+
+const showEditModal = ref(false);
+const editingItem = ref(null);
+
+const editItem = (item) => {
+    editingItem.value = item;
+    form.value = {
+        id: item.id,
+        quantity: item.quantity,
+        quantity_on_order: item.quantity_on_order,
+    };
+    showEditModal.value = true;
+};
+
+const isSubmitting = ref(false)
+
+const updateItem = async () => {
+    isSubmitting.value = true;
+    await axios.post(route('orders.update-item'), form.value)
         .then((response) => {
-            isAdded.value = false;
-            Swal.fire({
-                icon: "success",
-                title: response.data.message,
-                showConfirmButton: false,
-                timer: 1500,
-            });
+            isSubmitting.value = false;
+            showEditModal.value = false;
+            editingItem.value = null;
             reloadOrder();
-            resetForm();
+            Swal.fire('Updated!', 'Item has been updated successfully.', 'success');
         })
         .catch((error) => {
-            isAdded.value = false;
-            const errors = error.response.data;
-            Swal.fire({
-                icon: "error",
-                title: "Error creating order",
-                text: errors,
-            });
+            Swal.fire('Error!', error.response?.data || 'Failed to update item.', 'error');
+        });
+};
+
+async function addItem() {
+    isSubmitting.value = true;
+    await axios.post(route('orders.store'), form.value)
+        .then((response) => {
+            isSubmitting.value = false;
+            toast.success(response.data);
+            reloadOrder();
+            showAddItemModal.value = false;
+        })
+        .catch((error) => {
+            isSubmitting.value = false;
+            Swal.fire('Error!', error.response.data, "error");
         });
 }
-
-async function onProductSearch(event) {
-    const query = event.target.value;
-    err.value.message = "";
-
-    if (!query) {
-        productSuggestions.value = [];
-        form.value.product_id = null;
-        form.value.product_name = null;
-        form.value.quantity = 0;
-        form.value.quantity_on_order = 0;
-        form.value.stock_on_hand = 0;
-        return;
-    }
-
-    // Search even with short queries to allow barcode scanning
-    if (query && query.length > 0) {
-        await axios
-            .post(route("orders.search"), { barcode: query })
-            .then((response) => {
-                console.log(response.data);
-                err.value.message = "";
-                if (response.data.product) {
-                    // Single product found
-                    productSuggestions.value = [response.data.product];
-                } else if (
-                    response.data.products &&
-                    response.data.products.length
-                ) {
-                    // Multiple products found
-                    productSuggestions.value = response.data.products;
-                } else {
-                    productSuggestions.value = [];
-                    Swal.fire({
-                        icon: "error",
-                        title: "Not Found",
-                        text: response.data.message,
-                    });
-                }
-            })
-            .catch((error) => {
-                productSuggestions.value = [];
-                err.value.message =
-                    error.response?.data?.message ||
-                    "Failed to search for product";
-            });
-    } else {
-        productSuggestions.value = [];
-    }
-}
-
-function selectProduct(product) {
-    form.value.product_id = product.id;
-    form.value.product_name = product.name;
-    form.value.quantity = product.suggested_quantity;
-    form.value.stock_on_hand = product.stock_on_hand;
-
-    productSuggestions.value = [];
-}
-
-onMounted(() => {
-    // Initialize Echo listener for OrderEvent
-    window.Echo.channel("orders").listen(".order-received", (e) => {
-        reloadOrder();
-    });
-});
 </script>

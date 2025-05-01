@@ -29,17 +29,17 @@ class PosController extends Controller
         logger()->info($request->all());
 
         $pos = Pos::query();
-        
+
         // Get all records for today, regardless of time
         $today = Carbon::now()->startOfDay();
         logger()->info($today);
         $pos = $pos->whereBetween('pos_date', [$today, $today->copy()->endOfDay()]);
-        
-        if($request->filled('search_recent')) {
-            $pos = $pos->where(function($query) use($request) {
+
+        if ($request->filled('search_recent')) {
+            $pos = $pos->where(function ($query) use ($request) {
                 $query->where('patient_name', 'like', '%' . $request->search_recent . '%')
                     ->orWhere('patient_phone', 'like', '%' . $request->search_recent . '%')
-                    ->orWhereHas('product', function($subQuery) use($request) {
+                    ->orWhereHas('product', function ($subQuery) use ($request) {
                         $subQuery->where('name', 'like', '%' . $request->search_recent . '%')
                             ->orWhere('barcode', 'like', '%' . $request->search_recent . '%');
                     });
@@ -71,7 +71,7 @@ class PosController extends Controller
             if ($remainingQuantity <= 0) break;
 
             $quantityFromBatch = min($batch->quantity, $remainingQuantity);
-            
+
             // Create prescription for this batch
             $prescriptionData = array_merge($data, [
                 'total_quantity' => $quantityFromBatch,
@@ -84,12 +84,12 @@ class PosController extends Controller
 
             // Update inventory
             $batch->decrement('quantity', $quantityFromBatch);
-            
+
             // Delete if quantity becomes zero
             if ($batch->fresh()->quantity <= 0) {
                 $batch->delete();
             }
-            
+
             $remainingQuantity -= $quantityFromBatch;
         }
 
@@ -116,6 +116,8 @@ class PosController extends Controller
                 'patient_name' => 'required|string',
                 'patient_phone' => 'required|string'
             ]);
+
+            $validated['facility_id'] = auth()->user()->facility_id;
 
             // Add user information
             $validated['created_by'] = auth()->id();

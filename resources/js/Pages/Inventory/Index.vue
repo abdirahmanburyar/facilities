@@ -236,14 +236,15 @@ const confirmDelete = (inventory) => {
     showDeleteModal.value = true;
 };
 
-const deleteInventory = () => {
-    router.delete(route("inventories.destroy", inventoryToDelete.value.id), {
-        onSuccess: () => {
-            showDeleteModal.value = false;
-            inventoryToDelete.value = null;
-            addToast("Inventory item deleted successfully", "success");
-        },
-    });
+const deleteInventory = async () => {
+    await axios.delete(route("inventories.destroy", inventoryToDelete.value.id))
+        .then((response) => {
+            toast.success(response.data);
+            reloadItems();
+        })
+        .catch((error) => {
+            toast.error(error.response.data);
+        });
 };
 
 // Format date

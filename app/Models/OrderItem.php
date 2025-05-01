@@ -13,6 +13,8 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'quantity',
+        'lost_quantity',
+        'damaged_quantity',
         'reviewed_by',
         'reviewed_at',
         'approved_by',

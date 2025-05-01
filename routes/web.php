@@ -108,6 +108,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::post('/create', 'createOrder')->name('orders.create');
             Route::get('/remove', 'remove')->name('orders.remove');
             Route::post('/submit', 'submitOrder')->name('orders.submit');
+            Route::post('/received-items', 'receivedItems')->name('orders.receivedItems');           
+            Route::post('/update-items', 'updateItem')->name('orders.update-item');           
+
         });
 
         Route::controller(PosController::class)

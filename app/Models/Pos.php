@@ -8,6 +8,7 @@ class Pos extends Model
 {
     protected $fillable = [
         'product_id',
+        'facility_id',
         'dose',
         'units',
         'frequency',
