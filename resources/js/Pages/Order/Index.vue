@@ -1,1115 +1,586 @@
+<script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import debounce from 'lodash/debounce';
+import Swal from 'sweetalert2';
+import axios from 'axios';
+import Multiselect from 'vue-multiselect';
+import 'vue-multiselect/dist/vue-multiselect.css';
+import '@/Components/multiselect.css';
+
+// No longer using bulk actions
+
+const props = defineProps({
+    orders: Object,
+    filters: Object,
+    stats: Object
+});
+
+// Track loading state for each order action
+const loadingActions = ref({});
+
+// Fixed order types
+const orderTypes = [
+    { id: 'quarterly', name: 'Quarterly' },
+    { id: 'replenishment', name: 'Replenishment' }
+];
+
+// Compute total orders
+const totalOrders = computed(() => {
+    return props.stats.pending + props.stats.approved + props.stats.in_process +
+        props.stats.dispatched + props.stats.delivered;
+});
+
+// Status configuration
+const statusTabs = [
+    { value: null, label: 'All Orders', color: 'blue' },
+    { value: 'pending', label: 'Pending', color: 'yellow' },
+    { value: 'approved', label: 'Approved', color: 'green' },
+    { value: 'in_process', label: 'In Process', color: 'blue' },
+    { value: 'dispatched', label: 'Dispatched', color: 'purple' },
+    { value: 'delivered', label: 'Delivered', color: 'indigo' },
+    { value: 'received', label: 'Completely Received', color: 'gray' },
+    { value: 'partially_received', label: 'Partially Received With Back Order', color: 'teal' },
+    { value: 'rejected', label: 'Rejected', color: 'red' }
+];
+
+// Filter states
+const search = ref('');
+const currentStatus = ref(props.filters.currentStatus || null);
+const facility = ref(props.filters?.facility || null);
+const orderType = ref(props.filters?.orderType || null);
+const facilityLocation = ref(props.filters?.facilityLocation || null);
+const dateFrom = ref(props.filters?.dateFrom || null);
+const dateTo = ref(props.filters?.dateTo || null);
+
+const changeStatus = (orderId, newStatus) => {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Do you want to change the order status to ${newStatus}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, change it!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            // Set loading state for this order
+            loadingActions.value[orderId] = true;
+            
+            try {
+                // For rejection, use a different endpoint or pass different parameters
+                if (newStatus === 'rejected') {
+                    await axios.post('/orders/reject', {
+                        order_id: orderId
+                    })
+                        .then(response => {
+                            Swal.fire(
+                                'Rejected!',
+                                'Order has been rejected.',
+                                'success'
+                            ).then(() => {
+                                reloadOrder();
+                            });
+                        })
+                        .catch(error => {
+                            Swal.fire(
+                                'Error!',
+                                error.response?.data?.message || 'Failed to reject order',
+                                'error'
+                            );
+                        });
+                } else {
+                    // For other status changes, use the existing endpoint
+                    await axios.post(route('orders.change-status'), {
+                        order_id: orderId,
+                        status: newStatus
+                    })
+                        .then(response => {
+                            Swal.fire(
+                                'Updated!',
+                                'Order status has been updated.',
+                                'success'
+                            ).then(() => {
+                                reloadOrder();
+                            });
+                        })
+                        .catch(error => {
+                            Swal.fire(
+                                'Error!',
+                                error.response?.data?.message || 'Failed to update order status',
+                                'error'
+                            );
+                        });
+                }
+            } finally {
+                // Clear loading state
+                loadingActions.value[orderId] = false;
+            }
+        }
+    });
+};
+
+// Bulk status change functionality removed
+
+// Bulk selection functionality removed
+
+// Initialize selected values with objects from the props arrays
+const selectedFacility = ref(props.filters?.facility ?
+    props.facilities.find(f => f.id === parseInt(props.filters.facility)) || null : null);
+const selectedOrderType = ref(props.filters?.orderType ?
+    orderTypes.find(t => t.id === props.filters.orderType) || null : null);
+
+function handleSelect(selected) {
+    selectedFacility.value = selected;
+    facility.value = selected ? selected.id : null;
+}
+
+function handleOrderTypeSelect(selected) {
+    selectedOrderType.value = selected;
+    orderType.value = selected ? selected.id : null;
+    console.log('Selected order type:', selected);
+}
+
+function handleFacilityLocationSelect(selected) {
+    selectedFacilityLocation.value = selected;
+    facilityLocation.value = selected ? selected.id : null;
+}
+
+// Handle deselection for any filter
+function handleRemove(filterType) {
+    if (filterType === 'facility') {
+        facility.value = null;
+        selectedFacility.value = null;
+    } else if (filterType === 'orderType') {
+        orderType.value = null;
+        selectedOrderType.value = null;
+    } else if (filterType === 'facilityLocation') {
+        facilityLocation.value = null;
+        selectedFacilityLocation.value = null;
+    }
+    // Reload with updated filters
+    reloadOrder();
+}
+
+const getStatusActions = (order) => {
+    const actions = [];
+
+    switch (order.status) {
+        case 'pending':
+            actions.push({ label: 'Approve', status: 'approved', color: 'green', icon: '/assets/images/approved.png' });
+            actions.push({ label: 'Reject', status: 'rejected', color: 'red', icon: 'svg' });
+            break;
+        case 'approved':
+            actions.push({ label: 'Process', status: 'in_process', color: 'blue', icon: '/assets/images/inprocess.png' });
+            // Reject action removed for approved orders
+            break;
+        case 'in_process':
+            actions.push({ label: 'Dispatch', status: 'dispatched', color: 'purple', icon: '/assets/images/dispatch.png' });
+            // Reject action removed for in_process orders
+            break;
+        case 'dispatched':
+            actions.push({ label: 'Deliver', status: 'delivered', color: 'indigo', icon: '/assets/images/delivery.png' });
+            // Reject action removed for dispatched orders
+            break;
+        case 'rejected':
+            actions.push({ label: 'Approve', status: 'approved', color: 'green', icon: '/assets/images/approved.png' });
+            break;
+    }
+
+    return actions
+};
+
+function reloadOrder() {
+    const query = {}
+
+    // Only add non-empty values to the query
+    if (search.value) query.search = search.value;
+    if (facility.value) query.facility = facility.value;
+    if (currentStatus.value) query.currentStatus = currentStatus.value;
+    if (orderType.value) query.orderType = orderType.value;
+    if (facilityLocation.value) query.facilityLocation = facilityLocation.value;
+    if (dateFrom.value) query.dateFrom = dateFrom.value;
+    if (dateTo.value) query.dateTo = dateTo.value;
+
+    console.log('Applying filters:', query);
+
+    router.get(route('orders.index'), query, {
+        preserveScroll: false,
+        preserveState: false,
+        only: ["orders", 'filters', 'stats']
+    })
+}
+
+// Watch for filter changes
+watch([
+    () => search.value,
+    () => currentStatus.value,
+    () => facility.value,
+    () => orderType.value,
+    () => facilityLocation.value,
+    () => dateFrom.value,
+    () => dateTo.value
+], () => {
+    reloadOrder();
+});
+
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
+</script>
+
 <template>
 
-    <Head title="Orders" />
-    <AuthenticatedLayout title="Orders" description="Manage orders" img="/assets/image/order.png">
-        <div class="min-h-screen bg-gray-50">
-            <div class="max-w-full mx-auto">
-                <!-- Main Content -->
-               <div class="flex justify-between items-center">
-                <div class="flex flex-col items-start">
-                    <label class="text-lg font-medium leading-6 text-gray-900">
-                        Select Order
-                    </label>
+    <Head title="All Orders" />
+    <AuthenticatedLayout title="All Orders" img="/assets/images/orders.png">
+        <!-- Filters Section -->
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-3xl font-bold text-gray-900">Facility Orders</h1>
+            <Link :href="route('orders.create')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
+                Create New Order
+            </Link>
+        </div>
 
-                    <select v-model="id"
-                        class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Select an Order</option>
-                        <option v-for="order in orders" :key="order.id" :value="order.id">
-                            Order #{{ order.order_number }} - {{ order.order_type }}
-                        </option>
-                    </select>
-                </div>
-                <div>                    
-                    <button @click="showOrderModal = true"
-                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                        Create New Order
-                    </button>
-                    <button
-                        v-if="props.currentOrder?.status == 'pending' && props.currentOrder?.order_type != 'quarterly'"
-                        @click="showAddItemModal = true"
-                        class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
-                        Add Item
-                    </button>
+        <div class="bg-white mb-6 p-4">
+            <div class="flex flex-wrap gap-4 items-center mb-5">
+                <!-- Search -->
+                <div class="relative w-full sm:w-auto flex-grow min-w-[250px]">
+                    <input type="text" v-model="search" placeholder="Search orders..."
+                        class="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
 
-               </div>
-                <div class="flex justify-between items-center bg-white">
-                    <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-2">Order #{{ props.currentOrder?.id }}</h2>
-                        <!-- Current order details -->
-                        <div class="px-4 py-3 border-b border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <h2 class="text-lg font-medium text-gray-900">
-                                    Order #{{ props.currentOrder?.order_number }}
-                                </h2>
+                <!-- Order Type Filter -->
+                <div class="w-full sm:w-auto flex-none min-w-[200px] w-[220px]">
+                    <Multiselect v-model="selectedOrderType" :options="orderTypes" :searchable="true"
+                        :close-on-select="true" :show-labels="false" :allow-empty="true" placeholder="Select Order Type"
+                        track-by="id" label="name" @select="handleOrderTypeSelect" @remove="handleRemove('orderType')">
+                    </Multiselect>
+                </div>
 
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <span class="text-sm text-gray-500">
-                                        Expected: {{ new
-                                            Date(props.currentOrder?.expected_date).toLocaleDateString() }}
-                                    </span>
-                                    <span :class="{
-                                        'px-2 py-1 text-sm font-medium rounded-full': true,
-                                        'bg-yellow-100 text-yellow-800': props.currentOrder?.status === 'pending',
-                                        'bg-green-100 text-green-800': props.currentOrder?.status === 'completed',
-                                        'bg-blue-100 text-blue-800': props.currentOrder?.status === 'processing'
-                                    }">
-                                        {{ props.currentOrder?.status }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class=" p-4">
-                        <div class="flex justfiy-between gap-2 fade-in">
-                            <!-- Pending Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['Pending', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.pending || 0, (getTotalOrders || 1) - (props.stats?.pending || 0)],
-                                            backgroundColor: ['#eab308', '#fef3c7'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.pending) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.pending || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">Pending</span>
-                                </div>
-                            </div>
-                            <!-- Approved Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['Approved', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.approved || 0, (getTotalOrders || 1) - (props.stats?.approved || 0)],
-                                            backgroundColor: ['#16a34a', '#dcfce7'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.approved) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.approved || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">Approved</span>
-                                </div>
-                            </div>
-
-                            <!-- Rejected Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['Rejected', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.rejected || 0, (getTotalOrders || 1) - (props.stats?.rejected || 0)],
-                                            backgroundColor: ['#dc2626', '#fee2e2'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.rejected) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.rejected || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">Rejected</span>
-                                </div>
-                            </div>
-
-                            <!-- In Processing Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['In Processing', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.['in processing'] || 0, (getTotalOrders || 1) - (props.stats?.['in processing'] || 0)],
-                                            backgroundColor: ['#2563eb', '#dbeafe'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.['in processing']) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.['in processing']
-                                        || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">In Process</span>
-                                </div>
-                            </div>
-
-                            <!-- Dispatched Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['Dispatched', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.dispatched || 0, (getTotalOrders || 1) - (props.stats?.dispatched || 0)],
-                                            backgroundColor: ['#9333ea', '#f3e8ff'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.dispatched) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.dispatched || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">Dispatched</span>
-                                </div>
-                            </div>
-
-                            <!-- Delivered Orders -->
-                            <div class="relative h-[100px] flex items-center">
-                                <div class="relative w-[100px]">
-                                    <Doughnut :data="{
-                                        labels: ['Delivered', 'Other'],
-                                        datasets: [{
-                                            data: [props.stats?.delivered || 0, (getTotalOrders || 1) - (props.stats?.delivered || 0)],
-                                            backgroundColor: ['#4b5563', '#f3f4f6'],
-                                            borderWidth: 0
-                                        }]
-                                    }" :options="{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        cutout: '80%',
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }" />
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-gray-900">{{
-                                            getPercentage(props.stats?.delivered) }}%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-start flex-col">
-                                    <span class="ml-3 text-xl text-gray-600">{{ props.stats?.delivered || 0
-                                    }}</span>
-                                    <span class="ml-3 text-xs text-gray-600">Delivered</span>
-                                </div>
-                            </div>
-                        </div>
+                <!-- Date From -->
+                <div class="w-full sm:w-auto flex-none min-w-[150px] w-[180px]">
+                    <div class="relative">
+                        <input type="date" v-model="dateFrom"
+                            class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <label class="absolute -top-5 left-0 text-xs text-gray-500">From Date</label>
                     </div>
                 </div>
 
-                <!-- Main content area -->
-                <div class="bg-white rounded-lg shadow-sm p-4">
-                    <input type="search" v-model="search" placeholder="Search products [name, barcode]"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <!-- Date To -->
+                <div class="w-full sm:w-auto flex-none min-w-[150px] w-[180px]">
+                    <div class="relative">
+                        <input type="date" v-model="dateTo"
+                            class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <label class="absolute -top-5 left-0 text-xs text-gray-500">To Date</label>
+                    </div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4 overflow-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    SN</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Product</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Quantity</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    QOO</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Lost Quantity</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Damaged Quantity</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status</th>
-                                <th
-                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-if="isLoading">
-                                <td colspan="4" class="px-6 py-4 text-center">
-                                    <span>Loading...</span>
-                                </td>
-                            </tr>
-                            <tr v-else v-for="(item, i) in filteredItems" :key="item.id"
-                                class="hover:bg-gray-50" :class="{
-                                    'bg-green-100': item.status === 'delivered',
-                                    'bg-yellow-100': item.status === 'pending',
-                                    'bg-red-100': item.status === 'processing',
-                                    'bg-grey-100': item.status === 'approved',
+
+            </div>
+            <!-- Status Tabs -->
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button v-for="tab in statusTabs" :key="tab.value" @click="currentStatus = tab.value"
+                        class="whitespace-nowrap py-4 px-1 border-b-4 font-bold text-lg" :class="[
+                            currentStatus === tab.value ?
+                                `border-${tab.color}-500 text-${tab.color}-600` :
+                                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ]">
+                        {{ tab.label }}
+                        <span v-if="props.orders.meta?.counts && props.orders.meta.counts[tab.value || 'all']"
+                            class="ml-2 px-2 py-0.5 text-xs rounded-full"
+                            :class="`bg-${tab.color}-100 text-${tab.color}-800`">
+                            {{ props.orders.meta.counts[tab.value || 'all'] }}
+                        </span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+            <!-- Orders Table -->
+            <div class="lg:col-span-10">
+                <div class="bg-white overflow-auto">
+                    <div class="shadow overflow-x-auto border border-black">
+                        <table class="min-w-full divide-y divide-black border-collapse">
+
+                            <thead class="bg-gray-50 border-b border-black">
+                                <tr>
+                                    <!-- Checkbox column removed -->
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        Order Number
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        Facility
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        Order Type
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        Date
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        Status
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-black">
+                                <tr v-if="orders.data?.length === 0">
+                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        No orders found
+                                    </td>
+                                </tr>
+                                <tr v-for="order in orders.data" :key="order.id" :class="{
+                                    'hover:bg-gray-50': true,
+                                    'text-red-500 border-2 border-red-500': order.status === 'rejected'
                                 }">
-                                <td class="px-6 py-4 whitespace-nowrap  w-[20px]">{{ i + 1 }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap  w-[100px]">
-                                    <div class="flex flex-col">
-                                        <span class="text-dark-500">{{ item.product.name }}</span>
-                                        <span class="text-sm text-grey-500">Barcode: {{ item.product.barcode
-                                        }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ item.quantity }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ item.quantity_on_order }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ item.lost_quantity }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ item.damaged_quantity }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span :class="{
-                                        'px-2 py-1 text-sm font-medium rounded-full': true,
-                                        'bg-yellow-100 text-yellow-800': item.status === 'pending',
-                                        'bg-green-100 text-green-800': item.status === 'received',
-                                        'bg-blue-100 text-blue-800': item.status === 'processing',
-                                        'bg-blue-100 text-green': item.status === 'delivered',
-                                    }">
-                                        {{ item.status }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center space-x-3">
-                                        <button
-                                            v-if="item.status == 'pending' || item.status == 'delivery_pending'"
-                                            @click="editItem(item)"
-                                            class="text-blue-600 hover:text-blue-900 mr-2" title="Edit Item">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button v-if="item.status === 'pending'" @click="removeItem(item)"
-                                            class="text-red-600 hover:text-red-900">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        <button
-                                            v-if="item.status === 'dispatched' || item.status === 'delivery_pending'"
-                                            @click="openReceiveModal(item)"
-                                            class="text-green-600 hover:text-green-900" title="Receive Item">
-                                            Received
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Order Creation Modal -->
-            <div v-show="showOrderModal" class="relative z-50">
-                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
-                <div class="fixed inset-0 overflow-y-auto">
-                    <div class="flex min-h-full items-center justify-center p-4">
-                        <div
-                            class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all z-50">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">
-                                Create New Order
-                            </h3>
-                            <div class="mt-4 space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Order Type</label>
-                                    <select v-model="order_type"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        <option value="">Select Order Type</option>
-                                        <option value="Replenishment">Replenishment</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Expected Date</label>
-                                    <input type="date" v-model="expected_date"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                                </div>
-                            </div>
-
-                            <div class="mt-6 flex justify-end space-x-3">
-                                <button type="button"
-                                    class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                    @click="showOrderModal = false">
-                                    Cancel
-                                </button>
-                                <button type="button"
-                                    class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                    :disabled="order_type == '' || isCreated" @click="confirmCreateOrder">
-                                    {{ isCreated ? "Processing..." : "Create Order" }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Item Modal -->
-            <div v-show="showAddItemModal" class="relative z-50">
-                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
-                <div class="fixed inset-0 overflow-y-auto">
-                    <div class="flex min-h-full items-center justify-center p-4">
-                        <div
-                            class="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all z-50">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">
-                                Add Item to Order
-                            </h3>
-                            <div class="mt-4">
-                                <form @submit.prevent="addItem">
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">Product</label>
-                                            <Multiselect v-model="selectedProduct" :options="searchResults"
-                                                :custom-label="option => option ? `${option.name} - Stock: ${option.stock_on_hand}` : ''"
-                                                track-by="id" :searchable="true" :loading="isSearching"
-                                                :internal-search="false" :clear-on-select="false"
-                                                :close-on-select="true" :preserve-search="true" :preselect-first="true"
-                                                :options-limit="300" :limit="3" :max-height="600"
-                                                :show-no-results="true" :hide-selected="true"
-                                                @search-change="onProductSearch" @select="selectProduct"
-                                                @remove="clearProduct" placeholder="Search by name or scan barcode"
-                                                class="product-select">
-                                                <template v-slot:option="{ option }">
-                                                    <div v-if="option" class="flex justify-between items-center">
-                                                        <div>
-                                                            <div class="font-medium">{{ option.name }}</div>
-                                                            <div class="text-sm text-gray-500">Barcode: {{
-                                                                option.barcode }}</div>
-                                                        </div>
-                                                        <div class="text-sm">
-                                                            Stock: {{ option.stock_on_hand }}
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                                <template v-slot:noResult>
-                                                    <div class="text-sm text-gray-500 p-2">No products found</div>
-                                                </template>
-                                                <template v-slot:selection="{ option }">
-                                                    <div v-if="option" class="multiselect__single">
-                                                        <span class="font-medium">{{ option.name }}</span>
-                                                        <span class="text-sm text-gray-500 ml-2">Stock: {{
-                                                            option.stock_on_hand }}</span>
-                                                    </div>
-                                                </template>
-                                            </Multiselect>
+                                    <!-- Checkbox cell removed -->
+                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
+                                        <div class="text-sm text-gray-900">
+                                            <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                         </div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div class="w-full">
-                                                <label class="block text-sm font-medium text-gray-700">Quantity</label>
-                                                <input type="number" v-model="form.quantity" readonly
-                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                    min="1" />
-                                            </div>
-                                            <div class="w-full">
-                                                <label class="block text-sm font-medium text-gray-700">Quantity on
-                                                    order</label>
-                                                <input type="number" v-model="form.quantity_on_order"
-                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                    min="0" />
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
+                                        <div class="text-sm text-gray-900">{{ order.facility?.name }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-black">
+                                        {{ order.order_type }}
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-black">
+                                        <div class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</div>
+                                        <div class="text-xs text-gray-500">Expected: {{ formatDate(order.expected_date)
+                                            }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
+                                        <div class="flex items-center gap-2">
+                                            <!-- Status Progress Icons - Only show actions taken -->
+                                            <div class="flex items-center gap-1">
+                                                <!-- Always show pending as it's the initial state -->
+                                                <img src="/assets/images/pending.svg" class="w-12 h-12" alt="pending" />
+
+                                                <!-- Only show approved if status is approved or further -->
+                                                <img v-if="['approved', 'in_process', 'dispatched', 'delivered', 'received'].includes(order.status)"
+                                                    src="/assets/images/approved.png" class="w-12 h-12"
+                                                    alt="Approved" />
+                                                <!-- Only show rejected if status is rejected -->
+                                                <img v-if="order.status === 'rejected'"
+                                                    src="/assets/images/rejected.svg" class="w-12 h-12"
+                                                    alt="Rejected" />
+
+                                                <!-- Only show in_process if status is in_process or further -->
+                                                <img v-if="['in_process', 'dispatched', 'delivered', 'received'].includes(order.status)"
+                                                    src="/assets/images/inprocess.png" class="w-12 h-12"
+                                                    alt="In Process" />
+
+                                                <!-- Only show dispatched if status is dispatched or further -->
+                                                <img v-if="['dispatched', 'delivered', 'received'].includes(order.status)"
+                                                    src="/assets/images/dispatch.png" class="w-12 h-12"
+                                                    alt="Dispatched" />
+
+                                                <!-- Only show delivered if status is delivered or received -->
+                                                <img v-if="['delivered', 'received'].includes(order.status)"
+                                                    src="/assets/images/delivery.png" class="w-12 h-12"
+                                                    alt="Delivered" />
+
+                                                <!-- Only show received if status is received -->
+                                                <img v-if="order.status === 'received'"
+                                                    src="/assets/images/received.png" class="w-12 h-12"
+                                                    alt="Received" />
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div class="mt-6 flex justify-end space-x-3">
-                                        <button type="button"
-                                            class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                            @click="showAddItemModal = false">
-                                            Cancel
-                                        </button>
-                                        <button type="submit"
-                                            class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                            :disabled="!form.product_id || !form.quantity || isAdded">
-                                            {{ isAdded ? "Adding..." : "Add Item" }}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                        <template v-for="action in getStatusActions(order)" :key="action.status">
+                                            <button @click="changeStatus(order.id, action.status)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-150 relative"
+                                                :class="[
+                                                    `text-${action.color}-700 bg-${action.color}-50 hover:bg-${action.color}-100`,
+                                                    'font-medium cursor-pointer',
+                                                    { 'opacity-50': loadingActions[order.id] }
+                                                ]">
+                                                <!-- Loading spinner overlay -->
+                                                <div v-if="loadingActions[order.id]" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 rounded-md">
+                                                    <svg class="animate-spin h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
+                                                <template v-if="action.icon === 'svg'">
+                                                    <svg class="w-6 h-6 text-red-700" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                </template>
+                                                <img v-else :src="action.icon" class="w-12 h-12" :alt="action.label" />
+                                            </button>
+                                        </template>
+                                        <div class="flex flex-cols items-center text-center">
+                                            <span v-if="order.status == 'delivered'">Waiting to be<br />received by the facility</span>
+                                            <span v-if="order.status == 'received'">successfully received</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-
-            <!-- Receive Item Modal -->
-            <div v-if="showReceiveModal" class="relative z-50">
-                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
-                <div class="fixed inset-0 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-                        <h2 class="text-lg font-semibold mb-4">Receive Item</h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Product</label>
-                                <p class="mt-1 text-sm text-gray-900">{{ selectedItem?.product.name }}</p>
+            <!-- Status Statistics -->
+            <div class="lg:col-span-1">
+                <div class="sticky top-4 sticky:mt-5">
+                    <h3 class="text-sm font-bold text-gray-900 mb-6">Order Statistics</h3>
+                    <div class="space-y-8">
+                        <!-- Pending -->
+                        <div class="relative">
+                            <div class="flex items-center mb-2">
+                                <div class="w-16 h-16 relative mr-4">
+                                    <svg class="w-16 h-16 transform -rotate-90">
+                                        <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                        <circle cx="32" cy="32" r="28" fill="none" stroke="#eab308" stroke-width="4"
+                                            :stroke-dasharray="`${(stats.pending / totalOrders) * 125.6} 125.6`" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-base font-bold text-yellow-600">{{ totalOrders > 0 ?
+                                            Math.round((stats.pending / totalOrders) * 100) : 0 }}%</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-lg font-bold text-gray-900">{{ stats.pending }}</div>
+                                    <div class="text-base text-gray-600">Pending</div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Ordered Quantity</label>
-                                <p class="mt-1 text-sm text-gray-900">{{ selectedItem?.quantity }}</p>
-                            </div>
-                            <div>
-                                <label for="lost_quantity" class="block text-sm font-medium text-gray-700">Lost
-                                    Quantity</label>
-                                <input type="number" id="lost_quantity" v-model="receiveForm.lost_quantity" min="0"
-                                    :max="maxLostQuantity"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                    @input="validateQuantities" />
-                                <p v-if="receiveForm.lost_quantity > maxLostQuantity" class="mt-1 text-sm text-red-600">
-                                    Cannot exceed remaining quantity ({{ maxLostQuantity }})
-                                </p>
-                            </div>
-                            <div>
-                                <label for="damaged_quantity" class="block text-sm font-medium text-gray-700">Damaged
-                                    Quantity</label>
-                                <input type="number" id="damaged_quantity" v-model="receiveForm.damaged_quantity"
-                                    min="0" :max="maxDamagedQuantity"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                    @input="validateQuantities" />
-                                <p v-if="receiveForm.damaged_quantity > maxDamagedQuantity"
-                                    class="mt-1 text-sm text-red-600">
-                                    Cannot exceed remaining quantity ({{ maxDamagedQuantity }})
-                                </p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Received Quantity</label>
-                                <p class="mt-1 text-sm text-gray-900">{{ receivedQuantity }}</p>
-                            </div>
-                        </div>
-                        <div class="mt-6 flex justify-end space-x-3">
-                            <button @click="showReceiveModal = false"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                Cancel
-                            </button>
-                            <button @click="confirmReceiveItem" :disabled="!isValidReceiveForm || isConfirmed"
-                                class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ isConfirmed ? 'Processing...' : 'Confirm' }}
-                            </button>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Edit Item Modal -->
-            <div v-if="showEditModal" class="relative z-50">
-                <div class="fixed inset-0 bg-black/30" aria-hidden="true" />
-                <div class="fixed inset-0 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-                        <h2 class="text-lg font-semibold mb-4">Edit Item</h2>
-                        <form @submit.prevent="updateItem" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Product</label>
-                                <p class="mt-1 text-sm text-gray-900">{{ form.product_name }}</p>
+                    <!-- Approved -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#22c55e" stroke-width="4"
+                                        :stroke-dasharray="`${(stats.approved / totalOrders) * 125.6} 125.6`" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-green-600">{{ totalOrders > 0 ?
+                                        Math.round((stats.approved
+                                        / totalOrders) * 100) : 0 }}%</span>
+                                </div>
                             </div>
                             <div>
-                                <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity</label>
-                                <input type="number" v-model="form.quantity" min="1"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                <div class="text-lg font-bold text-gray-900">{{ stats.approved }}</div>
+                                <div class="text-base text-gray-600">Approved</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rejected -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#ef4444" stroke-width="4"
+                                        :stroke-dasharray="`${(stats.rejected / totalOrders) * 125.6} 125.6`" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-red-600">{{ totalOrders > 0 ?
+                                        Math.round((stats.rejected /
+                                        totalOrders) * 100) : 0 }}%</span>
+                                </div>
                             </div>
                             <div>
-                                <label for="quantity_on_order" class="block text-sm font-medium text-gray-700">Quantity
-                                    on
-                                    order</label>
-                                <input type="number" v-model="form.quantity_on_order" min="0"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                <div class="text-lg font-bold text-gray-900">{{ stats.rejected }}</div>
+                                <div class="text-base text-gray-600">Rejected</div>
                             </div>
-                            <div class="mt-6 flex justify-end space-x-3">
-                                <button type="button" @click="showEditModal = false" :disabled="isSubmitting"
-                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    Cancel
-                                </button>
-                                <button type="submit" :disabled="isSubmitting"
-                                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    {{ isSubmitting ? "Please wait...." : "Update Item" }}
-                                </button>
+                        </div>
+                    </div>
+
+                    <!-- In Process -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#3b82f6" stroke-width="4"
+                                        :stroke-dasharray="`${(stats.in_process / totalOrders) * 125.6} 125.6`" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-blue-600">{{ totalOrders > 0 ?
+                                        Math.round((stats.in_process / totalOrders) * 100) : 0 }}%</span>
+                                </div>
                             </div>
-                        </form>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">{{ stats.in_process }}</div>
+                                <div class="text-base text-gray-600">In Process</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dispatched -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#8b5cf6" stroke-width="4"
+                                        :stroke-dasharray="`${(stats.dispatched / totalOrders) * 125.6} 125.6`" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-purple-600">{{ totalOrders > 0 ?
+                                        Math.round((stats.dispatched / totalOrders) * 100) : 0 }}%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">{{ stats.dispatched }}</div>
+                                <div class="text-base text-gray-600">Dispatched</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivered -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#6366f1" stroke-width="4"
+                                        :stroke-dasharray="`${(stats.delivered / totalOrders) * 125.6} 125.6`" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-indigo-600">{{ totalOrders > 0 ?
+                                        Math.round((stats.delivered / totalOrders) * 100) : 0 }}%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">{{ stats.delivered }}</div>
+                                <div class="text-base text-gray-600">Delivered</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style>
-@import 'vue-multiselect/dist/vue-multiselect.css';
-
-.multiselect {
-    min-height: 45px;
-}
-
-.multiselect__tags {
-    min-height: 45px;
-    padding: 8px 40px 0 8px;
-    border-radius: 6px;
-    border: 1px solid #e5e7eb;
-}
-
-.multiselect__input {
-    font-size: 14px;
-}
-
-.multiselect__single {
-    font-size: 14px;
-    padding-left: 5px;
-}
-
-.multiselect__tag {
-    background: #4f46e5;
-    color: white;
-    font-size: 14px;
-}
-
-.multiselect__option--highlight {
-    background: #4f46e5;
-    color: white;
-}
-
-.multiselect__option--selected.multiselect__option--highlight {
-    background: #ef4444;
-    color: white;
-}
-
-.multiselect__placeholder {
-    padding-left: 5px;
-    font-size: 14px;
-}
-
-.multiselect__content-wrapper {
-    border-radius: 0 0 6px 6px;
-    border: 1px solid #e5e7eb;
-    border-top: none;
-}
-
-.multiselect__option {
-    padding: 12px;
-    min-height: 40px;
-    line-height: 16px;
-    font-size: 14px;
-}
-</style>
-
-<script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from "vue";
-import { router } from "@inertiajs/vue3";
-import Swal from "sweetalert2";
-import axios from "axios";
-import { Head } from "@inertiajs/vue3";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { debounce } from 'lodash';
-import { Multiselect } from 'vue-multiselect';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Doughnut } from 'vue-chartjs';
-import { useToast } from "vue-toastification";
-import { usePage } from '@inertiajs/vue3'
-
-const page = usePage();
-
-const toast = useToast();
-ChartJS.register(ArcElement, Tooltip, Legend);
-
-onMounted(() => {
-    if (props.currentOrder && page.props.facility?.id != props.currentOrder?.facility_id) {
-        router.get(route('orders.index'), {}, {
-            preserveScroll: false,
-            preserveState: false,
-        })
-    }
-})
-
-const STORAGE_KEY = "current_order";
-const isAdded = ref(false);
-const searchResults = ref([]);
-const selectedProduct = ref(null);
-const search = ref("");
-const debouncedSearch = ref("");
-const isSearching = ref(false);
-
-// Create debounced search function
-const debouncedProductSearch = debounce(async (query) => {
-    if (!query) {
-        searchResults.value = [];
-        return;
-    }
-
-    isSearching.value = true;
-    try {
-        const response = await axios.post(route("orders.search"), {
-            barcode: query,
-            name: query
-        });
-
-        if (response.data.product) {
-            // Single product found (likely from barcode)
-            searchResults.value = [response.data.product];
-            // Auto-select if it's a barcode match
-            if (query.length > 8) {
-                selectProduct(response.data.product);
-            }
-        } else if (response.data.products?.length) {
-            searchResults.value = response.data.products;
-        } else {
-            searchResults.value = [];
-        }
-    } catch (error) {
-        console.error('Search error:', error);
-        searchResults.value = [];
-    } finally {
-        isSearching.value = false;
-    }
-}, 300);
-
-// Watch for search changes
-const onProductSearch = (query) => {
-    debouncedProductSearch(query);
-};
-
-const clearProduct = () => {
-    selectedProduct.value = null;
-    form.value.product_id = null;
-    form.value.product_name = '';
-    form.value.quantity = 0;
-    form.value.stock_on_hand = 0;
-};
-
-const selectProduct = (product) => {
-    if (!product) return;
-    selectedProduct.value = product;
-    form.value.product_id = product.id;
-    form.value.product_name = product.name;
-    form.value.quantity = product.suggested_quantity || 1;
-    form.value.stock_on_hand = product.stock_on_hand;
-};
-
-const props = defineProps({
-    stats: {
-        type: Object
-    },
-    orders: {
-        type: Array,
-        required: true,
-    },
-    currentOrder: {
-        type: Object,
-        default: null,
-    },
-    products: {
-        type: Array,
-        required: true,
-    },
-    filters: {
-        type: Object,
-        default: () => ({}),
-    },
-});
-
-
-const filteredItems = computed(() => {
-    if (!search.value) return props.currentOrder?.items || [];
-    return props.currentOrder?.items.filter(i => i.product?.name.toLowerCase().includes(search.value.toLowerCase()) || i.product?.barcode.toLowerCase().includes(search.value.toLowerCase())) || [];
-});
-
-const form = ref({
-    order_id: props.currentOrder?.id || null,
-    product_id: null,
-    product_name: '',
-    quantity: 0,
-    quantity_on_order: 0,
-    stock_on_hand: 0,
-});
-
-const id = ref(props.filters.id);
-
-// Update the form when currentOrder changes
-watch(
-    [() => id.value],
-    () => {
-        reloadOrder();
-    }
-);
-
-onMounted(() => {
-    // Initialize Echo listener for OrderEvent
-    window.Echo.channel("orders").listen(".order-received", (e) => {
-        // reload();
-        console.log(e);
-        reloadOrder();
-    });
-});
-
-const getTotalOrders = computed(() => {
-    if (!props.stats) return 0;
-    return Object.values(props.stats).reduce((a, b) => a + b, 0);
-});
-
-const getPercentage = (value) => {
-    if (!value || !getTotalOrders.value) return 0;
-    return Math.round((value / getTotalOrders.value) * 100);
-};
-
-const orderSubmitted = ref(false);
-
-const order_type = ref(props.currentOrder?.order_type || "Replenishment");
-const expected_date = ref(props.currentOrder?.expected_date);
-
-const isCreated = ref(false);
-const confirmCreateOrder = () => {
-    isCreated.value = true;
-    if (!order_type.value) {
-        Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "Please select an order type",
-        });
-        isCreated.value = false;
-        return;
-    }
-
-    Swal.fire({
-        title: "Are you sure?",
-        text: "This will create a new order",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Yes, create order",
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            await axios
-                .post(route("orders.create"), {
-                    order_type: order_type.value,
-                    expected_date: expected_date.value,
-                })
-                .then((response) => {
-                    isCreated.value = false;
-                    const newOrder = response.data.order;
-
-                    // Update all order-related states
-                    form.value.order_id = newOrder.id;
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
-
-                    // Update form with new reactive object
-                    form.value = Object.assign({}, form.value, {
-                        id: null,
-                        product_id: null,
-                        product_name: null,
-                        quantity: 0,
-                        quantity_on_order: 0,
-                        stock_on_hand: 0,
-                        order_id: newOrder.id,
-                    });
-
-                    // Reload the page with new order
-                    reloadOrder();
-
-                    Swal.fire({
-                        icon: "success",
-                        title: response.data.message,
-                        timer: 1500,
-                        showConfirmButton: false,
-                    });
-                })
-                .catch((error) => {
-                    isCreated.value = false;
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: error.response?.data || "Failed to create order",
-                    });
-                });
-        } else {
-            isCreated.value = false;
-        }
-    });
-};
-
-const isLoading = ref(false);
-const isConfirmed = ref(false);
-
-function reloadOrder() {
-    const query = {};
-    if (id.value) {
-        query.id = id.value;
-    }
-    router.get(
-        route("orders.index"),
-        query,
-        {
-            preserveState: true,
-            preserveScroll: true,
-            only: ["currentOrder", "orders", "products", 'stats']
-        }
-    );
-}
-
-async function removeItem(order) {
-    Swal.fire({
-        title: "Are you sure?",
-        text: "You won't be able to revert this!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, remove",
-    }).then((result) => {
-        if (result.isConfirmed) {
-            axios
-                .get(route("orders.remove", { id: order.id }))
-                .then((response) => {
-                    reloadOrder();
-                    Swal.fire({
-                        icon: "success",
-                        title: response.data,
-                        showConfirmButton: false,
-                        timer: 1500,
-                    });
-                })
-                .catch((error) => {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error removing item",
-                        text: error.response.data,
-                    });
-                });
-        }
-    });
-}
-
-const showOrderModal = ref(false);
-const showSelectModal = ref(false);
-const showAddItemModal = ref(false);
-
-const showReceiveModal = ref(false);
-const selectedItem = ref(null);
-const receiveForm = ref({
-    lost_quantity: 0,
-    damaged_quantity: 0
-});
-
-const maxLostQuantity = computed(() => {
-    if (!selectedItem.value) return 0;
-    const total = selectedItem.value.quantity;
-    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
-    return total - damaged;
-});
-
-const maxDamagedQuantity = computed(() => {
-    if (!selectedItem.value) return 0;
-    const total = selectedItem.value.quantity;
-    const lost = Number(receiveForm.value.lost_quantity) || 0;
-    return total - lost;
-});
-
-const receivedQuantity = computed(() => {
-    if (!selectedItem.value) return 0;
-    const total = selectedItem.value.quantity;
-    const lost = Number(receiveForm.value.lost_quantity) || 0;
-    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
-    return Math.max(0, total - lost - damaged);
-});
-
-const isValidReceiveForm = computed(() => {
-    if (!selectedItem.value) return false;
-    const total = selectedItem.value.quantity;
-    const lost = Number(receiveForm.value.lost_quantity) || 0;
-    const damaged = Number(receiveForm.value.damaged_quantity) || 0;
-    return lost >= 0 && damaged >= 0 && (lost + damaged) <= total;
-});
-
-const validateQuantities = () => {
-    const total = selectedItem.value?.quantity || 0;
-    let lost = Number(receiveForm.value.lost_quantity);
-    let damaged = Number(receiveForm.value.damaged_quantity);
-
-    // Ensure values are not negative
-    lost = Math.max(0, lost);
-    damaged = Math.max(0, damaged);
-
-    // If sum exceeds total, adjust the last changed value
-    if (lost + damaged > total) {
-        if (lost > maxLostQuantity) {
-            receiveForm.value.lost_quantity = maxLostQuantity;
-        }
-        if (damaged > maxDamagedQuantity) {
-            receiveForm.value.damaged_quantity = maxDamagedQuantity;
-        }
-    }
-
-    // Update the form with validated values
-    receiveForm.value.lost_quantity = lost;
-    receiveForm.value.damaged_quantity = damaged;
-};
-
-const openReceiveModal = (item) => {
-    selectedItem.value = item;
-    receiveForm.value = {
-        lost_quantity: 0,
-        damaged_quantity: 0
-    };
-    showReceiveModal.value = true;
-};
-
-const confirmReceiveItem = () => {
-    if (!isValidReceiveForm.value) return;
-
-
-    Swal.fire({
-        title: 'Confirm Receipt',
-        html: `
-            <p>Are you sure you want to receive:</p>
-            <ul class="mt-2 text-left">
-                <li>Received: ${receivedQuantity.value}</li>
-                <li>Lost: ${receiveForm.value.lost_quantity}</li>
-                <li>Damaged: ${receiveForm.value.damaged_quantity}</li>
-            </ul>
-        `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, receive it',
-        cancelButtonText: 'No, cancel'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            isConfirmed.value = true;
-            await axios.post(route('orders.receivedItems'), {
-                id: selectedItem.value.id,
-                lost_quantity: receiveForm.value.lost_quantity,
-                damaged_quantity: receiveForm.value.damaged_quantity,
-                received_quantity: receivedQuantity.value,
-                status: 'delivered'
-            })
-                .then(() => {
-                    isConfirmed.value = false;
-                    showReceiveModal.value = false;
-                    Swal.fire(
-                        'Received!',
-                        'The item has been received successfully.',
-                        'success'
-                    );
-                    reloadOrder();
-                })
-                .catch((error) => {
-                    isConfirmed.value = false;
-                    Swal.fire(
-                        'Error!',
-                        error.response?.data || 'Failed to receive the item.',
-                        'error'
-                    );
-                });
-        }
-    });
-};
-
-const receiveOrderItem = (item) => {
-    Swal.fire({
-        title: 'Receive Item',
-        text: `Are you sure you want to receive ${item.quantity} ${item.product.name}?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, receive it',
-        cancelButtonText: 'No, cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            axios.post(route('orders.receive-item', { order: props.currentOrder.id, item: item.id }))
-                .then(() => {
-                    Swal.fire(
-                        'Received!',
-                        'The item has been received successfully.',
-                        'success'
-                    );
-                    reloadOrder();
-                })
-                .catch((error) => {
-                    Swal.fire(
-                        'Error!',
-                        error.response?.data?.message || 'Failed to receive the item.',
-                        'error'
-                    );
-                });
-        }
-    });
-};
-
-const showEditModal = ref(false);
-const editingItem = ref(null);
-
-const editItem = (item) => {
-    editingItem.value = item;
-    form.value = {
-        id: item.id,
-        quantity: item.quantity,
-        quantity_on_order: item.quantity_on_order,
-    };
-    showEditModal.value = true;
-};
-
-const isSubmitting = ref(false)
-
-const updateItem = async () => {
-    isSubmitting.value = true;
-    await axios.post(route('orders.update-item'), form.value)
-        .then((response) => {
-            isSubmitting.value = false;
-            showEditModal.value = false;
-            editingItem.value = null;
-            reloadOrder();
-            Swal.fire('Updated!', 'Item has been updated successfully.', 'success');
-        })
-        .catch((error) => {
-            Swal.fire('Error!', error.response?.data || 'Failed to update item.', 'error');
-        });
-};
-
-async function addItem() {
-    isSubmitting.value = true;
-    await axios.post(route('orders.store'), form.value)
-        .then((response) => {
-            isSubmitting.value = false;
-            toast.success(response.data);
-            reloadOrder();
-            showAddItemModal.value = false;
-        })
-        .catch((error) => {
-            isSubmitting.value = false;
-            Swal.fire('Error!', error.response.data, "error");
-        });
-}
-</script>

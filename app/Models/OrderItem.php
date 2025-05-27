@@ -13,18 +13,16 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'quantity',
-        'lost_quantity',
-        'damaged_quantity',
-        'reviewed_by',
-        'reviewed_at',
-        'approved_by',
-        'approved_at',
-        'in_process',
-        'dispatched_by',
-        'dispatched_at',
+        'warehouse_id',
         'quantity_on_order',
-        'delivered',
+        'qer',
+        'quantity_to_release',
+        'no_of_days',
     ];
+
+    public function inventory_allocations(){
+        return $this->hasMany(InventoryAllocation::class, 'order_item_id');
+    }
 
     public function order()
     {
@@ -34,5 +32,10 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 }

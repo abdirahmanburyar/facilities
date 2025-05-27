@@ -2,41 +2,85 @@
 
 namespace App\Http\Controllers;
 
+// App Models
 use App\Models\Order;
-use App\Facades\Kafka;
+use App\Models\OrderItem;
+use App\Models\Facility;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Models\Inventory;
+use App\Models\InventoryAllocation;
+// App Events and Resources
 use App\Events\OrderEvent;
-use App\Models\EligibleItem;
 use App\Http\Resources\OrderResource;
-use Illuminate\Support\Facades\DB;
+
+// Laravel Core
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use App\Models\OrderItem;
-use App\Models\FacilityInventory;
-use App\Models\Inventory;
+
+// App Facades
+use App\Facades\Kafka;
 
 class OrderController extends Controller
 {
+    /**
+     * Reject an entire order
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function rejectOrder(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $request->validate([
+                'order_id' => 'required|exists:orders,id',
+            ]);
+            
+            $order = Order::findOrFail($request->order_id);
+            
+            // Update order status to rejected
+            $order->status = 'rejected';
+            $order->rejected_by = auth()->id();
+            $order->rejected_at = now();
+            $order->save();
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Order has been rejected successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject order: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function index(Request $request)
     {
-        $facility = auth()->user()->facility;
-        $order = Order::where('facility_id', $facility->id)
-            ->where('id', $request->id)
-            ->with('user', 'items.product', 'items')
-            ->first();
+        $query = Order::with(['facility', 'user'])
+            ->where('facility_id', auth()->user()->facility_id)
+            ->when($request->dateFrom && $request->dateTo, function ($query) use ($request) {
+                $query->whereBetween('order_date', [$request->dateFrom, $request->dateTo]);
+            })
+            ->when($request->orderType, function ($query, $orderType) {
+                $query->where('order_type', $orderType);
+            })
+            ->latest();
 
-        $orders = Order::where('facility_id', $facility->id)
-            // ->where('status', 'pending')
-            ->get();
-
-            $stats = DB::table('order_items')
-            ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->select('orders.status as status', DB::raw('count(*) as count'))
-            ->where('orders.facility_id', $facility->id)
-            ->where('orders.id', $request->id)
-            // ->groupBy('orders.status')
+        // Get order statistics from orders table
+        $stats = DB::table('orders')
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
             ->get()
             ->mapWithKeys(function ($item) {
                 return [$item->status => $item->count];
@@ -47,51 +91,175 @@ class OrderController extends Controller
         $defaultStats = [
             'pending' => 0,
             'approved' => 0,
+            'rejected' => 0,
             'in_process' => 0,
             'dispatched' => 0,
             'delivery_pending' => 0,
-            'delivered' => 0
+            'delivered' => 0,
+            'received' => 0
         ];
 
-        // $stats = array_merge($defaultStats, $stats);
-            
-        return inertia('Order/Index', [
+        $stats = array_merge($defaultStats, $stats);
+
+        $orders = $query->paginate(500);
+
+        return Inertia::render('Order/Index', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page', 'orderType', 'dateFrom', 'dateTo'),
             'stats' => $stats,
-            'orders' => $orders,
-            'currentOrder' => $order,
-            'products' => Product::whereHas('eligibleItems' , function($q) use($facility) {
-                $q->where('facility_type', $facility->facility_type);
-            })->get(),
-            'filters' => $request->only('id')
         ]);
     }
 
-    public function createOrder(Request $request)
+    public function store(Request $request)
     {
         try {
             return DB::transaction(function () use ($request) {
-                $request->validate([
-                    'order_type' => 'required',
-                    'expected_date' => 'required'
-                ]);
-                $orderNumber = 'OR-' . Carbon::now()->format('Ymd') . '-' . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT);
+                // Generate order number
+                $orderNumber = $this->generateOrderNumber();
 
                 $order = Order::create([
-                    'user_id' => auth()->user()->id,
-                    'facility_id' => auth()->user()->facility_id,
-                    'order_type' => $request->order_type,
-                    'expected_date' => $request->expected_date,
-                    'status' => 'pending',
                     'order_number' => $orderNumber,
-                    'order_date' => Carbon::now()->toDateString(),
-                    'expected_date' => Carbon::now()->addDays(7), // Default 7 days expectation
+                    'facility_id' => auth()->user()->facility_id,
+                    'user_id' => auth()->user()->id,
+                    'order_type' => $request->order_type,
+                    'order_date' => $request->order_date,
+                    'expected_date' => $request->expected_date,
+                    'note' => $request->notes,
+                    'status' => 'pending',
                 ]);
 
-                // Dispatch order event if needed
-                event(new OrderEvent("refreshed"));
+                foreach ($request->items as $item) {
+                    if($item['product_id'] == null){
+                        continue;
+                    }
+                    // Create order item
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'quantity_to_release' => $item['quantity'],
+                        'no_of_days' => $item['no_of_days'],
+                        'status' => 'pending',
+                    ]);
 
-                return response()->json(["message" => "Order created successfully", 'order' => $order], 200);
+                    // Get available inventory for this product
+                    $availableInventory = Inventory::where('product_id', $item['product_id'])
+                        ->where('quantity', '>', 0)
+                        ->orderBy('created_at', 'asc') // FIFO principle
+                        ->get();
+
+                    $remainingQuantity = $item['quantity'];
+                    $allocations = [];
+
+                    // Allocate inventory from different batches
+                    foreach ($availableInventory as $inventory) {
+                        if ($remainingQuantity <= 0) break;
+
+                        $quantityToAllocate = min($remainingQuantity, $inventory->quantity);
+                        
+                        // Create inventory allocation
+                        InventoryAllocation::create([
+                            'order_item_id' => $orderItem->id,
+                            'product_id' => $item['product_id'],
+                            'inventory_id' => $inventory->id,
+                            'allocated_quantity' => $quantityToAllocate,
+                            'batch_number' => $inventory->batch_number,
+                            'barcode' => $inventory->barcode,
+                            'warehouse_id' => $inventory->warehouse_id,
+                            'location_id' => $inventory->location_id,
+                            'expiry_date' => $inventory->expiry_date,
+                        ]);
+
+                        // Update inventory quantity
+                        $inventory->quantity -= $quantityToAllocate;
+                        $inventory->save();
+
+                        $remainingQuantity -= $quantityToAllocate;
+                    }
+
+                    // Check if we couldn't allocate all requested quantity
+                    if ($remainingQuantity > 0) {
+                        throw new \Exception("Insufficient inventory for product ID {$item['product_id']}");
+                    }
+                }
+
+                return response()->json($order, 200);
             });
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function destroy(Order $order)
+    {
+        try {
+            if ($order->status !== 'pending') {
+                return back()->with('error', 'Only pending orders can be deleted.');
+            }
+
+            $order->items()->delete();
+            $order->delete();
+
+            return back()->with('success', 'Order deleted successfully.');
+        } catch (\Throwable $th) {
+            return back()->with($th->getMessage(), 500);
+        }
+    }
+
+    public function bulk(Request $request)
+    {
+        try {
+            $orderIds = $request->input('orderIds');
+
+            // Validate that at least one order is selected
+            if (empty($orderIds)) {
+                return response()->json('Please select at least one order', 400);
+            }
+
+            // Get all selected orders
+            $orders = Order::whereIn('id', $orderIds)->get();
+
+            // Check if any order has non-pending items and collect their IDs
+            $nonPendingOrders = [];
+            foreach ($orders as $order) {
+                if ($order->status !== 'pending') {
+                    $nonPendingOrders[] = $order->id;
+                }
+            }
+
+            if (!empty($nonPendingOrders)) {
+                return response()->json('Cannot delete orders that are not in pending status', 500);
+            }
+
+            // Delete orders if all are pending
+            $orders->each(function ($order) {
+                $order->items()->delete();
+                $order->delete();
+            });
+
+            return response()->json('Selected orders deleted successfully', 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function searchProduct(Request $request)
+    {
+        try {
+            $search = $request->input('search');
+            $products = Product::where('name', 'like', '%' . $search . '%')
+                ->orWhere('barcode', 'like', '%' . $search . '%')
+                ->select('id', 'name', 'barcode')
+                ->get()
+                ->map(function ($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                    ];
+                });
+
+            return response()->json($products, 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }
@@ -101,313 +269,866 @@ class OrderController extends Controller
     {
         try {
             DB::beginTransaction();
-            $order = Order::findOrFail($request->id);
-            $allowedStatuses = [
-                'pending' => ['approved', 'rejected'],
-                'approved' => ['in processing'],
-                'in processing' => ['dispatched'],
-                'dispatched' => ['delivered']
-            ];
-
-            // Check if the current status can transition to the requested status
-            if (!isset($allowedStatuses[$order->status]) || !in_array($request->status, $allowedStatuses[$order->status])) {
-                return response()->json("Order cannot be changed from {$order->status} to {$request->status}", 500);
-            }
-
-            $order->update([
-                'status' => $request->status,
+            // Validate request
+            $validated = $request->validate([
+                'order_id' => 'required|exists:orders,id',
+                'status' => ['required', Rule::in(['approved', 'in_process', 'dispatched', 'delivered'])]
             ]);
 
-            
+            $order = Order::findOrFail($request->order_id);
+
+            // Define allowed transitions
+            $allowedTransitions = [
+                'pending' => ['approved'],
+                'approved' => ['in_process'],
+                'in_process' => ['dispatched'],
+                'dispatched' => ['delivered'],
+                'rejected' => ['approved'] // Allow rejected orders to be approved
+            ];
+
+            // Check if the transition is allowed
+            if (
+                !isset($allowedTransitions[$order->status]) ||
+                !in_array($request->status, $allowedTransitions[$order->status])
+            ) {
+                return response()->json("Status transition not allowed", 422);
+            }
+
+            $userId = auth()->id();
+            $now = now();
+
+            // Prepare updates for order
+            $updates = ['status' => $request->status];
+
+            // Add timestamp based on the status
+            switch ($request->status) {
+                case 'approved':
+                    $updates['approved_at'] = $now;
+                    $updates['approved_by'] = $userId;
+                    
+                    // If transitioning from rejected to approved, clear rejection data
+                    if ($order->status === 'rejected') {
+                        $updates['rejected_by'] = null;
+                        $updates['rejected_at'] = null;
+                    }
+                    break;
+                case 'in_process':
+                    $updates['in_process'] = true;
+                    $updates['in_process_at'] = $now;
+                    $updates['in_process_by'] = $userId;
+                    break;
+                case 'dispatched':
+                    $updates['dispatched_by'] = $userId;
+                    $updates['dispatched_at'] = $now;
+                    break;
+                case 'delivered':
+                    $updates['delivered'] = true;
+                    $updates['delivered_at'] = $now;
+                    $updates['delivered_by'] = $userId;
+                    break;
+            }
+
+            // Update the order
+            $order->update($updates);
+
+            // Trigger Kafka event for order status change
             Kafka::publishOrderPlaced("Refreshed");
+            // Broadcast event
             event(new OrderEvent('Refreshed'));
 
             DB::commit();
             return response()->json('Order status updated successfully.', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('Order status change failed', [
+                'error' => $e->getMessage(),
+                'order_id' => $request->order_id ?? null
+            ]);
+            return response()->json('Failed to update order status: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function getOutstanding(Request $request, $id)
+    {
+        try {
+            $outstanding = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->join('facilities', 'facilities.id', '=', 'orders.facility_id')
+                ->join('products', 'products.id', '=', 'order_items.product_id')
+                ->where('order_items.id', $id)
+                ->whereNotIn('order_items.status', ['pending', 'delivered'])
+                ->select(
+                    'products.name as product_name',
+                    'facilities.name as facility_name',
+                    'order_items.quantity',
+                    'order_items.status'
+                )
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'product' => $item->product_name,
+                        'facility' => $item->facility_name,
+                        'quantity' => $item->quantity,
+                        'status' => $item->status
+                    ];
+                });
+
+            return response()->json($outstanding, 200);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+
+    public function updateItem(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $validated = $request->validate([
+                'id' => 'required|exists:order_items,id',
+                'quantity' => 'required|integer|min:1',
+            ]);
+
+            $orderItem = OrderItem::findOrFail($validated['id']);
+
+            // Check if the new quantity will not exceed the current inventory quantity
+            $currentInventoryQuantity = \App\Models\Inventory::where('product_id', $orderItem->product_id)->sum('quantity');
+            if ($validated['quantity'] > $currentInventoryQuantity) {
+                return response()->json('The new quantity exceeds the current inventory quantity.', 500);
+            }
+
+            $orderItem->update([
+                'quantity' => $validated['quantity'],
+            ]);
+            Kafka::publishOrderPlaced("Refreshed");
+            event(new OrderEvent('Refreshed'));
+
+            DB::commit();
+            return response()->json('Order item updated successfully.', 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
             return response()->json($e->getMessage(), 500);
         }
     }
 
-    public function store(Request $request)
+    /**
+     * Bulk change status of orders
+     */
+    public function bulkChangeStatus(Request $request)
     {
+        $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'required|exists:orders,id',
+            'status' => ['required', Rule::in(['approved', 'in process', 'dispatched', 'delivery_pending', 'delivered'])]
+        ]);
+
+        $allowedTransitions = [
+            'pending' => ['approved'],
+            'approved' => ['in process'],
+            'in process' => ['dispatched'],
+            'dispatched' => ['delivery_pending', 'delivered'],
+            'delivery_pending' => ['delivered']
+        ];
+
+        DB::beginTransaction();
         try {
-            return DB::transaction(function () use ($request) {
-                $request->validate([
-                    'id' => 'nullable|exists:order_items,id',
-                    'product_id' => 'required|exists:products,id',
-                    'quantity' => 'required',
-                    'quantity_on_order' => 'required',
-                    'order_id' => 'required'
-                ]);
+            $orders = Order::whereIn('id', $request->order_ids)->get();
+            $updatedCount = 0;
 
-                // Check for duplicate product in same order, excluding current item if updating
-                $query = OrderItem::where('product_id', $request->product_id)
-                    ->where('order_id', $request->order_id);
+            foreach ($orders as $order) {
+                if (
+                    isset($allowedTransitions[$order->status]) &&
+                    in_array($request->status, $allowedTransitions[$order->status])
+                ) {
 
-                if ($request->id) {
-                    $query->where('id', '!=', $request->id);
+                    $oldStatus = $order->status;
+                    $order->status = $request->status;
+                    $order->save();
+
+
+                    $updatedCount++;
                 }
+            }
 
-                if ($query->exists()) {
-                    return response()->json(Product::find($request->product_id)->name . ' already exists in this order.', 500);
-                }
+            DB::commit();
 
-                OrderItem::updateOrCreate(
-                    ['id' => $request->id],
-                    [
-                        'product_id' => $request->product_id,
-                        'quantity' => $request->quantity,
-                        'quantity_on_order' => $request->quantity_on_order,
-                        'order_id' => $request->order_id,
-                        'user_id' => auth()->user()->id
-                    ]
-                );
+            if ($updatedCount === 0) {
+                return response()->json("No orders were eligible for status change", 500);
+            }
 
-                event(new OrderEvent("refreshed"));
-                return response()->json("Order item " . ($request->id ? "updated" : "added") . " successfully", 200);
-            });
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
+            Kafka::publishOrderPlaced('Refreshed');
+            event(new OrderEvent('Order status updated'));
+            return response()->json("Successfully updated {$updatedCount} orders to {$request->status}");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk order status change failed', [
+                'error' => $e->getMessage(),
+                'order_ids' => $request->order_ids
+            ]);
+            return response()->json('Failed to update order statuses: ' . $e->getMessage(), 500);
         }
     }
 
-    public function search(Request $request)
+    /**
+     * Bulk change status of order items
+     */
+    public function bulkChangeItemStatus(Request $request)
     {
         try {
+            DB::beginTransaction();
+
             $request->validate([
-                'barcode' => 'required',
+                'item_ids' => 'required|array',
+                'item_ids.*' => 'required|exists:order_items,id',
+                'status' => ['required', Rule::in(['approved', 'in process', 'dispatched', 'delivery_pending', 'delivered'])],
+                'warehouse_id' => 'nullable|exists:warehouses,id'
             ]);
 
-            $barcode = $request->barcode;
-            $facility = auth()->user()->facility;
+            $items = OrderItem::with('order')->whereIn('id', $request->item_ids)->get();
+            $updatedCount = 0;
+            $updatedOrders = [];
 
-            // Find the product by barcode or name, but only if it's eligible for this facility
-            $product = EligibleItem::where('facility_type', $facility->facility_type)
-                ->whereHas('product', function ($query) use ($barcode) {
-                    $query->where('barcode', 'like', '%' . $barcode . '%')
-                        ->orWhere('name', 'like', '%' . $barcode . '%');
-                })
-                ->with('product:id,name,barcode')
-                ->latest()
-                ->first();
-            logger()->info($product);
-            if (!$product) {
-                return response()->json(['message' => 'Product not found', 'product' => null], 500);
-            }
+            $allowedTransitions = [
+                'pending' => ['approved'],
+                'approved' => ['in process'],
+                'in process' => ['dispatched'],
+                'dispatched' => ['delivery_pending', 'delivered'],
+                'delivery_pending' => ['delivered']
+            ];
 
-            // Get Stock on Hand (SOH) from facility inventories
-            $inventory = DB::table('facility_inventories')
-                ->where('product_id', $product->product->id)
-                ->where('facility_id', $facility->id)
-                ->first();
-            $stockOnHand = $inventory ? $inventory->quantity : 0;
 
-            // Calculate days from the latest order and remaining days...
-            $latestOrder = DB::table('orders')
-                ->where('facility_id', $facility->id)
-                ->where('order_date', '>=', Carbon::now()->startOfQuarter()->toDateString())
-                ->where('order_date', '<=', Carbon::now()->endOfQuarter()->toDateString())
-                ->orderBy('order_date', 'desc')
-                ->first();
-
-            $daysFromLatestOrder = 0;
-            if ($latestOrder) {
-                $orderDate = Carbon::parse($latestOrder->order_date)->toDateString();
-                $currentDate = Carbon::now()->toDateString();
-                $daysFromLatestOrder = Carbon::parse($currentDate)->diffInDays(Carbon::parse($orderDate));
-            }
-
-            $daysRemaining = 120 - $daysFromLatestOrder;
-            $quantityOnOrder = 0;
-            $amc = 200;
-            $orderQuantity = max(0, ceil($amc * ($daysRemaining / 30) - $stockOnHand - $quantityOnOrder));
-
-            return response()->json([
-                "product" => [
-                    "id" => $product->product->id,
-                    "name" => $product->product->name,
-                    "barcode" => $product->product->barcode,
-                    "suggested_quantity" => $orderQuantity,
-                    'stock_on_hand' => $stockOnHand
-                ],
-                "message" => "success"
-            ], 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
-
-    public function remove(Request $request)
-    {
-        try {
-            return DB::transaction(function () use ($request) {
-                $orderItem = OrderItem::findOrFail($request->id);
-                if ($orderItem->order->status !== 'pending') {
-                    return response()->json('Order item cannot be removed', 409);
+            foreach ($items as $item) {
+                // Check if transition is allowed
+                if (
+                    !isset($allowedTransitions[$item->status]) ||
+                    !in_array($request->status, $allowedTransitions[$item->status])
+                ) {
+                    continue;
                 }
-                $orderItem->delete();
-                Kafka::publishOrderPlaced("Refreshed");
-                event(new OrderEvent("refreshed"));
-                return response()->json("Order item removed successfully", 200);
-            });
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
 
-    public function submitOrder(Request $request)
-    {
-        try {
-            return DB::transaction(function () use ($request) {
-                event(new OrderEvent("refreshed"));
-                return response()->json("Order submitted successfully", 200);
-            });
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
+                $oldStatus = $item->status;
+                $item->status = $request->status;
+                // Get all available inventory for this product from the warehouse, ordered by expiry date (FIFO)
+                $warehouseInventories = Inventory::where('product_id', $item->product_id)
+                    ->where('quantity', '>', 0)
+                    // ->where('warehouse_id', $item->warehouse_id)
+                    ->orderBy('expiry_date', 'asc')  // Order by expiry date for FIFO (oldest first)
+                    ->get();
 
-    public function receivedItems(Request $request){
-        try {
-            $request->validate([
-                'id' => 'required',
-                'lost_quantity' => 'required',
-                'damaged_quantity' => 'required',
-                'status' => 'required'
-            ]);
-            
-            $orderItem = OrderItem::where('id', $request->id)->first();
+                $remainingQuantity = (float) $item->quantity - (float) $item->quantity_on_order;
 
-            if (!$orderItem) {
-                return response()->json("Order item not found", 500);
+                if ($warehouseInventories->sum('quantity') < $remainingQuantity) {
+                    return response()->json("Not enough items in the inventory", 500);
+                }
+                if ($request->status == 'approved') {
+                    $item->approved_at = Carbon::now()->toDateString();
+                    $item->approved_by = auth()->id();
+                    $item->save();
+                }
+
+                if ($request->status == 'in process') {
+                    $item->in_process = 1;
+                    $item->save();
+                }
+
+                if ($request->status == 'dispatched') {
+                    $item->dispatched_at = Carbon::now()->toDateString();
+                    $item->dispatched_by = auth()->id();
+                    $item->warehouse_id = $request->warehouse_id;
+                    $item->save();
+                }
+                if ($request->status == 'delivery_pending') {
+                    $item->delivery_pending_at = Carbon::now()->toDateString();
+                    $item->save();
+                }
+                if ($request->status == 'delivered') {
+                    $item->delivered = 1;
+
+                    $usedInventories = [];
+
+                    foreach ($warehouseInventories as $warehouseInventory) {
+                        if ($remainingQuantity <= 0) break;
+
+                        // Calculate how much we can take from this batch
+                        $quantityToTake = min($remainingQuantity, $warehouseInventory->quantity);
+
+                        // Update or create facility inventory for this batch
+                        $facilityInventory = $item->order->facility->inventories()
+                            ->where('product_id', $item->product_id)
+                            ->where('batch_number', $warehouseInventory->batch_number)
+                            ->first();
+
+                        if ($facilityInventory) {
+                            $facilityInventory->increment('quantity', $quantityToTake);
+                            // Handle facility inventory with quantity 0
+                            if ($facilityInventory->fresh()->quantity <= 0) {
+                                // Get all zero quantity records for this product
+                                $zeroQuantityInventories = $item->order->facility
+                                    ->inventories()
+                                    ->where('product_id', $item->product_id)
+                                    ->where('quantity', '=', 0)
+                                    ->orderBy('created_at', 'asc')  // Get oldest first
+                                    ->get();
+
+                                if ($zeroQuantityInventories->count() > 1) {
+                                    // Keep the first (oldest) record and reset its metadata
+                                    $firstRecord = $zeroQuantityInventories->first();
+                                    $firstRecord->update([
+                                        'batch_number' => null,
+                                        'expiry_date' => null,
+                                        'location' => null,
+                                        'warehouse_id' => null
+                                    ]);
+
+                                    // Delete all other zero quantity records
+                                    $item->order->facility->inventories()
+                                        ->where('product_id', $item->product_id)
+                                        ->where('quantity', '=', 0)
+                                        ->where('id', '!=', $firstRecord->id)
+                                        ->delete();
+                                } else {
+                                    // If this is the only zero quantity record, just reset its metadata
+                                    $facilityInventory->update([
+                                        'batch_number' => null,
+                                        'expiry_date' => null,
+                                        'location' => null,
+                                        'warehouse_id' => null
+                                    ]);
+                                }
+                            }
+                        } else {
+                            $item->order->facility->inventories()->create([
+                                'product_id' => $item->product_id,
+                                'batch_number' => $warehouseInventory->batch_number,
+                                'expiry_date' => $warehouseInventory->expiry_date,
+                                'quantity' => $quantityToTake,
+                                'updated_at' => now()
+                            ]);
+                        }
+                        // here we gonna update the inventories table
+                        $warehouseInventory->decrement('quantity', $quantityToTake);
+
+                        // Remove inventory record if quantity is 0
+                        if ($warehouseInventory->fresh()->quantity <= 0) {
+                            $warehouseInventory->delete();
+                        }
+
+                        // Track used inventory for logging
+                        $usedInventories[] = [
+                            'batch_number' => $warehouseInventory->batch_number,
+                            'expiry_date' => $warehouseInventory->expiry_date->format('Y-m-d'),
+                            'quantity' => $quantityToTake
+                        ];
+
+                        $remainingQuantity -= $quantityToTake;
+                    }
+
+                    // Check if all items in this order have the same status
+                    $pendingItems = $item->order->items()
+                        ->where('status', '!=', 'delivered')
+                        ->count();
+
+                    if ($pendingItems === 0) {
+                        $item->order->status = 'completed';
+                        $item->order->save();
+                    }
+
+                    $item->delivered = 1;
+                    $item->status = 'delivered';
+                    $item->save();
+                }
+
+                $zeroQuantityInventories = Inventory::where('product_id', $item->product_id)
+                    ->where('warehouse_id', $item->warehouse_id)
+                    ->where('quantity', '=', 0)
+                    ->get();
+
+                if ($zeroQuantityInventories->count() > 1) {
+                    // Keep the oldest record and reset its metadata
+                    $oldestRecord = $zeroQuantityInventories->sortBy('created_at')->first();
+                    $oldestRecord->update([
+                        'batch_number' => null,
+                        'expiry_date' => null,
+                        'location' => null,
+                        'warehouse_id' => null
+                    ]);
+
+                    // Delete all other zero quantity records except the oldest
+                    Inventory::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $item->warehouse_id)
+                        ->where('quantity', '=', 0)
+                        ->where('id', '!=', $oldestRecord->id)
+                        ->delete();
+                } elseif ($zeroQuantityInventories->count() == 1) {
+                    // If only one record exists, just reset its metadata
+                    $zeroQuantityInventories->first()->update([
+                        'batch_number' => null,
+                        'expiry_date' => null,
+                        'location' => null,
+                        'warehouse_id' => null
+                    ]);
+                }
+
+                // Broadcast event
+                Kafka::publishOrderPlaced('Refreshed');
+                event(new OrderEvent('Refreshed'));
+
+                // Track unique orders that were affected
+                if (!in_array($item->order_id, $updatedOrders)) {
+                    $updatedOrders[] = $item->order_id;
+
+                    // Check if all items in this order have the same status
+                    // $allItemsSameStatus = $item->order->items()
+                    //     ->where('status', '!=', $request->status)
+                    //     ->doesntExist();
+
+                    // if ($allItemsSameStatus) {
+                    //     $item->order->status = "completed";
+                    //     $item->order->save();
+                    // }
+
+                }
+
+                $updatedCount++;
             }
 
-            $items = (int) $orderItem->quantity - (int) $request->lost_quantity - (int) $request->damaged_quantity;
-            $remainingItems = $items;
+            DB::commit();
 
-            $status = ($request->lost_quantity == 0 && $request->damaged_quantity == 0) 
-                ? 'delivered' 
-                : 'delivery_pending';
+            if ($updatedCount === 0) {
+                return response()->json("No items were eligible for status change. Please check if the status transitions are allowed.", 500);
+            }
 
-            logger()->info($status);
-            // return response()->json("don", 200);
+            Kafka::publishOrderPlaced('Refreshed');
 
-            $orderItem->lost_quantity = $request->lost_quantity;
-            $orderItem->damaged_quantity = $request->damaged_quantity;
-            $orderItem->status = $status;
-            $orderItem->save();
+            event(new OrderEvent('Order items status updated'));
+            return response()->json("Successfully updated {$updatedCount} items to {$request->status}");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk order item status change failed', [
+                'error' => $e->getMessage(),
+                'item_ids' => $request->item_ids
+            ]);
+            return response()->json('Failed to update item statuses: ' . $e->getMessage(), 500);
+        }
+    }
 
-            // Get all inventory records for this product, ordered by expiry date
-            $inventories = Inventory::where('product_id', $orderItem->product_id)
-                ->where('warehouse_id', $orderItem->warehouse_id)
-                ->orderBy('expiry_date', 'asc')
+    public function changeItemStatus(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $request->validate([
+                'item_id' => 'required|exists:order_items,id',
+                'status' => ['required', Rule::in(['approved', 'in process', 'dispatched', 'delivery_pending', 'delivered'])],
+                'warehouse_id' => 'nullable|exists:warehouses,id'
+            ]);
+
+            $item = OrderItem::with('order', 'product')->findOrFail($request->item_id);
+
+            // Define allowed transitions
+            $allowedTransitions = [
+                'pending' => ['approved'],
+                'approved' => ['in process'],
+                'in process' => ['dispatched'],
+                'dispatched' => ['delivery_pending', 'delivered'],
+                'delivery_pending' => ['delivered']
+            ];
+
+            // Check if the transition is allowed
+            if (
+                !isset($allowedTransitions[$item->status]) ||
+                !in_array($request->status, $allowedTransitions[$item->status])
+            ) {
+                return response()->json("Status transition not allowed", 500);
+            }
+
+            $remainingQuantity = (float) $item->quantity - (float) $item->quantity_on_order;
+            logger()->info($item->product_id);
+
+
+            // Get all available inventory for this product from the warehouse, ordered by expiry date (FIFO)
+            $warehouseInventories = Inventory::where('product_id', $item->product_id)
+                ->where('quantity', '>', 0)
+                // ->where('warehouse_id', $item->warehouse_id)
+                ->orderBy('expiry_date', 'asc')  // Order by expiry date for FIFO (oldest first)
                 ->get();
 
-            if ($inventories->count() > 0) {
-                foreach ($inventories as $inventory) {
-                    if ($remainingItems <= 0) break;
+            logger()->info($warehouseInventories->sum('quantity'));
+            if ($warehouseInventories->sum('quantity') < $remainingQuantity) {
+                return response()->json("Not enough items in the inventory", 500);
+            }
 
-                    // Get or create facility inventory for this batch
-                    $facilityInventory = FacilityInventory::firstOrCreate(
-                        [
-                            'facility_id' => $orderItem->order->facility_id,
-                            'product_id' => $orderItem->product_id,
-                            'batch_number' => $inventory->batch_number
-                        ],
-                        [
-                            'quantity' => 0,
-                            'expiry_date' => $inventory->expiry_date
-                        ]
-                    );
 
-                    // Calculate how much to add to this batch
-                    $quantityToAdd = min($remainingItems, $inventory->quantity);
-                    
-                    if ($quantityToAdd > 0) {
-                        // Add to facility inventory
-                        $facilityInventory->increment('quantity', $quantityToAdd);
-                        // Remove from main inventory
-                        $inventory->decrement('quantity', $quantityToAdd);
-                        $remainingItems -= $quantityToAdd;
-                    }
-                }
+            // Update item status
+            $item->status = $request->status;
+            if ($request->status == 'in process') {
+                $item->in_process = 1;
+                $item->save();
+            }
+            if ($request->status == 'approved') {
+                $item->approved_at = Carbon::now()->toDateString();
+                $item->approved_by = auth()->id();
+                $item->save();
+            }
+            if ($request->status == 'dispatched') {
+                $item->dispatched_at = Carbon::now()->toDateString();
+                $item->dispatched_by = auth()->id();
+                $item->warehouse_id = $request->warehouse_id;
+                $item->save();
+            }
+            if ($request->status == 'delivery_pending') {
+                $item->delivery_pending_at = Carbon::now()->toDateString();
+                $item->save();
+            }
+            if ($request->status == 'delivered') {
+                $item->delivered = 1;
 
-                // If there are still remaining items, add them to the last batch
-                if ($remainingItems > 0 && $inventories->count() > 0) {
-                    $lastInventory = $inventories->last();
-                    $facilityInventory = FacilityInventory::where('facility_id', $orderItem->order->facility_id)
-                        ->where('product_id', $orderItem->product_id)
-                        ->where('batch_number', $lastInventory->batch_number)
+                $usedInventories = [];
+
+                foreach ($warehouseInventories as $warehouseInventory) {
+                    if ($remainingQuantity <= 0) break;
+
+                    // Calculate how much we can take from this batch
+                    $quantityToTake = min($remainingQuantity, $warehouseInventory->quantity);
+
+                    // Update or create facility inventory for this batch
+                    $facilityInventory = $item->order->facility->inventories()
+                        ->where('product_id', $item->product_id)
+                        ->where('batch_number', $warehouseInventory->batch_number)
                         ->first();
 
                     if ($facilityInventory) {
-                        $facilityInventory->increment('quantity', $remainingItems);
-                        $lastInventory->decrement('quantity', $remainingItems);
+                        $facilityInventory->increment('quantity', $quantityToTake);
+                        // Handle facility inventory with quantity 0
+                        if ($facilityInventory->fresh()->quantity <= 0) {
+                            // Get all zero quantity records for this product
+                            $zeroQuantityInventories = $item->order->facility
+                                ->inventories()
+                                ->where('product_id', $item->product_id)
+                                ->where('quantity', '=', 0)
+                                ->orderBy('created_at', 'asc')  // Get oldest first
+                                ->get();
+
+                            if ($zeroQuantityInventories->count() > 1) {
+                                // Keep the first (oldest) record and reset its metadata
+                                $firstRecord = $zeroQuantityInventories->first();
+                                $firstRecord->update([
+                                    'batch_number' => null,
+                                    'expiry_date' => null,
+                                    'location' => null,
+                                    'warehouse_id' => null
+                                ]);
+
+                                // Delete all other zero quantity records
+                                $item->order->facility->inventories()
+                                    ->where('product_id', $item->product_id)
+                                    ->where('quantity', '=', 0)
+                                    ->where('id', '!=', $firstRecord->id)
+                                    ->delete();
+                            } else {
+                                // If this is the only zero quantity record, just reset its metadata
+                                $facilityInventory->update([
+                                    'batch_number' => null,
+                                    'expiry_date' => null,
+                                    'location' => null,
+                                    'warehouse_id' => null
+                                ]);
+                            }
+                        }
+                    } else {
+
+                        $item->order->facility->inventories()->create([
+                            'product_id' => $item->product_id,
+                            'batch_number' => $warehouseInventory->batch_number,
+                            'expiry_date' => $warehouseInventory->expiry_date,
+                            'quantity' => $quantityToTake,
+                            'updated_at' => now()
+                        ]);
                     }
+                    // here we gonna update the inventories table
+                    $warehouseInventory->decrement('quantity', $quantityToTake);
+
+
+                    // Track used inventory for logging
+                    $usedInventories[] = [
+                        'batch_number' => $warehouseInventory->batch_number,
+                        'expiry_date' => $warehouseInventory->expiry_date->format('Y-m-d'),
+                        'quantity' => $quantityToTake
+                    ];
+
+                    $remainingQuantity -= $quantityToTake;
                 }
-            } else {
-                throw new \Exception("No inventory records found for this product");
-            }
 
-            // Remove inventory record if quantity is 0
-            $zeroQuantityInventories = Inventory::where('product_id', $orderItem->product_id)
-            ->where('warehouse_id', $orderItem->warehouse_id)
-            ->where('quantity', '=', 0)
-            ->get();
-
-            if ($zeroQuantityInventories->count() > 1) {
-                // Keep the oldest record and reset its metadata
-                $oldestRecord = $zeroQuantityInventories->sortBy('created_at')->first();
-                $oldestRecord->update([
-                    'batch_number' => null,
-                    'expiry_date' => null,
-                    'location' => null,
-                    'warehouse_id' => null
-                ]);
-
-                // Delete all other zero quantity records except the oldest
-                Inventory::where('product_id', $orderItem->product_id)
-                    ->where('warehouse_id', $orderItem->warehouse_id)
+                // Remove inventory record if quantity is 0
+                $zeroQuantityInventories = Inventory::where('product_id', $item->product_id)
+                    ->where('warehouse_id', $item->warehouse_id)
                     ->where('quantity', '=', 0)
-                    ->where('id', '!=', $oldestRecord->id)
-                    ->delete();
-            } elseif ($zeroQuantityInventories->count() == 1) {
-                // If only one record exists, just reset its metadata
-                $zeroQuantityInventories->first()->update([
-                    'batch_number' => null,
-                    'expiry_date' => null,
-                    'location' => null,
-                    'warehouse_id' => null
-                ]);
+                    ->get();
+
+                if ($zeroQuantityInventories->count() > 1) {
+                    // Keep the oldest record and reset its metadata
+                    $oldestRecord = $zeroQuantityInventories->sortBy('created_at')->first();
+                    $oldestRecord->update([
+                        'batch_number' => null,
+                        'expiry_date' => null,
+                        'location' => null,
+                        'warehouse_id' => null
+                    ]);
+
+                    // Delete all other zero quantity records except the oldest
+                    Inventory::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $item->warehouse_id)
+                        ->where('quantity', '=', 0)
+                        ->where('id', '!=', $oldestRecord->id)
+                        ->delete();
+                } elseif ($zeroQuantityInventories->count() == 1) {
+                    // If only one record exists, just reset its metadata
+                    $zeroQuantityInventories->first()->update([
+                        'batch_number' => null,
+                        'expiry_date' => null,
+                        'location' => null,
+                        'warehouse_id' => null
+                    ]);
+                }
+
+                // Check if all items in this order have the same status
+                $pendingItems = $item->order->items()
+                    ->where('status', '!=', 'delivered')
+                    ->count();
+
+                if ($pendingItems === 0) {
+                    $item->order->status = 'completed';
+                    $item->order->save();
+                }
+
+                $item->delivered = 1;
+                $item->status = 'delivered';
+                $item->save();
             }
 
-            Kafka::publishOrderUpdated("Refreshed");
-            event(new OrderEvent("refreshed"));
-            return response()->json("done", 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
+            // Broadcast event
+            Kafka::publishOrderPlaced('Refreshed');
+            event(new OrderEvent('Refreshed'));
+
+            DB::commit();
+            return response()->json('Order item status updated successfully.', 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Order item status change failed', [
+                'error' => $e->getMessage(),
+                'item_id' => $request->item_id ?? null
+            ]);
+            return response()->json('Failed to update order item status: ' . $e->getMessage(), 500);
         }
     }
 
-    public function updateItem(Request $request){
+    public function show(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $order = Order::where('orders.id', $id)
+                ->with(['items.product', 'items.inventory_allocations.warehouse', 'items.inventory_allocations.location', 'facility', 'user'])
+                ->first();
+
+            // Get items with SOH using subquery
+            $items = DB::table('order_items')
+                ->select([
+                    'order_items.*',
+                    'products.name as product_name',
+                    'inventory_sums.total_quantity as soh'
+                ])
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->leftJoin(DB::raw('(
+                    SELECT product_id, SUM(quantity) as total_quantity
+                    FROM inventories
+                    GROUP BY product_id
+                ) as inventory_sums'), 'products.id', '=', 'inventory_sums.product_id')
+                ->where('order_items.order_id', $id)
+                ->get();
+
+            $order->items = $items;
+            $products = Product::select('id','name')->get();
+            
+            DB::commit();
+            return inertia("Order/Show", ['order' => $order, 'products' => $products]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return inertia("Order/Show", ['error' =>  $th->getMessage()]);
+        }
+    }
+
+    public function pending(Request $request)
+    {
+        $query = Order::with(['facility', 'user'])
+            ->where('status', 'pending');
+
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('facility', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $orders = $query->latest()->paginate(10);
+
+        return Inertia::render('Order/Pending', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function approved(Request $request)
+    {
+        $orders = Order::with(['facility', 'user'])
+            ->where('status', 'approved')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Order/Approved', [
+            'orders' => $orders,
+        ]);
+    }
+
+    public function inProcess(Request $request)
+    {
+        $orders = Order::with(['facility', 'user'])
+            ->where('status', 'in_process')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Order/InProcess', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function dispatched(Request $request)
+    {
+        $orders = Order::with(['facility', 'user'])
+            ->where('status', 'dispatched')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Order/Dispatched', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function delivered(Request $request)
+    {
+        $orders = Order::with(['facility', 'user'])
+            ->where('status', 'delivered')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Order/Delivered', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function received(Request $request)
+    {
+        $orders = Order::with(['facility', 'user'])
+            ->where('status', 'received')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Order/Received', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function all(Request $request)
+    {
+        $query = Order::with(['facility', 'user']);
+
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('facility', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $orders = $query->latest()->paginate(10);
+
+        return Inertia::render('Order/All', [
+            'orders' => OrderResource::collection($orders),
+            'filters' => $request->only('search', 'page')
+        ]);
+    }
+
+    public function create(Request $request){
+        $items = Product::get();
+        return Inertia::render('Order/Create', [
+            'items' => $items
+        ]);
+    }
+
+    private const QUARTER_START_DATES = [
+        1 => '01-01',
+        2 => '04-01',
+        3 => '07-01',
+        4 => '10-01'
+    ];
+
+    private function generateOrderNumber() {
+        $now = Carbon::now();
+        $quarter = $now->quarter;
+        $year = $now->year;
+
+        // Get the last order number for this quarter
+        $lastOrder = Order::where('order_number', 'like', "OR-{$quarter}-%")
+            ->whereYear('created_at', $year)
+            ->orderBy('order_number', 'desc')
+            ->first();
+
+        if ($lastOrder) {
+            // Extract the sequence number and increment
+            $lastSequence = (int) substr($lastOrder->order_number, -4);
+            $newSequence = $lastSequence + 1;
+        } else {
+            $newSequence = 1;
+        }
+
+        // Format: OR-1-0001
+        return sprintf("OR-%d-%04d", $quarter, $newSequence);
+    }
+
+    public function checkInventory(Request $request)
+    {
         try {
             $request->validate([
-                'id' => 'required',
-                'quantity' => 'required'
+                'product_id' => 'required|exists:products,id'
             ]);
-            OrderItem::where('id', $request->id)
-                ->update([
-                    'quantity' => $request->quantity,
-                    'quantity_on_order' => $request->quantity_on_order,
-                ]);
+            logger()->info($request->product_id);
+            $result = DB::table('products')
+                ->join('inventories', 'products.id', '=', 'inventories.product_id')
+                ->where('products.id', $request->product_id)
+                ->select('products.name', DB::raw('SUM(inventories.quantity) as quantity'))
+                ->groupBy('products.id', 'products.name')
+                ->first();
                 
-            event(new OrderEvent("refreshed"));
+                $now = Carbon::now();
+                $quarter = $now->quarter;
+                $quarterStartDate = Carbon::createFromFormat('Y-m-d', $now->format('Y') . '-' . self::QUARTER_START_DATES[$quarter]);
+                $result->no_of_days = $quarterStartDate->diffInDays($now);
 
-            return response()->json("Updated Successfully", 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
+            return response()->json([
+                'name' => $result ? $result->name : null,
+                'quantity' => $result ? $result->quantity : 0,
+                'no_of_days' => $result->no_of_days ?? 0
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

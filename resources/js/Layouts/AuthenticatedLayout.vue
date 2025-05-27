@@ -84,16 +84,16 @@
                 </Link>
 
                 <Link
-                    :href="route('pos.index')"
+                    :href="route('dispence.index')"
                     class="menu-item"
-                    :class="{ active: route().current('pos.*') }"
-                    @click="setCurrentPage('pos')"
+                    :class="{ active: route().current('dispence.*') }"
+                    @click="setCurrentPage('dispence')"
                 >
                     <div class="menu-content">
                         <div class="menu-icon">
                             <img
                                 :src="
-                                    route().current('pos.*')
+                                    route().current('dispence.*')
                                         ? '/assets/images/pos-b.png'
                                         : '/assets/images/pos-w.png'
                                 "
@@ -101,7 +101,7 @@
                                 style="height: 24px"
                             />
                         </div>
-                        <span class="menu-text">POS</span>
+                        <span class="menu-text">Dispences</span>
                     </div>
                 </Link>
 
@@ -369,12 +369,7 @@ export default {
 </script>
 
 <style scoped>
-/* Base Styles */
-.app-container {
-    display: flex;
-    min-height: 100vh;
-    background-color: #f9fafb;
-}
+
 
 /* Sidebar Styles */
 .sidebar {

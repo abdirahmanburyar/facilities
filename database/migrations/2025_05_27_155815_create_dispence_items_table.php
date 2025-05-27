@@ -11,17 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pos', function (Blueprint $table) {
+        Schema::create('dispence_items', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('dispence_id')->constrained('dispences')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('products')->onDelete('restrict');
-            $table->decimal('dose', 8, 2);
-            $table->enum('frequency', [1, 2, 3, 4]);
+            $table->integer('dose');
+            $table->integer('frequency');
             $table->date('start_date');
-            $table->timestamp('pos_date');
             $table->integer('duration');
-            $table->integer('total_quantity');
-            $table->string('patient_name');
-            $table->string('patient_phone');
+            $table->integer('quantity');
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->timestamps();
@@ -33,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pos');
+        Schema::dropIfExists('dispence_items');
     }
 };

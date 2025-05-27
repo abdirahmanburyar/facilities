@@ -7,8 +7,8 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\PosController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\DispenceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -99,26 +99,46 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::delete('/{facility}', 'destroy')->name('facilities.destroy');
         });
 
-        Route::controller(OrderController::class)
-        ->prefix('/orders')
-        ->group(function () {
-            Route::get('/', 'index')->name('orders.index');
-            Route::post('/store', 'store')->name('orders.store');
-            Route::post('/search', 'search')->name('orders.search');
-            Route::post('/create', 'createOrder')->name('orders.create');
-            Route::get('/remove', 'remove')->name('orders.remove');
-            Route::post('/submit', 'submitOrder')->name('orders.submit');
-            Route::post('/received-items', 'receivedItems')->name('orders.receivedItems');           
-            Route::post('/update-items', 'updateItem')->name('orders.update-item');           
+        // Route::controller(OrderController::class)
+        // ->prefix('/orders')
+        // ->group(function () {
+        //     Route::get('/', 'index')->name('orders.index');
+        //     Route::post('/store', 'store')->name('orders.store');
+        //     Route::post('/search', 'search')->name('orders.search');
+        //     Route::post('/create', 'createOrder')->name('orders.create');
+        //     Route::get('/remove', 'remove')->name('orders.remove');
+        //     Route::post('/submit', 'submitOrder')->name('orders.submit');
+        //     Route::post('/received-items', 'receivedItems')->name('orders.receivedItems');           
+        //     Route::post('/update-items', 'updateItem')->name('orders.update-item');           
 
+        // });
+
+        // Order Management Routes
+        Route::controller(OrderController::class)->prefix('orders')->group(function () {
+            Route::get('/', 'index')->name('orders.index');
+            Route::get('/{id}/show', 'show')->name('orders.show');
+            Route::post('/change-status', 'changeItemStatus')->name('orders.change-status');
+            Route::post('/reject', 'rejectOrder');
+
+            Route::get('/create', 'create')->name('orders.create');
+            Route::post('/store', 'store')->name('orders.store');
+            Route::get('/{order}/edit', 'edit')->name('orders.edit');
+            Route::put('/{order}', 'update')->name('orders.update');
+            Route::delete('/{order}', 'destroy')->name('orders.destroy');
+
+            // facility orders
+            Route::get('/create', 'create')->name('orders.create');
+            
+            // Inventory check
+            Route::post('/check/inventory', 'checkInventory')->name('orders.check-inventory');
         });
 
-        Route::controller(PosController::class)
-        ->prefix('/pos')
+        Route::controller(DispenceController::class)
+        ->prefix('/dispence')
         ->group(function () {
-            Route::get('/', 'index')->name('pos.index');
-            Route::post('/store', 'store')->name('pos.store');
-            Route::get('/facility-inventories', 'getFacilityInventories')->name('pos.inventories');
+            Route::get('/', 'index')->name('dispence.index');
+            Route::get('/create', 'create')->name('dispence.create');
+            Route::post('/store', 'store')->name('dispence.store');
         });
 });
 

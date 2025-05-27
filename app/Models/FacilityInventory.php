@@ -15,14 +15,7 @@ class FacilityInventory extends Model
         'quantity',
         'expiry_date',
         'batch_number',
-        'location',
         'is_active',
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
-        'unit_cost' => 'decimal:2',
-        'unit_price' => 'decimal:2',
     ];
 
     public function product()
