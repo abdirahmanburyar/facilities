@@ -5,10 +5,11 @@
         <div class="min-h-screen bg-gray-50">
             <div class="max-w-full mx-auto">
                 <!-- Main Content -->
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-medium leading-6 text-gray-900">
+               <div class="flex justify-between items-center">
+                <div class="flex flex-col items-start">
+                    <label class="text-lg font-medium leading-6 text-gray-900">
                         Select Order
-                    </h3>
+                    </label>
 
                     <select v-model="id"
                         class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -17,6 +18,8 @@
                             Order #{{ order.order_number }} - {{ order.order_type }}
                         </option>
                     </select>
+                </div>
+                <div>                    
                     <button @click="showOrderModal = true"
                         class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                         Create New Order
@@ -29,6 +32,7 @@
                     </button>
                 </div>
 
+               </div>
                 <div class="flex justify-between items-center bg-white">
                     <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
                         <h2 class="text-lg font-semibold mb-2">Order #{{ props.currentOrder?.id }}</h2>

@@ -28,15 +28,15 @@ class OrderController extends Controller
             ->first();
 
         $orders = Order::where('facility_id', $facility->id)
-            ->where('status', 'pending')
+            // ->where('status', 'pending')
             ->get();
 
             $stats = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->select('order_items.status as status', DB::raw('count(*) as count'))
+            ->select('orders.status as status', DB::raw('count(*) as count'))
             ->where('orders.facility_id', $facility->id)
             ->where('orders.id', $request->id)
-            ->groupBy('order_items.status')
+            // ->groupBy('orders.status')
             ->get()
             ->mapWithKeys(function ($item) {
                 return [$item->status => $item->count];
@@ -53,7 +53,7 @@ class OrderController extends Controller
             'delivered' => 0
         ];
 
-        $stats = array_merge($defaultStats, $stats);
+        // $stats = array_merge($defaultStats, $stats);
             
         return inertia('Order/Index', [
             'stats' => $stats,
