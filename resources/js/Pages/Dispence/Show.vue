@@ -1,6 +1,5 @@
 <template>
     <AuthenticatedLayout>
-        <div class="max-w-7xl mx-auto py-6">
             <!-- Header with back button -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex flex-col items-start">
@@ -42,6 +41,7 @@
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h2 class="text-xl font-semibold">Dispenced Items</h2>
                 </div>
+                {{props.dispence.items}}
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
@@ -65,7 +65,6 @@
                     </tbody>
                 </table>
             </div>
-        </div>
     </AuthenticatedLayout>
 </template>
 
