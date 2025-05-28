@@ -1,22 +1,41 @@
 <template>
     <AuthenticatedLayout>
-            <!-- Back button -->
-            <div class="mb-6">
-                <Link :href="route('dispence.index')" class="flex items-center text-gray-600 hover:text-gray-900 w-fit">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        <div id="printThis">
+             <!-- Back button -->
+             <div class="mb-6 flex justify-between items-center">
+                <Link :href="route('dispence.index')" class="flex items-center text-gray-600 hover:text-gray-900">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                     Back to Dispences
                 </Link>
+                <button @click="printPrescription" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print Prescription
+                </button>
             </div>
 
             <!-- Prescription Card -->
-            <div class="bg-white shadow-lg rounded-lg overflow-hidden border-t-8 border-blue-600">
+            <div id="prescription" class="bg-white shadow-lg rounded-lg overflow-hidden border-t-8 border-blue-600 mb-[100px]">
+                <!-- Facility Header -->
+                <div class="bg-gray-50 p-4 border-b">
+                    <div class="text-center">
+                        <h1 class="text-xl font-bold text-gray-900 mb-1">{{ props.dispence.facility.name }}</h1>
+                        <p class="text-gray-600">{{ props.dispence.facility.facility_type }}</p>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <p>{{ props.dispence.facility.address }} - {{ props.dispence.facility.district }}</p>
+                            <p>Tel: {{ props.dispence.facility.phone }} | Email: {{ props.dispence.facility.email }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Header -->
                 <div class="p-8 border-b">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-800 mb-2">PRESCRIPTION</h1>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">PRESCRIPTION</h2>
                             <p class="text-gray-600">{{ props.dispence.dispence_number }}</p>
                         </div>
                         <div class="text-right">
@@ -105,6 +124,7 @@
                     </div>
                 </div>
             </div>
+        </div>
     </AuthenticatedLayout>
 </template>
 
@@ -112,6 +132,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link } from '@inertiajs/vue3';
 import moment from 'moment';
+
+const printPrescription = () => {
+    window.print();
+};
 
 const props = defineProps({
     dispence: Object,

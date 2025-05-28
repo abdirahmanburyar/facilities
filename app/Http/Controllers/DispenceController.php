@@ -149,7 +149,7 @@ class DispenceController extends Controller
     public function show($id)
     {
         try {
-            $dispence = Dispence::with('items.product:id,name','dispenced_by:id,name')->findOrFail($id);
+            $dispence = Dispence::with('items.product:id,name','dispenced_by:id,name','facility')->findOrFail($id);
             return inertia('Dispence/Show', [
                 'dispence' => $dispence,
             ]);
