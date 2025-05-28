@@ -18,6 +18,7 @@ class OrderItem extends Model
         'qer',
         'quantity_to_release',
         'no_of_days',
+        'amc',
     ];
 
     public function inventory_allocations(){

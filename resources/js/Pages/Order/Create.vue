@@ -69,6 +69,7 @@
                                         :searchable="true" :close-on-select="true" :show-labels="false"
                                         :allow-empty="true" placeholder="Select item" track-by="id" label="name"
                                         @select="checkInventory(index, $event)"
+                                        required
                                         :class="{'opacity-50': isLoading}">
                                         </Multiselect>
                                         <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
@@ -81,7 +82,8 @@
                                         type="number" 
                                         v-model="item.quantity"
                                         readonly
-                                        min="0"
+                                        min="1"
+                                        required
                                         class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                 </td>
@@ -90,6 +92,7 @@
                                     <input 
                                         type="number" 
                                         v-model="item.quantity_on_order"
+                                        min="0"
                                         class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                 </td>
@@ -199,7 +202,8 @@ async function checkInventory(index, selected){
         .then(response => {
             console.log(response.data);
             form.value.items[index].soh = response.data.soh;
-            form.value.items[index].quantity = response.data.required_quantity;
+            form.value.items[index].quantity = response.data.quantity;
+            form.value.items[index].amc = response.data.amc;
             form.value.items[index].no_of_days = parseInt(response.data.no_of_days);
             isLoading.value = false;
         })

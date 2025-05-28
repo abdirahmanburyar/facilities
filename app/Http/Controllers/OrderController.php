@@ -139,16 +139,22 @@ class OrderController extends Controller
                         'quantity_on_order' => $item['quantity_on_order'],
                         'quantity_to_release' => $item['quantity'],
                         'no_of_days' => $item['no_of_days'],
+                        'amc' => $item['amc'],
+                        'no_of_days' => $item['no_of_days'],
                         'status' => 'pending',
                     ]);
 
+                    // Calculate the quantity to deduct from inventory (quantity - quantity_on_order)
+                    $quantityToDeduct = (float) $item['quantity'] - (float) ($item['quantity_on_order'] ?? 0);
+                    
                     // Get available inventory for this product
                     $availableInventory = Inventory::where('product_id', $item['product_id'])
                         ->where('quantity', '>', 0)
+                        ->where('expiry_date', '>=', Carbon::now()->addMonths(3)->toDateString()) // Only use inventory that doesn't expire in next 3 months
                         ->orderBy('created_at', 'asc') // FIFO principle
                         ->get();
 
-                    $remainingQuantity = $item['quantity'];
+                    $remainingQuantity = $quantityToDeduct; // Only deduct the difference
                     $allocations = [];
 
                     // Allocate inventory from different batches
@@ -1109,15 +1115,11 @@ class OrderController extends Controller
             
             // Get current Stock on Hand (SOH) for the facility - aggregate all quantities
             // Use groupBy to ensure proper aggregation if there are multiple entries for the same product
-            $sohQuery = DB::table('facility_inventories')
-                ->select(DB::raw('SUM(quantity) as total_quantity'))
+            $soh = DB::table('facility_inventories')
                 ->where('product_id', $productId)
                 ->where('facility_id', $facilityId)
-                ->groupBy('product_id');
-                
-            $sohResult = $sohQuery->first();
-            $soh = $sohResult ? $sohResult->total_quantity : 0;
-                
+                ->sum('quantity');
+            
             // Calculate Average Monthly Consumption (AMC) from the last 4 months' AMC values
             $now = Carbon::now();
             $currentMonth = $now->format('Y-m');
@@ -1127,57 +1129,22 @@ class OrderController extends Controller
             for ($i = 0; $i < 4; $i++) {
                 $months[] = Carbon::now()->subMonths($i)->format('Y-m');
             }
-            
-            // Check if any records exist for this product and facility
-            $allRecords = DB::table('monthly_consumptions')
-                ->where('product_id', $productId)
-                ->where('facility_id', $facilityId)
-                ->select('month_year', 'amc')
-                ->get();
-                
-            
+
             // Get AMC values for the last 4 months for this product and facility
             $amcValues = DB::table('monthly_consumptions')
                 ->where('product_id', $productId)
                 ->where('facility_id', $facilityId)
                 ->whereIn('month_year', $months)
                 ->select('month_year', 'amc')
-                ->get();
-            
+                ->sum('amc');
             
             // Calculate average of the AMC values
-            $totalAmc = $amcValues->sum('amc');
-            $countAmc = $amcValues->count();
+            $totalAmc = $amcValues;
+            $countAmc = 4;
             
             // Average of the last 4 months' AMC values, or 0 if none found
-            $amc = $countAmc > 0 ? $totalAmc / $countAmc : 0;
-            
-            
-            // If no data found, let's try a more flexible approach
-            if ($countAmc == 0) {
-                
-                // Get the most recent AMC value for this product and facility
-                $latestAmc = DB::table('monthly_consumptions')
-                    ->where('product_id', $productId)
-                    ->where('facility_id', $facilityId)
-                    ->orderBy('month_year', 'desc')
-                    ->select('month_year', 'amc')
-                    ->first();
-                    
-                if ($latestAmc) {
-                    $amc = $latestAmc->amc;
-                } else {
-                    
-                    // Calculate a default AMC based on current stock
-                    // Assume current stock should last for 30 days as a default
-                    $defaultAmcDays = 30;
-                    $defaultAmc = $soh > 0 ? ceil($soh / $defaultAmcDays) : 1;
-                    
-                    // Use a minimum default AMC of 1 to ensure we don't get zero
-                    $amc = max(1, $defaultAmc);
-                }
-            }
-            
+            $amc = $totalAmc / $countAmc;
+                        
             // Get number of days since the start of the quarter
             $quarter = $now->quarter;
             // Format is 'DD-MM' in the constant, so we need to parse it correctly
@@ -1185,20 +1152,21 @@ class OrderController extends Controller
             $day = $quarterStartDateParts[0];
             $month = $quarterStartDateParts[1];
             
-            // Create the quarter start date
-            $quarterStartDate = Carbon::createFromDate($now->year, $month, $day);
+            // Create the quarter start date without time component
+            $quarterStartDate = Carbon::createFromDate($now->year, $month, $day)->startOfDay();
+            $nowDate = Carbon::now()->startOfDay();
             
             // Add temporary debug output to the response
             $debug = [
-                'now' => $now->format('Y-m-d'),
+                'now' => $nowDate->format('Y-m-d'),
                 'quarter' => $quarter,
                 'quarter_start_date' => $quarterStartDate->format('Y-m-d'),
                 'day_from_constant' => $day,
                 'month_from_constant' => $month
             ];
             
-            // Calculate days since quarter start (ensure positive value)
-            $daysSinceQuarterStart = $quarterStartDate->diffInDays($now);
+            // Calculate days since quarter start (ensure positive value) - without time component
+            $daysSinceQuarterStart = $quarterStartDate->diffInDays($nowDate);
             $debug['days_since_quarter_start'] = $daysSinceQuarterStart;
             
             // Calculate days remaining in the 120-day period
@@ -1218,27 +1186,22 @@ class OrderController extends Controller
                 ->where('id', $productId)
                 ->select('name')
                 ->first();
-                
-            // Get total inventory across all facilities - properly aggregated with grouping
-            $totalInventoryQuery = DB::table('facility_inventories')
-                ->select(DB::raw('SUM(quantity) as total_quantity'))
+
+            $totalInventory = DB::table('inventories')
                 ->where('product_id', $productId)
-                ->groupBy('product_id');
+                ->where('expiry_date', '>=', Carbon::now()->addMonths(3)->toDateString())
+                ->sum('quantity');
                 
-            $totalInventoryResult = $totalInventoryQuery->first();
-            $totalInventory = $totalInventoryResult ? $totalInventoryResult->total_quantity : 0;
-                
-            if ($requiredQuantity > $totalInventory) {
+            if ((int) $requiredQuantity > (int) $totalInventory) {
                 return response()->json('Insufficient inventory to fulfill the required quantity.', 500);
             }
             
             return response()->json([
                 'name' => $product ? $product->name : null,
-                'quantity' => $soh,
-                'soh' => $totalInventory,
+                'quantity' => $requiredQuantity,
+                'soh' => $soh,
                 'amc' => $amc,
                 'days_since_quarter_start' => $daysSinceQuarterStart,
-                'required_quantity' => $requiredQuantity,
                 'no_of_days' => $daysSinceQuarterStart,
                 'insufficient_inventory' => false,
                 'debug' => $debug
