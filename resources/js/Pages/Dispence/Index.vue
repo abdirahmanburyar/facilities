@@ -36,8 +36,8 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-black">Dispenced By</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="dispence in props.dispences.data" :key="dispence.id">
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="dispence in props.dispences.data" :key="dispence.id" :class="{ 'bg-green-100': isToday(dispence.dispence_date) }">
                 <td class="px-6 py-4 whitespace-nowrap border border-black">
                   <Link :href="route('dispence.show', dispence.id)" class="text-indigo-600 hover:text-indigo-900">
                     {{ dispence.dispence_number }}
@@ -95,8 +95,15 @@ const props = defineProps({
     filters: Object,
 })
 
-const per_page = ref(props.filters.per_page);
+const per_page = ref(props.filters.per_page || 10);
 const search = ref(props.filters.search);
+
+const today = moment().format('YYYY-MM-DD');
+
+const isToday = (dateString) => {
+    if (!dateString) return false;
+    return moment(dateString).format('YYYY-MM-DD') === today;
+};
 
 watch([ () => search.value, () => per_page.value, () => props.filters.page ], () => {
     reloadDispences();

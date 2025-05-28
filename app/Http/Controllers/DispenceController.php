@@ -13,6 +13,7 @@ class DispenceController extends Controller
 {
     public function index(Request $request)
     {
+        $per_page = $request->input('per_page') ?? 10;
         $query = Dispence::query()
             ->where('facility_id', auth()->user()->facility_id)
             ->when($request->search, function ($query) use ($request) {
@@ -23,7 +24,7 @@ class DispenceController extends Controller
             ->with('dispenced_by:id,name')
             ->latest();
 
-        $dispences = $query->paginate($request->input('per_page', 10), ['*'], 'page', $request->input('page', 1))
+        $dispences = $query->paginate($per_page, ['*'], 'page', $request->input('page', 1))
             ->withQueryString();
         $dispences->setPath(url()->current());
 
