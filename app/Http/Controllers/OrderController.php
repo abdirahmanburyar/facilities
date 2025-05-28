@@ -112,6 +112,17 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         try {
+            $request->validate([
+                'order_type' => 'required',
+                'order_date' => 'required|date',
+                'expected_date' => 'required|date|after_or_equal:order_date',
+                'items' => 'required|array',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.quantity' => 'required|numeric|min:1',
+            ],[
+                'items.*.product_id.required' => 'Product is required',
+                'items.*.quantity.min' => 'Required quantity should be at least 1',
+            ]);
             return DB::transaction(function () use ($request) {
                 // Generate order number
                 $orderNumber = $this->generateOrderNumber();
