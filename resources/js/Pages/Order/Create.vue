@@ -179,7 +179,7 @@ const addItem = () => {
     form.value.items.push({
         product_id: '',
         product: null,
-        quantity: 1,
+        quantity: 0,
         soh: 0,
         quantity_on_order: 0,
         no_of_days: 0
