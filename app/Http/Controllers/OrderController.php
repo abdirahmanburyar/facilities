@@ -17,7 +17,6 @@ use App\Http\Resources\OrderResource;
 // Laravel Core
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -137,6 +136,7 @@ class OrderController extends Controller
                         'order_id' => $order->id,
                         'product_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
+                        'quantity_on_order' => $item['quantity_on_order'],
                         'quantity_to_release' => $item['quantity'],
                         'no_of_days' => $item['no_of_days'],
                         'status' => 'pending',
@@ -179,11 +179,11 @@ class OrderController extends Controller
 
                     // Check if we couldn't allocate all requested quantity
                     if ($remainingQuantity > 0) {
-                        throw new \Exception("Insufficient inventory for product ID {$item['product_id']}");
+                        return response()->json("Insufficient inventory for product ID {$item['product_id']}", 500);
                     }
                 }
 
-                return response()->json($order, 200);
+                return response()->json("Order created successfully", 200);
             });
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -340,11 +340,7 @@ class OrderController extends Controller
             return response()->json('Order status updated successfully.', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Order status change failed', [
-                'error' => $e->getMessage(),
-                'order_id' => $request->order_id ?? null
-            ]);
-            return response()->json('Failed to update order status: ' . $e->getMessage(), 500);
+            return response()->json($e->getMessage(), 500);
         }
     }
 
@@ -459,13 +455,9 @@ class OrderController extends Controller
             Kafka::publishOrderPlaced('Refreshed');
             event(new OrderEvent('Order status updated'));
             return response()->json("Successfully updated {$updatedCount} orders to {$request->status}");
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Bulk order status change failed', [
-                'error' => $e->getMessage(),
-                'order_ids' => $request->order_ids
-            ]);
-            return response()->json('Failed to update order statuses: ' . $e->getMessage(), 500);
+            return response()->json($e->getMessage(), 500);
         }
     }
 
@@ -702,13 +694,9 @@ class OrderController extends Controller
 
             event(new OrderEvent('Order items status updated'));
             return response()->json("Successfully updated {$updatedCount} items to {$request->status}");
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Bulk order item status change failed', [
-                'error' => $e->getMessage(),
-                'item_ids' => $request->item_ids
-            ]);
-            return response()->json('Failed to update item statuses: ' . $e->getMessage(), 500);
+            return response()->json($e->getMessage(), 500);
         }
     }
 
@@ -743,7 +731,6 @@ class OrderController extends Controller
             }
 
             $remainingQuantity = (float) $item->quantity - (float) $item->quantity_on_order;
-            logger()->info($item->product_id);
 
 
             // Get all available inventory for this product from the warehouse, ordered by expiry date (FIFO)
@@ -753,7 +740,6 @@ class OrderController extends Controller
                 ->orderBy('expiry_date', 'asc')  // Order by expiry date for FIFO (oldest first)
                 ->get();
 
-            logger()->info($warehouseInventories->sum('quantity'));
             if ($warehouseInventories->sum('quantity') < $remainingQuantity) {
                 return response()->json("Not enough items in the inventory", 500);
             }
@@ -912,13 +898,9 @@ class OrderController extends Controller
 
             DB::commit();
             return response()->json('Order item status updated successfully.', 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Order item status change failed', [
-                'error' => $e->getMessage(),
-                'item_id' => $request->item_id ?? null
-            ]);
-            return response()->json('Failed to update order item status: ' . $e->getMessage(), 500);
+            return response()->json($e->getMessage(), 500);
         }
     }
 
@@ -1075,9 +1057,9 @@ class OrderController extends Controller
 
     private const QUARTER_START_DATES = [
         1 => '01-01',
-        2 => '04-01',
-        3 => '07-01',
-        4 => '10-01'
+        2 => '01-04',
+        3 => '01-07',
+        4 => '01-10'
     ];
 
     private function generateOrderNumber() {
@@ -1109,26 +1091,154 @@ class OrderController extends Controller
             $request->validate([
                 'product_id' => 'required|exists:products,id'
             ]);
-            logger()->info($request->product_id);
-            $result = DB::table('products')
-                ->join('inventories', 'products.id', '=', 'inventories.product_id')
-                ->where('products.id', $request->product_id)
-                ->select('products.name', DB::raw('SUM(inventories.quantity) as quantity'))
-                ->groupBy('products.id', 'products.name')
+            
+            $productId = $request->product_id;
+            $facilityId = auth()->user()->facility_id;
+            
+            // Check if the item is in an active order pipeline
+            $inThePipeline = OrderItem::where('product_id', $productId)
+                ->whereHas('order', function ($query) use ($facilityId) {
+                    $query->where('facility_id', $facilityId)
+                        ->where('status', '!=', 'received');
+                })
+                ->exists();
+                
+            if ($inThePipeline) {
+                return response()->json("This item is already in an active order pipeline.", 500);
+            }
+            
+            // Get current Stock on Hand (SOH) for the facility - aggregate all quantities
+            // Use groupBy to ensure proper aggregation if there are multiple entries for the same product
+            $sohQuery = DB::table('facility_inventories')
+                ->select(DB::raw('SUM(quantity) as total_quantity'))
+                ->where('product_id', $productId)
+                ->where('facility_id', $facilityId)
+                ->groupBy('product_id');
+                
+            $sohResult = $sohQuery->first();
+            $soh = $sohResult ? $sohResult->total_quantity : 0;
+                
+            // Calculate Average Monthly Consumption (AMC) from the last 4 months' AMC values
+            $now = Carbon::now();
+            $currentMonth = $now->format('Y-m');
+            
+            // Get the current month and previous 3 months
+            $months = [];
+            for ($i = 0; $i < 4; $i++) {
+                $months[] = Carbon::now()->subMonths($i)->format('Y-m');
+            }
+            
+            // Check if any records exist for this product and facility
+            $allRecords = DB::table('monthly_consumptions')
+                ->where('product_id', $productId)
+                ->where('facility_id', $facilityId)
+                ->select('month_year', 'amc')
+                ->get();
+                
+            
+            // Get AMC values for the last 4 months for this product and facility
+            $amcValues = DB::table('monthly_consumptions')
+                ->where('product_id', $productId)
+                ->where('facility_id', $facilityId)
+                ->whereIn('month_year', $months)
+                ->select('month_year', 'amc')
+                ->get();
+            
+            
+            // Calculate average of the AMC values
+            $totalAmc = $amcValues->sum('amc');
+            $countAmc = $amcValues->count();
+            
+            // Average of the last 4 months' AMC values, or 0 if none found
+            $amc = $countAmc > 0 ? $totalAmc / $countAmc : 0;
+            
+            
+            // If no data found, let's try a more flexible approach
+            if ($countAmc == 0) {
+                
+                // Get the most recent AMC value for this product and facility
+                $latestAmc = DB::table('monthly_consumptions')
+                    ->where('product_id', $productId)
+                    ->where('facility_id', $facilityId)
+                    ->orderBy('month_year', 'desc')
+                    ->select('month_year', 'amc')
+                    ->first();
+                    
+                if ($latestAmc) {
+                    $amc = $latestAmc->amc;
+                } else {
+                    
+                    // Calculate a default AMC based on current stock
+                    // Assume current stock should last for 30 days as a default
+                    $defaultAmcDays = 30;
+                    $defaultAmc = $soh > 0 ? ceil($soh / $defaultAmcDays) : 1;
+                    
+                    // Use a minimum default AMC of 1 to ensure we don't get zero
+                    $amc = max(1, $defaultAmc);
+                }
+            }
+            
+            // Get number of days since the start of the quarter
+            $quarter = $now->quarter;
+            // Format is 'DD-MM' in the constant, so we need to parse it correctly
+            $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
+            $day = $quarterStartDateParts[0];
+            $month = $quarterStartDateParts[1];
+            $quarterStartDate = Carbon::createFromFormat('Y-m-d', $now->format('Y') . '-' . $month . '-' . $day);
+            
+            $daysSinceQuarterStart = $quarterStartDate->diffInDays($now);
+            
+            // Quantity on Order (QOO) - default to 0 as specified
+            $qoo = 0;
+            
+            // Calculate required quantity using the formula:
+            // AMC * (120 days - days since quarter start) - SOH - QOO
+            $daysRemaining = 120 - $daysSinceQuarterStart;
+            $requiredQuantity = ceil($amc * $daysRemaining) - $soh - $qoo;
+            $requiredQuantity = max(0, $requiredQuantity); // Ensure it's not negative
+            
+            // Get product name
+            $product = DB::table('products')
+                ->where('id', $productId)
+                ->select('name')
                 ->first();
                 
-                $now = Carbon::now();
-                $quarter = $now->quarter;
-                $quarterStartDate = Carbon::createFromFormat('Y-m-d', $now->format('Y') . '-' . self::QUARTER_START_DATES[$quarter]);
-                $result->no_of_days = $quarterStartDate->diffInDays($now);
-
+            // Get total inventory across all facilities - properly aggregated with grouping
+            $totalInventoryQuery = DB::table('facility_inventories')
+                ->select(DB::raw('SUM(quantity) as total_quantity'))
+                ->where('product_id', $productId)
+                ->groupBy('product_id');
+                
+            $totalInventoryResult = $totalInventoryQuery->first();
+            $totalInventory = $totalInventoryResult ? $totalInventoryResult->total_quantity : 0;
+                
+            if ($requiredQuantity > $totalInventory) {
+                return response()->json([
+                    'name' => $product ? $product->name : null,
+                    'quantity' => $soh,
+                    'soh' => $totalInventory,
+                    'amc' => $amc,
+                    'days_since_quarter_start' => $daysSinceQuarterStart,
+                    'required_quantity' => $requiredQuantity,
+                    'no_of_days' => $daysSinceQuarterStart,
+                    'insufficient_inventory' => true,
+                    'message' => 'Insufficient inventory to fulfill the required quantity.'
+                ], 200);
+            }
+            
             return response()->json([
-                'name' => $result ? $result->name : null,
-                'quantity' => $result ? $result->quantity : 0,
-                'no_of_days' => $result->no_of_days ?? 0
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+                'name' => $product ? $product->name : null,
+                'quantity' => $soh,
+                'soh' => $totalInventory,
+                'amc' => $amc,
+                'days_since_quarter_start' => $daysSinceQuarterStart,
+                'required_quantity' => $requiredQuantity,
+                'no_of_days' => $daysSinceQuarterStart,
+                'insufficient_inventory' => false
+            ], 200);
+            
+        } catch (\Throwable $e) {
+            return response()->json($e->getMessage(), 500);
         }
     }
 }

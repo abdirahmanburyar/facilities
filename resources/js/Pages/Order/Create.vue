@@ -52,16 +52,17 @@
                     <table class="w-full mt-4 border border-black">
                         <thead>
                             <tr>
-                                <th class="w-full px-3 py-2 text-left text-sm leading-4 font-medium text-black border border-black">Item</th>
-                                <th class="w-[150px] px-3 py-2 text-left text-sm leading-4 font-medium text-black border border-black">Quantity</th>
-                                <th class="w-[150px] px-3 py-2 text-left text-sm leading-4 font-medium text-black border border-black">Available Stock</th>
-                                <th class="w-[150px] px-3 py-2 text-left text-sm leading-4 font-medium text-black border border-black">No of Days</th>
-                                <th class="w-[150px] px-3 py-2 text-left text-sm leading-4 font-medium text-black border border-black">Action</th>
+                                <th class="w-full px-3 text-left text-sm leading-4 font-medium text-black border border-black">Item</th>
+                                <th class="w-[150px] px-3 text-left text-sm leading-4 font-medium text-black border border-black">Required Quantity</th>
+                                <th class="w-[200px] px-3 text-left text-sm leading-4 font-medium text-black border border-black">SoH</th>
+                                <th class="w-[150px] px-3 text-left text-sm leading-4 font-medium text-black border border-black">Quantity on Order</th>
+                                <th class="w-[150px] px-3 text-left text-sm leading-4 font-medium text-black border border-black">No of Days</th>
+                                <th class="w-[150px] px-3 text-left text-sm leading-4 font-medium text-black border border-black">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(item, index) in form.items" :key="index">
-                                <td class="border border-black">
+                                <td class="px-3 border border-black">
                                     <div class="relative">
                                         <Multiselect v-model="item.product" :value="item.product_id"
                                         :options="props.items"
@@ -75,24 +76,24 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="border border-black">
+                                <td class="px-3 border border-black">
                                     <input 
                                         type="number" 
                                         v-model="item.quantity"
-                                        @input="validateQuantity(index)"
+                                        readonly
                                         min="0"
                                         class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                 </td>
-                                <td class="border border-black">
+                                <td class="px-3 border border-black"> <input type="number" v-model="item.soh" readonly class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"> </td>
+                                <td class="px-3 border border-black">
                                     <input 
                                         type="number" 
-                                        v-model="item.availableStock"
-                                        readonly
+                                        v-model="item.quantity_on_order"
                                         class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                 </td>
-                                <td class="border border-black">
+                                <td class="px-3 border border-black">
                                     <input 
                                         type="number" 
                                         v-model="item.no_of_days"
@@ -100,7 +101,7 @@
                                         class="mt-1 block w-[180px] rounded-md  shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
                                 </td>
-                                <td class="text-left border border-black">
+                                <td class="px-3 text-left border border-black">
                                     <button 
                                         type="button" 
                                         @click="removeItem(index)"
@@ -176,7 +177,8 @@ const addItem = () => {
         product_id: '',
         product: null,
         quantity: 1,
-        availableStock: null,
+        soh: 0,
+        quantity_on_order: 0,
         no_of_days: 0
     });
 };
@@ -196,35 +198,32 @@ async function checkInventory(index, selected){
     })
         .then(response => {
             console.log(response.data);
-            form.value.items[index].availableStock = response.data.quantity;
+            form.value.items[index].soh = response.data.soh;
+            form.value.items[index].quantity = response.data.required_quantity;
             form.value.items[index].no_of_days = parseInt(response.data.no_of_days);
-            // validateQuantity(index);
+            isLoading.value = false;
         })
         .catch(error => {
-            console.error('Error checking inventory:', error);
-            toast.error('Failed to check inventory status');
-        })
-        .finally(() => {
-            isLoading.value = false;
+            console.error('Error checking inventory:', error.response.data);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.response.data,
+                confirmButtonText: 'OK'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    isLoading.value = false;
+                    form.value.items[index].product_id = "";
+                    form.value.items[index].product = null;
+                }
+            });
         });
-    addItem();
 };
 
-const validateQuantity = (index) => {
-    const item = form.value.items[index];
-    if (!item.availableStock || !item.quantity) return;
-
-    if (item.quantity > item.availableStock) {
-        item.stockWarning = true;
-        toast.warning(`Only ${item.availableStock} units available for ${item.productName}`);
-        item.quantity = item.availableStock; // Automatically adjust to max available
-    } else {
-        item.stockWarning = false;
-    }
-};
 const isSubmitting = ref(false);
 
 const submitOrder = async () => {
+    console.log(form.value);
   isSubmitting.value = true;
 
   await axios.post(route('orders.store'), form.value)
