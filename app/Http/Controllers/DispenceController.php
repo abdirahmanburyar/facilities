@@ -20,9 +20,10 @@ class DispenceController extends Controller
                     ->orWhere('patient_phone', 'like', '%' . $request->search . '%');
             })
             ->withCount('items')
-            ->with('dispenced_by:id,name');
+            ->with('dispenced_by:id,name')
+            ->latest();
 
-        $dispences = $query->paginate($request->input('per_page', 2), ['*'], 'page', $request->input('page', 1))
+        $dispences = $query->paginate($request->input('per_page', 10), ['*'], 'page', $request->input('page', 1))
             ->withQueryString();
         $dispences->setPath(url()->current());
 
@@ -66,6 +67,7 @@ class DispenceController extends Controller
             $validated = $request->validate([
                 'patient_name' => 'required|string|max:255',
                 'phone_number' => 'required|string|max:255',
+                'diagnosis' => 'required|string|max:255',
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|exists:facility_inventories,id',
                 'items.*.dose' => 'required|numeric',
@@ -86,11 +88,7 @@ class DispenceController extends Controller
                 }
 
                 if ($inventory->quantity < $item['quantity']) {
-                    return response()->json([
-                        'error' => 'Insufficient stock for product: ' . $inventory->product->name,
-                        'available' => $inventory->quantity,
-                        'requested' => $item['quantity']
-                    ], 422);
+                    return response()->json('Insufficient stock for product: ' . $inventory->product->name . ' Available: ' . $inventory->quantity . ' Requested: ' . $item['quantity'], 500);
                 }
             }
 
@@ -108,6 +106,7 @@ class DispenceController extends Controller
                 $dispence = Dispence::create([
                     'dispence_number' => $dispence_number,
                     'dispence_date' => $today,
+                    'diagnosis' => $validated['diagnosis'],
                     'patient_name' => $validated['patient_name'],
                     'patient_phone' => $validated['phone_number'], // Changed from phone_number to patient_phone
                     'facility_id' => auth()->user()->facility_id,
@@ -150,7 +149,7 @@ class DispenceController extends Controller
     public function show($id)
     {
         try {
-            $dispence = Dispence::with('items.product:id,name')->findOrFail($id);
+            $dispence = Dispence::with('items.product:id,name','dispenced_by:id,name')->findOrFail($id);
             return inertia('Dispence/Show', [
                 'dispence' => $dispence,
             ]);

@@ -12,6 +12,7 @@ class Dispence extends Model
         'patient_name',
         'patient_phone',
         'facility_id',
+        'diagnosis',
         'dispenced_by',
     ];
 

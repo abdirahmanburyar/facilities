@@ -13,7 +13,7 @@
         </Link>
     </div>
     <div class="mt-6 flex justify-between items-center gap-2">
-        <input type="text" v-model="search" class="w-[400px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500" placeholder="Search...">
+        <input type="text" v-model="search" class="w-[400px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500" placeholder="Search by [Patient Name, Phone]">
         <select v-model="per_page" class="w-[200px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500">
             <option value="10">10 per page</option>
             <option value="25">25 per page</option>

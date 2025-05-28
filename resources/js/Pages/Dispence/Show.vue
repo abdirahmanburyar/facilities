@@ -1,6 +1,5 @@
 <template>
     <AuthenticatedLayout>
-        <div class="max-w-4xl mx-auto py-6">
             <!-- Back button -->
             <div class="mb-6">
                 <Link :href="route('dispence.index')" class="flex items-center text-gray-600 hover:text-gray-900 w-fit">
@@ -41,8 +40,18 @@
                     </div>
                 </div>
 
+                <!-- Diagnosis -->
+                <div class="px-8 pt-8">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-3">Diagnosis</h2>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <p class="text-gray-700 whitespace-pre-line">{{ props.dispence.diagnosis }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Medications -->
-                <div class="p-8">
+                <div class="px-8 pb-8">
                     <div class="flex items-center mb-6">
                         <svg class="w-6 h-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
@@ -50,38 +59,35 @@
                         <h2 class="text-xl font-semibold text-gray-800">Medications</h2>
                     </div>
 
-                    <!-- Medication List -->
-                    <div class="space-y-6">
-                        <div v-for="item in props.dispence.items" :key="item.id" 
-                             class="p-4 rounded-lg border-2 border-gray-200 hover:border-blue-200 transition-colors">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-800">{{ item.product.name }}</h3>
-                                    <div class="mt-2 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p class="text-gray-600 text-sm">Dose:</p>
-                                            <p class="font-medium">{{ item.dose }} units</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-600 text-sm">Frequency:</p>
-                                            <p class="font-medium">{{ item.frequency }} times per day</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-600 text-sm">Duration:</p>
-                                            <p class="font-medium">{{ item.duration }} days</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-600 text-sm">Total Quantity:</p>
-                                            <p class="font-medium">{{ item.quantity }} units</p>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <p class="text-gray-600 text-sm">Start Date:</p>
-                                        <p class="font-medium">{{ moment(item.start_date).format('DD/MM/YYYY') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Medications Table -->
+                    <div class="overflow-hidden border border-gray-200 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">#</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">Medication</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">Dose</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">Frequency</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">Duration</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">Start Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="(item, index) in props.dispence.items" :key="item.id" 
+                                    :class="{'bg-gray-50': index % 2 === 0}">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-gray-200">{{ index + 1 }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+                                        <div class="text-sm font-medium text-gray-900">{{ item.product.name }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-gray-200">{{ item.dose }} units</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-gray-200">{{ item.frequency }} times/day</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-gray-200">{{ item.duration }} days</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-gray-200">{{ moment(item.start_date).format('DD/MM/YYYY') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">{{ item.quantity }} units</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -99,7 +105,6 @@
                     </div>
                 </div>
             </div>
-        </div>
     </AuthenticatedLayout>
 </template>
 

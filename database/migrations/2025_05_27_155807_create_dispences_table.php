@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('patient_phone');
             $table->foreignId('facility_id')->constrained('facilities')->onDelete('cascade');
             $table->foreignId('dispenced_by')->constrained('users');
+            $table->text('diagnosis');
             $table->timestamps();
         });
     }

@@ -16,38 +16,45 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <InputLabel for="patient_name" class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                            </svg>
                             <span>Patient Name</span>
                         </InputLabel>
-                        <TextInput
+                        <input
                             id="patient_name"
                             type="text"
-                            class="mt-1 block w-full pl-10"
+                            class="mt-1 block w-full"
                             v-model="form.patient_name"
                             placeholder="Enter full name"
                             required
                         />
                         <InputError :message="errors.patient_name" class="mt-2" />
-                    </div>
+                    </div>                   
                     <div>
                         <InputLabel for="phone_number" class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                            </svg>
                             <span>Phone Number</span>
                         </InputLabel>
-                        <TextInput
+                        <input
                             id="phone_number"
                             type="tel"
-                            class="mt-1 block w-full pl-10"
+                            class="mt-1 w-full"
                             v-model="form.phone_number"
                             placeholder="Enter phone number"
                             required
                         />
                         <InputError :message="errors.phone_number" class="mt-2" />
                     </div>
+                </div>
+                <div>
+                    <InputLabel for="diagnosis" class="flex items-center gap-2">
+                        <span>Diagnosis</span>
+                    </InputLabel>
+                    <textarea
+                        id="diagnosis"
+                        class="mt-1 block w-full"
+                        v-model="form.diagnosis"
+                        placeholder="Enter diagnosis"
+                        required
+                    />
+                    <InputError :message="errors.diagnosis" class="mt-2" />
                 </div>
             </div>
 
@@ -93,7 +100,7 @@
                                 </Multiselect>
                             </td>
                             <td class="border border-black">
-                                <TextInput
+                                <input
                                     type="number"
                                     class="mt-1 block w-full"
                                     v-model="item.dose"
@@ -104,7 +111,7 @@
                                 />
                             </td>
                             <td class="border border-black">
-                                <TextInput
+                                <input
                                     type="number"
                                         class="mt-1 block w-full"
                                     v-model="item.frequency"
@@ -115,7 +122,7 @@
                                 />
                             </td>
                             <td class="border border-black">
-                                <TextInput
+                                <input
                                     type="date"
                                     class="mt-1 block w-full"
                                     v-model="item.start_date"
@@ -123,7 +130,7 @@
                                 />
                             </td>
                             <td class="border border-black">
-                                <TextInput
+                                <input
                                     type="number"
                                     class="mt-1 block w-full"
                                     v-model="item.duration"
@@ -134,7 +141,7 @@
                                 />
                             </td>
                             <td class="border border-black">
-                                <TextInput
+                                <input
                                     type="number"
                                     class="mt-1 block w-full bg-gray-100"
                                     v-model="item.quantity"
@@ -218,6 +225,7 @@ const errors = ref({});
 const isProcessing = ref(false);
 const form = ref({
     patient_name: '',
+    diagnosis: '',
     phone_number: '',
     items: [{
         product_id: '',
@@ -289,6 +297,7 @@ async function checkInventory(index, selected) {
         item.product_id = selected.id; // Changed from selected.product_id to selected.id
         item.max_quantity = parseInt(selected.quantity);
         calculateItemQuantity(index);
+        addItem();
         return;
     }
     form.value.items[index].product_id = "";
@@ -324,6 +333,7 @@ function reloadDispences(){
     form.value = {
         patient_name: '',
         phone_number: '',
+        diagnosis: '',
         items: [{
             product_id: '',
             product: null,
