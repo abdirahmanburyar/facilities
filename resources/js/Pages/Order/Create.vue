@@ -200,7 +200,6 @@ async function checkInventory(index, selected){
         product_id: selected.id
     })
         .then(response => {
-            console.log(response.data);
             form.value.items[index].soh = response.data.soh;
             form.value.items[index].quantity = response.data.quantity;
             form.value.items[index].amc = response.data.amc;
@@ -209,7 +208,6 @@ async function checkInventory(index, selected){
         })
         .catch(error => {
             isLoading.value = false;
-            console.error('Error checking inventory:', error.response.data);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -228,7 +226,6 @@ async function checkInventory(index, selected){
 const isSubmitting = ref(false);
 
 const submitOrder = async () => {
-    console.log(form.value);
   isSubmitting.value = true;
 
   await axios.post(route('orders.store'), form.value)
@@ -259,7 +256,6 @@ const submitOrder = async () => {
       });
     })
     .catch(error => {
-      console.error('Error creating order:', error);
       toast.error('Failed to create order');
       isSubmitting.value = false;
     });
