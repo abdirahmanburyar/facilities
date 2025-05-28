@@ -353,24 +353,22 @@ const formatDate = (date) => {
                                     'text-red-500 border-2 border-red-500': order.status === 'rejected'
                                 }">
                                     <!-- Checkbox cell removed -->
-                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
-                                        <div class="text-sm text-gray-900">
-                                            <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
-                                        </div>
+                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
+                                        <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
-                                        <div class="text-sm text-gray-900">{{ order.facility?.name }}</div>
+                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
+                                        {{ order.facility?.name }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-black">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-black">
                                         {{ order.order_type }}
                                     </td>
 
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-black">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-black">
                                         <div class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</div>
                                         <div class="text-xs text-gray-500">Expected: {{ formatDate(order.expected_date)
                                             }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap border-r border-black">
+                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
                                         <div class="flex items-center gap-2">
                                             <!-- Status Progress Icons - Only show actions taken -->
                                             <div class="flex items-center gap-1">

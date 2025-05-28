@@ -204,6 +204,7 @@ async function checkInventory(index, selected){
             isLoading.value = false;
         })
         .catch(error => {
+            isLoading.value = false;
             console.error('Error checking inventory:', error.response.data);
             Swal.fire({
                 icon: 'error',
@@ -237,7 +238,20 @@ const submitOrder = async () => {
         timer: 1500
       })
       .then(() => {
-        router.visit(route('orders.index'));
+        form.value = {
+            order_type: 'Replenishment',
+            order_date: currentDate,
+            expected_date: '',
+            notes: '',
+            items: [{
+                product_id: '',
+                product: null,
+                quantity: 1,
+                soh: 0,
+                quantity_on_order: 0,
+                no_of_days: 0
+            }]
+        }
       });
     })
     .catch(error => {

@@ -1184,16 +1184,32 @@ class OrderController extends Controller
             $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
             $day = $quarterStartDateParts[0];
             $month = $quarterStartDateParts[1];
-            $quarterStartDate = Carbon::createFromFormat('Y-m-d', $now->format('Y') . '-' . $month . '-' . $day);
             
+            // Create the quarter start date
+            $quarterStartDate = Carbon::createFromDate($now->year, $month, $day);
+            
+            // Add temporary debug output to the response
+            $debug = [
+                'now' => $now->format('Y-m-d'),
+                'quarter' => $quarter,
+                'quarter_start_date' => $quarterStartDate->format('Y-m-d'),
+                'day_from_constant' => $day,
+                'month_from_constant' => $month
+            ];
+            
+            // Calculate days since quarter start (ensure positive value)
             $daysSinceQuarterStart = $quarterStartDate->diffInDays($now);
+            $debug['days_since_quarter_start'] = $daysSinceQuarterStart;
+            
+            // Calculate days remaining in the 120-day period
+            $daysRemaining = 120 - $daysSinceQuarterStart;
+            $debug['days_remaining'] = $daysRemaining;
             
             // Quantity on Order (QOO) - default to 0 as specified
             $qoo = 0;
             
             // Calculate required quantity using the formula:
             // AMC * (120 days - days since quarter start) - SOH - QOO
-            $daysRemaining = 120 - $daysSinceQuarterStart;
             $requiredQuantity = ceil($amc * $daysRemaining) - $soh - $qoo;
             $requiredQuantity = max(0, $requiredQuantity); // Ensure it's not negative
             
@@ -1213,17 +1229,7 @@ class OrderController extends Controller
             $totalInventory = $totalInventoryResult ? $totalInventoryResult->total_quantity : 0;
                 
             if ($requiredQuantity > $totalInventory) {
-                return response()->json([
-                    'name' => $product ? $product->name : null,
-                    'quantity' => $soh,
-                    'soh' => $totalInventory,
-                    'amc' => $amc,
-                    'days_since_quarter_start' => $daysSinceQuarterStart,
-                    'required_quantity' => $requiredQuantity,
-                    'no_of_days' => $daysSinceQuarterStart,
-                    'insufficient_inventory' => true,
-                    'message' => 'Insufficient inventory to fulfill the required quantity.'
-                ], 200);
+                return response()->json('Insufficient inventory to fulfill the required quantity.', 500);
             }
             
             return response()->json([
@@ -1234,7 +1240,8 @@ class OrderController extends Controller
                 'days_since_quarter_start' => $daysSinceQuarterStart,
                 'required_quantity' => $requiredQuantity,
                 'no_of_days' => $daysSinceQuarterStart,
-                'insufficient_inventory' => false
+                'insufficient_inventory' => false,
+                'debug' => $debug
             ], 200);
             
         } catch (\Throwable $e) {
