@@ -7,17 +7,28 @@ use App\Models\FacilityInventory;
 use App\Models\Dispence;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\DispenceResource;
 
 class DispenceController extends Controller
 {
     public function index(Request $request)
     {
-        $dispences = Dispence::query()
+        $query = Dispence::query()
             ->where('facility_id', auth()->user()->facility_id)
-            ->get();
+            ->when($request->search, function ($query) use ($request) {
+                $query->where('patient_name', 'like', '%' . $request->search . '%')
+                    ->orWhere('patient_phone', 'like', '%' . $request->search . '%');
+            })
+            ->withCount('items')
+            ->with('dispenced_by:id,name');
+
+        $dispences = $query->paginate($request->input('per_page', 2), ['*'], 'page', $request->input('page', 1))
+            ->withQueryString();
+        $dispences->setPath(url()->current());
 
         return inertia('Dispence/Index', [
-            'dispences' => $dispences,
+            'dispences' => DispenceResource::collection($dispences),
+            'filters' => $request->only('search', 'per_page', 'page')
         ]);
     }
 
@@ -131,6 +142,18 @@ class DispenceController extends Controller
                 return response()->json('Dispence created successfully', 200);
             });
 
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $dispence = Dispence::with('items.product')->findOrFail($id);
+            return inertia('Dispence/Show', [
+                'dispence' => $dispence,
+            ]);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }

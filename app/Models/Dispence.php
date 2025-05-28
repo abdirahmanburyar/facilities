@@ -20,7 +20,7 @@ class Dispence extends Model
         return $this->belongsTo(Facility::class);
     }
 
-    public function dispencedBy()
+    public function dispenced_by()
     {
         return $this->belongsTo(User::class, 'dispenced_by');
     }

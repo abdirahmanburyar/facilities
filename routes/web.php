@@ -139,6 +139,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/', 'index')->name('dispence.index');
             Route::get('/create', 'create')->name('dispence.create');
             Route::post('/store', 'store')->name('dispence.store');
+            Route::get('/{id}/show', 'show')->name('dispence.show');
         });
 });
 
