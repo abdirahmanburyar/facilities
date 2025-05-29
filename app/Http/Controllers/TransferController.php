@@ -11,9 +11,16 @@ use App\Models\FacilityInventory;
 use App\Models\Transfer;
 use App\Models\TransferItem;
 use App\Models\Product;
+use App\Models\InventoryAllocation;
+use App\Models\User;
+use App\Models\Supplier;
+use App\Models\FacilityBackorder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class TransferController extends Controller
 {
@@ -402,9 +409,10 @@ class TransferController extends Controller
     public function show($id){
         $transfer = Transfer::where('id', $id)->with([
             'items.product', 
-            'toWarehouse:id,name', 
-            'fromFacility:id,name', 
-            'toFacility:id,name'
+            'items.backorders', 
+            'toWarehouse', 
+            'fromFacility', 
+            'toFacility'
         ])->first();
         return inertia('Transfer/Show', [
             'transfer' => $transfer
@@ -417,7 +425,7 @@ class TransferController extends Controller
 
     public function create(Request $request){
         $warehouses = Warehouse::select('id','name')->get();
-        $facilities = Facility::where('id', auth()->user()->facility_id)->select('id','name')->get();
+        $facilities = Facility::whereNot('id', auth()->user()->facility_id)->select('id','name')->get();
         
         // Get inventory from facility_inventories table for the current user's facility
         $facilityId = auth()->user()->facility_id;
@@ -479,6 +487,421 @@ class TransferController extends Controller
         }
     }
     
+    /**
+     * Change the status of a transfer using a unified API endpoint
+     */
+    public function changeStatus(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            // Validate request
+            $validated = $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'status' => ['required', Rule::in(['approved', 'rejected', 'in_process', 'dispatched', 'received'])]
+            ]);
+
+            $transfer = Transfer::with(['items.backorders'])->findOrFail($request->transfer_id);
+
+            // Define allowed transitions
+            $allowedTransitions = [
+                'pending' => ['approved', 'rejected'],
+                'approved' => ['in_process'],
+                'in_process' => ['dispatched'],
+                'dispatched' => ['received'],
+                'rejected' => ['approved'] // Allow rejected transfers to be approved again
+            ];
+
+            // Check if the transition is allowed
+            if (
+                !isset($allowedTransitions[$transfer->status]) ||
+                !in_array($request->status, $allowedTransitions[$transfer->status])
+            ) {
+                return response()->json("Status transition not allowed from {$transfer->status} to {$request->status}", 422);
+            }
+
+            $userId = auth()->id();
+            $now = now();
+
+            // Prepare updates for transfer
+            $updates = ['status' => $request->status];
+
+            // Add timestamp and user info based on the status
+            switch ($request->status) {
+                case 'approved':
+                    $updates['approved_by'] = $userId;
+                    $updates['approved_at'] = $now;
+                    
+                    // If transitioning from rejected to approved, clear rejection data
+                    if ($transfer->status === 'rejected') {
+                        $updates['rejected_by'] = null;
+                        $updates['rejected_at'] = null;
+                    }
+                    break;
+                case 'rejected':
+                    $updates['rejected_by'] = $userId;
+                    $updates['rejected_at'] = $now;
+                    break;
+                case 'in_process':
+                    $updates['process_started_at'] = $now;
+                    break;
+                case 'dispatched':
+                    $updates['dispatched_by'] = $userId;
+                    $updates['dispatched_at'] = $now;
+                    break;
+                case 'received':
+                    $updates['received_by'] = $userId;
+                    $updates['received_at'] = $now;
+                    
+                    // Process inventory changes when transfer is received
+                    $this->processInventoryChanges($transfer);
+                    break;
+            }
+
+            // Update the transfer
+            $transfer->update($updates);
+
+            // You can add event broadcasting here if needed
+            // event(new TransferEvent('Refreshed'));
+
+            DB::commit();
+            return response()->json(['message' => 'Transfer status updated successfully.', 'transfer' => $transfer], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Process inventory changes when a transfer is received
+     */
+    private function processInventoryChanges(Transfer $transfer)
+    {
+        // Get all items in this transfer
+        $items = TransferItem::where('transfer_id', $transfer->id)->with('product')->get();
+
+        foreach ($items as $item) {
+            // Decrease inventory at source (if applicable)
+            if ($transfer->from_facility_id) {
+                $sourceInventory = FacilityInventory::where([
+                    'facility_id' => $transfer->from_facility_id,
+                    'product_id' => $item->product_id,
+                    'batch_number' => $item->batch_number
+                ])->first();
+
+                if ($sourceInventory) {
+                    $sourceInventory->decrement('quantity', $item->quantity);
+                }
+            }
+
+            // Increase inventory at destination
+            if ($transfer->to_facility_id) {
+                // Check if inventory record exists
+                $destInventory = FacilityInventory::firstOrNew([
+                    'facility_id' => $transfer->to_facility_id,
+                    'product_id' => $item->product_id,
+                    'batch_number' => $item->batch_number
+                ]);
+
+                // If new record, set default values
+                if (!$destInventory->exists) {
+                    $destInventory->quantity = 0;
+                    $destInventory->expiry_date = $item->expiry_date;
+                }
+
+                // Increment quantity and save
+                $destInventory->quantity += $item->quantity;
+                $destInventory->save();
+            }
+        }
+    }
+    
+    /**
+     * Handle back orders for transfer items
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function backorder(Request $request)
+    {
+        try {
+            // Validate the request
+            $request->validate([
+                'transfer_item_id' => 'required|exists:transfer_items,id',
+                'backorders' => 'required|array',
+                'received_quantity' => 'required|numeric|min:0',
+                'backorders.*.quantity' => 'required|numeric|min:0',
+                'backorders.*.type' => 'required|string',
+                'backorders.*.notes' => 'nullable|string',
+            ]);
+            
+            DB::beginTransaction();
+            
+            // Get the transfer item
+            $transferItem = TransferItem::findOrFail($request->transfer_item_id);
+            
+            // Update the received quantity for the transfer item
+            $transferItem->received_quantity = $request->received_quantity;
+            $transferItem->save();
+            
+            // Process each backorder
+            foreach ($request->backorders as $backorderData) {
+                // Check if this is an existing backorder (has an ID)
+                if (!empty($backorderData['id'])) {
+                    // Update existing backorder
+                    $backorder = FacilityBackorder::findOrFail($backorderData['id']);
+                    $backorder->update([
+                        'quantity' => $backorderData['quantity'],
+                        'type' => $backorderData['type'],
+                        'notes' => $backorderData['notes'] ?? null,
+                        'updated_by' => auth()->id()
+                    ]);
+                } else {
+                    // Create new backorder
+                    FacilityBackorder::create([
+                        'transfer_item_id' => $transferItem->id,
+                        'product_id' => $transferItem->product_id,
+                        'inventory_allocation_id' => $backorderData['inventory_allocation_id'],
+                        'quantity' => $backorderData['quantity'],
+                        'type' => $backorderData['type'],
+                        'notes' => $backorderData['notes'] ?? null,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id()
+                    ]);
+                }
+            }
+            
+            DB::commit();
+            return response()->json('Back orders have been recorded successfully', 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function changeItemStatus(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'status' => 'required|in:received'
+            ]);
+
+            $transfer = Transfer::with('items.backorders', 'items.product', 'fromFacility', 'toFacility')
+                ->where('status', 'dispatched')
+                ->findOrFail($request->transfer_id);
+                
+            if($transfer->status != 'dispatched'){
+                return response()->json('Transfer is not dispatched', 500);
+            }
+            
+            $debugInfo = []; // For debugging purposes
+            
+            foreach ($transfer->items as $item) {
+                // Debug information for this item
+                $itemDebug = [
+                    'item_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'quantity' => $item->quantity,
+                    'received_quantity' => $item->received_quantity,
+                    'backorders' => []
+                ];
+                
+                // Calculate total back order quantity for this item
+                $backOrderTotal = 0;
+                $backOrderDetails = [];
+                
+                if ($item->backorders && count($item->backorders) > 0) {
+                    foreach ($item->backorders as $backorder) {
+                        $backOrderTotal += $backorder->quantity;
+                        $backOrderDetails[] = [
+                            'id' => $backorder->id,
+                            'type' => $backorder->type,
+                            'quantity' => $backorder->quantity,
+                            'notes' => $backorder->notes
+                        ];
+                    }
+                }
+                
+                // Calculate actual quantity to add to inventory (item quantity minus back orders)
+                $actualQuantity = $item->received_quantity > 0 ? $item->received_quantity : $item->quantity - $backOrderTotal;
+                
+                $itemDebug['back_order_total'] = $backOrderTotal;
+                $itemDebug['actual_quantity_to_add'] = $actualQuantity;
+                $itemDebug['back_orders'] = $backOrderDetails;
+                
+                // Add to destination inventory if actual quantity is greater than 0
+                if ($actualQuantity > 0) {
+                    // Determine if destination is a facility or warehouse
+                    if ($transfer->to_facility_id) {
+                        // FACILITY DESTINATION: Use facility_inventories table
+                        $destinationFacilityId = $transfer->to_facility_id;
+                        
+                        // Check if facility inventory already exists for this product with matching batch number and expiry date
+                        $facilityInventory = FacilityInventory::where('facility_id', $destinationFacilityId)
+                            ->where('product_id', $item->product_id)
+                            ->where('batch_number', $item->batch_number)
+                            ->where('expiry_date', $item->expire_date)
+                            ->first();
+                        
+                        if ($facilityInventory) {
+                            // Update existing inventory
+                            $facilityInventory->increment('quantity', $actualQuantity);
+                            $itemDebug['inventory_action'] = 'updated_existing_facility_inventory';
+                            $itemDebug['inventory_id'] = $facilityInventory->id;
+                            $itemDebug['new_total'] = $facilityInventory->fresh()->quantity;
+                        } else {
+                            // Create new inventory record
+                            $facilityInventory = FacilityInventory::create([
+                                'facility_id' => $destinationFacilityId,
+                                'product_id' => $item->product_id,
+                                'quantity' => $actualQuantity,
+                                'batch_number' => $item->batch_number,
+                                'expiry_date' => $item->expire_date,
+                                'is_active' => 1,
+                                'created_by' => auth()->id(),
+                                'updated_by' => auth()->id()
+                            ]);
+                            $itemDebug['inventory_action'] = 'created_new_facility_inventory';
+                            $itemDebug['inventory_id'] = $facilityInventory->id;
+                        }
+                    } elseif ($transfer->to_warehouse_id) {
+                        // WAREHOUSE DESTINATION: Use inventories table
+                        $destinationWarehouseId = $transfer->to_warehouse_id;
+                        
+                        // Check if warehouse inventory already exists for this product with matching batch number and expiry date
+                        $warehouseInventory = Inventory::where('warehouse_id', $destinationWarehouseId)
+                            ->where('product_id', $item->product_id)
+                            ->where('batch_number', $item->batch_number)
+                            ->where('expire_date', $item->expire_date)
+                            ->first();
+                        
+                        if ($warehouseInventory) {
+                            // Update existing inventory
+                            $warehouseInventory->increment('quantity', $actualQuantity);
+                            $itemDebug['inventory_action'] = 'updated_existing_warehouse_inventory';
+                            $itemDebug['inventory_id'] = $warehouseInventory->id;
+                            $itemDebug['new_total'] = $warehouseInventory->fresh()->quantity;
+                        } else {
+                            // Create new inventory record
+                            $warehouseInventory = Inventory::create([
+                                'warehouse_id' => $destinationWarehouseId,
+                                'product_id' => $item->product_id,
+                                'quantity' => $actualQuantity,
+                                'batch_number' => $item->batch_number,
+                                'expire_date' => $item->expire_date,
+                                'is_active' => 1,
+                                'created_by' => auth()->id(),
+                                'updated_by' => auth()->id()
+                            ]);
+                            $itemDebug['inventory_action'] = 'created_new_warehouse_inventory';
+                            $itemDebug['inventory_id'] = $warehouseInventory->id;
+                        }
+                    } else {
+                        $itemDebug['inventory_action'] = 'skipped_no_destination';
+                    }
+                } else {
+                    $itemDebug['inventory_action'] = 'skipped_zero_quantity';
+                }
+                
+                // Deduct from source inventory (facility or warehouse)
+                if ($transfer->from_facility_id) {
+                    // FACILITY SOURCE: Use facility_inventories table
+                    $sourceFacilityInventory = FacilityInventory::where('facility_id', $transfer->from_facility_id)
+                        ->where('product_id', $item->product_id)
+                        ->where('batch_number', $item->batch_number)
+                        ->where('expiry_date', $item->expire_date)
+                        ->first();
+                    
+                    if ($sourceFacilityInventory) {
+                        // Deduct the transferred quantity from source
+                        $sourceFacilityInventory->decrement('quantity', $item->quantity);
+                        $itemDebug['source_inventory_action'] = 'deducted_from_facility';
+                        $itemDebug['source_inventory_id'] = $sourceFacilityInventory->id;
+                        $itemDebug['source_new_total'] = $sourceFacilityInventory->fresh()->quantity;
+                        
+                        // If inventory becomes zero or negative, mark as inactive
+                        if ($sourceFacilityInventory->fresh()->quantity <= 0) {
+                            $sourceFacilityInventory->update(['is_active' => 0]);
+                            $itemDebug['source_inventory_deactivated'] = true;
+                        }
+                    } else {
+                        $itemDebug['source_inventory_action'] = 'facility_inventory_not_found';
+                    }
+                } elseif ($transfer->from_warehouse_id) {
+                    // WAREHOUSE SOURCE: Use inventories table
+                    $sourceWarehouseInventory = Inventory::where('warehouse_id', $transfer->from_warehouse_id)
+                        ->where('product_id', $item->product_id)
+                        ->where('batch_number', $item->batch_number)
+                        ->where('expire_date', $item->expire_date)
+                        ->first();
+                    
+                    if ($sourceWarehouseInventory) {
+                        // Deduct the transferred quantity from source
+                        $sourceWarehouseInventory->decrement('quantity', $item->quantity);
+                        $itemDebug['source_inventory_action'] = 'deducted_from_warehouse';
+                        $itemDebug['source_inventory_id'] = $sourceWarehouseInventory->id;
+                        $itemDebug['source_new_total'] = $sourceWarehouseInventory->fresh()->quantity;
+                        
+                        // If inventory becomes zero or negative, mark as inactive
+                        if ($sourceWarehouseInventory->fresh()->quantity <= 0) {
+                            $sourceWarehouseInventory->update(['is_active' => 0]);
+                            $itemDebug['source_inventory_deactivated'] = true;
+                        }
+                    } else {
+                        $itemDebug['source_inventory_action'] = 'warehouse_inventory_not_found';
+                    }
+                } else {
+                    $itemDebug['source_inventory_action'] = 'skipped_no_source';
+                }
+                
+                $debugInfo[] = $itemDebug;
+            }
+            
+            // Update transfer status to received
+            $transfer->status = 'received';
+            $transfer->save();
+
+            DB::commit();
+            
+            // Return debug information along with success message
+            return response()->json([
+                'message' => 'Transfer received successfully and inventory updated.',
+                'transfer_id' => $transfer->id,
+                'new_status' => $transfer->status,
+                'debug_info' => $debugInfo
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json($e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Remove a back order
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function removeBackOrder(Request $request)
+    {
+        try {
+            $request->validate([
+                'id' => 'required|exists:facility_backorders,id'
+            ]);
+            
+            $backorder = FacilityBackorder::findOrFail($request->id);
+            $backorder->delete();
+            
+            return response()->json('Back order has been removed successfully', 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+                       
     /**
      * Get inventories based on source type and ID
      */

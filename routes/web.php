@@ -172,6 +172,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         // Route to delete a transfer item
         Route::delete('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
         
+        // Unified API endpoint for changing transfer status
+        Route::post('/change-status', [TransferController::class, 'changeStatus'])->name('transfers.changeStatus');
+        
+        // Back order functionality
+        Route::post('/backorder', [TransferController::class, 'backorder'])->name('transfers.backorder');
+        Route::post('/remove-back-order', [TransferController::class, 'removeBackOrder'])->name('transfers.remove-back-order');
+        
+        // Item status change
+        Route::post('/change-item-status', [TransferController::class, 'changeItemStatus'])->name('transfers.changeItemStatus');
+        
         // Bulk Status Change Routes
         Route::post('/bulk-approve', [TransferController::class, 'bulkApprove'])->name('transfers.bulkApprove');
         Route::post('/bulk-reject', [TransferController::class, 'bulkReject'])->name('transfers.bulkReject');

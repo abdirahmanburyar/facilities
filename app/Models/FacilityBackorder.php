@@ -8,6 +8,7 @@ class FacilityBackorder extends Model
 {
     protected $fillable = [
         'order_item_id',
+        'transfer_item_id',
         'product_id',
         'inventory_allocation_id',
         'type',
@@ -27,6 +28,11 @@ class FacilityBackorder extends Model
     public function orderItem()
     {
         return $this->belongsTo(OrderItem::class, 'order_item_id');
+    }
+    
+    public function transferItem()
+    {
+        return $this->belongsTo(TransferItem::class, 'transfer_item_id');
     }
 
     public function product()

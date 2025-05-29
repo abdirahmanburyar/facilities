@@ -25,5 +25,10 @@ class TransferItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+    
+    public function backorders()
+    {
+        return $this->hasMany(FacilityBackorder::class, 'transfer_item_id');
+    }
 
 }

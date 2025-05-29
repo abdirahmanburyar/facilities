@@ -13,9 +13,10 @@ return new class extends Migration
     {
         Schema::create('facility_backorders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_item_id')->constrained('order_items')->onDelete('cascade');
+            $table->foreignId('order_item_id')->nullable()->constrained('order_items')->onDelete('cascade');
+            $table->foreignId('transfer_item_id')->nullable()->constrained('transfer_items')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
-            $table->foreignId('inventory_allocation_id')->constrained('inventory_allocations')->onDelete('cascade');
+            $table->foreignId('inventory_allocation_id')->nullable()->constrained('inventory_allocations')->onDelete('cascade');
             $table->string('type'); // damaged, missing
             $table->integer('quantity');
             $table->text('notes')->nullable();
