@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\Inventory;
 use App\Models\InventoryAllocation;
+use App\Models\FacilityBackorder;
 // App Events and Resources
 use App\Events\OrderEvent;
 use App\Http\Resources\OrderResource;
@@ -148,7 +149,7 @@ class OrderController extends Controller
                         'product_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
                         'quantity_on_order' => $item['quantity_on_order'],
-                        'quantity_to_release' => $item['quantity'],
+                        'quantity_to_release' => (int) $item['quantity'] - (int) $item['quantity_on_order'],
                         'no_of_days' => $item['no_of_days'],
                         'amc' => $item['amc'],
                         'no_of_days' => $item['no_of_days'],
@@ -1100,6 +1101,112 @@ class OrderController extends Controller
 
         // Format: OR-1-0001
         return sprintf("OR-%d-%04d", $quarter, $newSequence);
+    }
+
+    /**
+     * Handle back orders for order items
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function backorder(Request $request)
+    {
+        try {
+            // Validate the request
+            $request->validate([
+                'order_id' => 'required|exists:orders,id',
+                'item_id' => 'required|exists:order_items,id',
+                'backorders' => 'required|array',
+                'backorders.*.inventory_allocation_id' => 'required|exists:inventory_allocations,id',
+                'backorders.*.quantity' => 'required|numeric|min:0.01',
+                'backorders.*.status' => 'required|in:Missing,Damaged,Expired,Lost',
+                'backorders.*.notes' => 'nullable|string'
+            ]);
+
+            return DB::transaction(function () use ($request) {
+                $orderItem = OrderItem::findOrFail($request->item_id);
+                $order = Order::findOrFail($request->order_id);
+                
+                // Calculate total back order quantity
+                $totalBackOrderQty = collect($request->backorders)->sum('quantity');
+                
+                // Ensure the back order quantity doesn't exceed the difference between ordered and received
+                $maxBackOrderQty = $orderItem->quantity - ($orderItem->received_quantity ?? 0);
+                
+                if ($totalBackOrderQty > $maxBackOrderQty) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Total back order quantity exceeds the maximum allowed.'
+                    ], 422);
+                }
+                
+                // Create back order records
+                foreach ($request->backorders as $backorderData) {
+                    // Verify the inventory allocation belongs to this order item
+                    $inventoryAllocation = InventoryAllocation::where('id', $backorderData['inventory_allocation_id'])
+                        ->where('order_item_id', $orderItem->id)
+                        ->first();
+                        
+                    if (!$inventoryAllocation) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Invalid inventory allocation specified.'
+                        ], 422);
+                    }
+                    
+                    // Ensure the back order quantity doesn't exceed the allocation quantity
+                    if ($backorderData['quantity'] > $inventoryAllocation->allocated_quantity) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Back order quantity exceeds allocated quantity for batch ' . $inventoryAllocation->batch_number
+                        ], 422);
+                    }
+                    
+                    FacilityBackorder::create([
+                        'order_item_id' => $orderItem->id,
+                        'product_id' => $orderItem->product_id,
+                        'inventory_allocation_id' => $inventoryAllocation->id,
+                        'type' => $backorderData['status'],
+                        'quantity' => $backorderData['quantity'],
+                        'notes' => $backorderData['notes'] ?? null,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id(),
+                    ]);
+                }
+                
+                // Update the order item's received quantity if not already set
+                if (!$orderItem->received_quantity) {
+                    $orderItem->received_quantity = $orderItem->quantity - $totalBackOrderQty;
+                    $orderItem->save();
+                }
+                
+                // Check if all items in the order have been received or back-ordered
+                $allItemsProcessed = $order->items()->get()->every(function ($item) {
+                    return ($item->received_quantity ?? 0) > 0 || 
+                           $item->backorders()->count() > 0;
+                });
+                
+                // If all items are processed, update order status if needed
+                if ($allItemsProcessed && $order->status === 'delivered') {
+                    $order->status = 'received';
+                    $order->received_by = auth()->id();
+                    $order->received_at = now();
+                    $order->save();
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Back orders have been recorded successfully'
+                ]);
+            });
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to record back orders: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function checkInventory(Request $request)

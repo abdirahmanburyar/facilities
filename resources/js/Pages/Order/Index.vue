@@ -8,6 +8,7 @@ import axios from 'axios';
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 import '@/Components/multiselect.css';
+import moment from 'moment';
 
 // No longer using bulk actions
 
@@ -226,11 +227,7 @@ watch([
 });
 
 const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    return moment(date).format('DD/MM/YYYY');
 };
 </script>
 
@@ -310,39 +307,35 @@ const formatDate = (date) => {
             <!-- Orders Table -->
             <div class="lg:col-span-10">
                 <div class="bg-white overflow-auto">
-                    <div class="shadow overflow-x-auto border border-black">
-                        <table class="min-w-full divide-y divide-black border-collapse">
+                    <div class="shadow overflow-x-auto">
+                        <table class="min-w-full divide-y">
 
-                            <thead class="bg-gray-50 border-b border-black">
+                            <thead>
                                 <tr>
                                     <!-- Checkbox column removed -->
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
                                         Order Number
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
                                         Facility
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
                                         Order Type
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
                                         Date
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider border-r border-black">
+                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
                                         Status
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                                        Actions
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-black">
+                            <tbody class="bg-white">
                                 <tr v-if="orders.data?.length === 0">
                                     <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
                                         No orders found
@@ -350,25 +343,25 @@ const formatDate = (date) => {
                                 </tr>
                                 <tr v-for="order in orders.data" :key="order.id" :class="{
                                     'hover:bg-gray-50': true,
-                                    'text-red-500 border-2 border-red-500': order.status === 'rejected'
+                                    'text-red-500 border border-red-500': order.status === 'rejected'
                                 }">
                                     <!-- Checkbox cell removed -->
-                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
+                                    <td class="px-6 py-4 border border-black">
                                         <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
+                                    <td class="px-6 py-4 border border-black">
                                         {{ order.facility?.name }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-black">
+                                    <td class="px-6 py-4 text-sm text-gray-500 border border-black">
                                         {{ order.order_type }}
                                     </td>
 
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-black">
+                                    <td class="px-6 py-4 text-sm text-gray-500 border border-black">
                                         <div class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</div>
                                         <div class="text-xs text-gray-500">Expected: {{ formatDate(order.expected_date)
                                             }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap border border-black">
+                                    <td class="px-6 py-4 border border-black">
                                         <div class="flex items-center gap-2">
                                             <!-- Status Progress Icons - Only show actions taken -->
                                             <div class="flex items-center gap-1">
@@ -404,38 +397,6 @@ const formatDate = (date) => {
                                                     src="/assets/images/received.png" class="w-12 h-12"
                                                     alt="Received" />
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <template v-for="action in getStatusActions(order)" :key="action.status">
-                                            <button @click="changeStatus(order.id, action.status)"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-150 relative"
-                                                :class="[
-                                                    `text-${action.color}-700 bg-${action.color}-50 hover:bg-${action.color}-100`,
-                                                    'font-medium cursor-pointer',
-                                                    { 'opacity-50': loadingActions[order.id] }
-                                                ]">
-                                                <!-- Loading spinner overlay -->
-                                                <div v-if="loadingActions[order.id]" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 rounded-md">
-                                                    <svg class="animate-spin h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                </div>
-                                                <template v-if="action.icon === 'svg'">
-                                                    <svg class="w-6 h-6 text-red-700" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                    </svg>
-                                                </template>
-                                                <img v-else :src="action.icon" class="w-12 h-12" :alt="action.label" />
-                                            </button>
-                                        </template>
-                                        <div class="flex flex-cols items-center text-center">
-                                            <span v-if="order.status == 'delivered'">Waiting to be<br />received by the facility</span>
-                                            <span v-if="order.status == 'received'">successfully received</span>
                                         </div>
                                     </td>
                                 </tr>

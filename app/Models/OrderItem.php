@@ -39,4 +39,12 @@ class OrderItem extends Model
     {
         return $this->belongsTo(Warehouse::class);
     }
+    
+    /**
+     * Get the back orders for this order item
+     */
+    public function backorders()
+    {
+        return $this->hasMany(FacilityBackorder::class, 'order_item_id');
+    }
 }
