@@ -41,8 +41,7 @@ const statusTabs = [
     { value: 'in_process', label: 'In Process', color: 'blue' },
     { value: 'dispatched', label: 'Dispatched', color: 'purple' },
     { value: 'delivered', label: 'Delivered', color: 'indigo' },
-    { value: 'received', label: 'Completely Received', color: 'gray' },
-    { value: 'partially_received', label: 'Partially Received With Back Order', color: 'teal' },
+    { value: 'received', label: 'Received', color: 'green' },
     { value: 'rejected', label: 'Rejected', color: 'red' }
 ];
 
@@ -207,16 +206,21 @@ function reloadOrder() {
     console.log('Applying filters:', query);
 
     router.get(route('orders.index'), query, {
-        preserveScroll: false,
-        preserveState: false,
+        preserveScroll: true,
+        preserveState: true,
         only: ["orders", 'filters', 'stats']
     })
+}
+
+// Handle tab click
+function handleTabClick(status) {
+    currentStatus.value = status;
+    reloadOrder();
 }
 
 // Watch for filter changes
 watch([
     () => search.value,
-    () => currentStatus.value,
     () => facility.value,
     () => orderType.value,
     () => facilityLocation.value,
@@ -235,8 +239,9 @@ const formatDate = (date) => {
 
     <Head title="All Orders" />
     <AuthenticatedLayout title="All Orders" img="/assets/images/orders.png">
-        <!-- Filters Section -->
-        <div class="flex items-center justify-between mb-4">
+       <div class="mb-6">
+         <!-- Filters Section -->
+         <div class="flex items-center justify-between mb-4">
             <h1 class="text-3xl font-bold text-gray-900">Facility Orders</h1>
             <Link :href="route('orders.create')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
                 Create New Order
@@ -286,7 +291,7 @@ const formatDate = (date) => {
             <!-- Status Tabs -->
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8">
-                    <button v-for="tab in statusTabs" :key="tab.value" @click="currentStatus = tab.value"
+                    <button v-for="tab in statusTabs" :key="tab.value" @click="handleTabClick(tab.value)"
                         class="whitespace-nowrap py-4 px-1 border-b-4 font-bold text-lg" :class="[
                             currentStatus === tab.value ?
                                 `border-${tab.color}-500 text-${tab.color}-600` :
@@ -337,8 +342,26 @@ const formatDate = (date) => {
                             </thead>
                             <tbody class="bg-white">
                                 <tr v-if="orders.data?.length === 0">
-                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        No orders found
+                                    <td colspan="6" class="px-6 py-16 text-center">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <img src="/assets/images/empty-order.svg" alt="No orders" class="w-32 h-32 mb-4" 
+                                                onerror="this.onerror=null; this.src='/assets/images/empty-box.png'">
+                                            <h3 class="text-lg font-medium text-gray-900 mb-1">No Orders Found</h3>
+                                            <p class="text-sm text-gray-500 max-w-md">
+                                                {{ currentStatus ? 
+                                                    `There are no orders with '${statusTabs.find(t => t.value === currentStatus)?.label || currentStatus}' status.` : 
+                                                    'There are no orders matching your current filters.' }}
+                                            </p>
+                                            <div class="mt-6">
+                                                <Link :href="route('orders.create')" 
+                                                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    Create New Order
+                                                </Link>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-for="order in orders.data" :key="order.id" :class="{
@@ -541,5 +564,6 @@ const formatDate = (date) => {
                 </div>
             </div>
         </div>
+       </div>
     </AuthenticatedLayout>
 </template>

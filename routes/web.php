@@ -8,6 +8,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -145,6 +146,39 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::post('/store', 'store')->name('dispence.store');
             Route::get('/{id}/show', 'show')->name('dispence.show');
         });
+
+            // Transfer Management Routes
+    // ->middleware(PermissionMiddleware::class . ':transfer.view')
+    Route::prefix('transfers')->group(function () {
+        Route::get('/', [TransferController::class, 'index'])->name('transfers.index');
+        Route::get('/{id}/show', [TransferController::class, 'show'])->name('transfers.show');
+        Route::get('/create', [TransferController::class, 'create'])->name('transfers.create');
+        Route::post('/store', [TransferController::class, 'store'])->name('transfers.store');
+        Route::get('/{transfer}/edit', [TransferController::class, 'edit'])->name('transfers.edit');
+        Route::put('/{transfer}', [TransferController::class, 'update'])->name('transfers.update');
+        Route::delete('/{transfer}', [TransferController::class, 'destroy'])->name('transfers.destroy');
+        
+        // Transfer Status Change Routes
+        Route::post('/{id}/approve', [TransferController::class, 'approve'])->name('transfers.approve');
+        Route::post('/{id}/reject', [TransferController::class, 'reject'])->name('transfers.reject');
+        Route::post('/{id}/in-process', [TransferController::class, 'inProcess'])->name('transfers.inProcess');
+        Route::post('/{id}/dispatch', [TransferController::class, 'dispatch'])->name('transfers.dispatch');
+        Route::post('/{id}/complete', [TransferController::class, 'completeTransfer'])->name('transfers.completeTransfer');
+        Route::post('/{id}/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receive');
+        
+        // Route to get available inventories for transfer
+        Route::get('/get-inventories', [TransferController::class, 'getInventories'])->name('transfers.getInventories');
+        
+        // Route to delete a transfer item
+        Route::delete('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
+        
+        // Bulk Status Change Routes
+        Route::post('/bulk-approve', [TransferController::class, 'bulkApprove'])->name('transfers.bulkApprove');
+        Route::post('/bulk-reject', [TransferController::class, 'bulkReject'])->name('transfers.bulkReject');
+        Route::post('/bulk-in-process', [TransferController::class, 'bulkInProcess'])->name('transfers.bulkInProcess');
+        Route::post('/bulk-dispatch', [TransferController::class, 'bulkDispatch'])->name('transfers.bulkDispatch');
+        Route::post('/bulk-complete', [TransferController::class, 'bulkComplete'])->name('transfers.bulkComplete');
+    });
 });
 
 require __DIR__.'/auth.php';

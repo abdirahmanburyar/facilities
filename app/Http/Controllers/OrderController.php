@@ -77,6 +77,9 @@ class OrderController extends Controller
             ->when($request->orderType, function ($query, $orderType) {
                 $query->where('order_type', $orderType);
             })
+            ->when($request->currentStatus, function ($query, $status) {
+                $query->where('status', $status);
+            })
             ->latest();
 
         // Get order statistics from orders table
@@ -107,7 +110,7 @@ class OrderController extends Controller
 
         return Inertia::render('Order/Index', [
             'orders' => OrderResource::collection($orders),
-            'filters' => $request->only('search', 'page', 'orderType', 'dateFrom', 'dateTo'),
+            'filters' => $request->only('search', 'page', 'orderType', 'dateFrom', 'dateTo', 'currentStatus'),
             'stats' => $stats,
         ]);
     }
