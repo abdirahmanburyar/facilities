@@ -927,7 +927,7 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
             $order = Order::where('orders.id', $id)
-                ->with(['items.product', 'items.inventory_allocations.warehouse', 'items.inventory_allocations.location', 'facility', 'user'])
+                ->with(['items.product', 'items.inventory_allocations.backorders', 'items.inventory_allocations.warehouse', 'items.inventory_allocations.location', 'facility', 'user'])
                 ->first();
 
             // Get items with SOH using subquery
@@ -1114,98 +1114,109 @@ class OrderController extends Controller
         try {
             // Validate the request
             $request->validate([
-                'order_id' => 'required|exists:orders,id',
-                'item_id' => 'required|exists:order_items,id',
+                'order_item_id' => 'required|exists:order_items,id',
                 'backorders' => 'required|array',
+                'received_quantity' => 'required|numeric|min:0',
                 'backorders.*.inventory_allocation_id' => 'required|exists:inventory_allocations,id',
-                'backorders.*.quantity' => 'required|numeric|min:0.01',
-                'backorders.*.status' => 'required|in:Missing,Damaged,Expired,Lost',
-                'backorders.*.notes' => 'nullable|string'
+                'backorders.*.quantity' => 'required|numeric|min:0',
+                'backorders.*.type' => 'required|in:Missing,Damaged,Expired,Lost',
+                'backorders.*.notes' => 'nullable|string',
+                'backorders.*.id' => 'nullable|exists:facility_backorders,id',
+                'deleted_backorders' => 'nullable|array',
+                'deleted_backorders.*' => 'exists:facility_backorders,id'
             ]);
 
             return DB::transaction(function () use ($request) {
-                $orderItem = OrderItem::findOrFail($request->item_id);
-                $order = Order::findOrFail($request->order_id);
+                // Get the order item and its associated order
+                $orderItem = OrderItem::findOrFail($request->order_item_id);
+                $order = $orderItem->order;
+                
+                // Update the order item's received quantity with the value from the frontend
+                $orderItem->received_quantity = $request->received_quantity;
+                $orderItem->save();
                 
                 // Calculate total back order quantity
                 $totalBackOrderQty = collect($request->backorders)->sum('quantity');
                 
                 // Ensure the back order quantity doesn't exceed the difference between ordered and received
-                $maxBackOrderQty = $orderItem->quantity - ($orderItem->received_quantity ?? 0);
+                $maxBackOrderQty = $orderItem->quantity - $orderItem->received_quantity;
                 
                 if ($totalBackOrderQty > $maxBackOrderQty) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Total back order quantity exceeds the maximum allowed.'
-                    ], 422);
+                    return response()->json('Total back order quantity exceeds the maximum allowed.', 500);
                 }
                 
-                // Create back order records
+                // Process deleted back orders first
+                if ($request->has('deleted_backorders') && !empty($request->deleted_backorders)) {
+                    FacilityBackorder::whereIn('id', $request->deleted_backorders)->delete();
+                }
+                
+                // Process back orders (create new ones or update existing ones)
                 foreach ($request->backorders as $backorderData) {
-                    // Verify the inventory allocation belongs to this order item
                     $inventoryAllocation = InventoryAllocation::where('id', $backorderData['inventory_allocation_id'])
                         ->where('order_item_id', $orderItem->id)
                         ->first();
                         
                     if (!$inventoryAllocation) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Invalid inventory allocation specified.'
-                        ], 422);
+                        return response()->json('Invalid inventory allocation specified.', 500);
                     }
                     
                     // Ensure the back order quantity doesn't exceed the allocation quantity
                     if ($backorderData['quantity'] > $inventoryAllocation->allocated_quantity) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Back order quantity exceeds allocated quantity for batch ' . $inventoryAllocation->batch_number
-                        ], 422);
+                        return response()->json('Back order quantity exceeds allocated quantity for batch ' . $inventoryAllocation->batch_number, 500);
                     }
                     
-                    FacilityBackorder::create([
-                        'order_item_id' => $orderItem->id,
-                        'product_id' => $orderItem->product_id,
-                        'inventory_allocation_id' => $inventoryAllocation->id,
-                        'type' => $backorderData['status'],
-                        'quantity' => $backorderData['quantity'],
-                        'notes' => $backorderData['notes'] ?? null,
-                        'status' => 'pending',
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
-                    ]);
+                    // Check if this is an existing back order that needs to be updated
+                    if (isset($backorderData['id'])) {
+                        $backorder = FacilityBackorder::find($backorderData['id']);
+                        if ($backorder) {
+                            $backorder->update([
+                                'quantity' => $backorderData['quantity'],
+                                'notes' => $backorderData['notes'],
+                                'type' => $backorderData['type'],
+                                'status' => 'pending',
+                                'updated_by' => auth()->id()
+                            ]);
+                        }
+                    } else {
+                        // Create a new back order
+                        FacilityBackorder::create([
+                            'order_item_id' => $orderItem->id,
+                            'product_id' => $orderItem->product_id,
+                            'inventory_allocation_id' => $inventoryAllocation->id,
+                            'quantity' => $backorderData['quantity'],
+                            'notes' => $backorderData['notes'],
+                            'type' => $backorderData['type'],
+                            'status' => 'pending',
+                            'created_by' => auth()->id(),
+                            'updated_by' => auth()->id()
+                        ]);
+                    }
                 }
                 
-                // Update the order item's received quantity if not already set
-                if (!$orderItem->received_quantity) {
-                    $orderItem->received_quantity = $orderItem->quantity - $totalBackOrderQty;
-                    $orderItem->save();
-                }
+                // Check if the order item has any back orders after processing
+                $hasBackOrders = FacilityBackorder::where('order_item_id', $orderItem->id)->exists();
                 
-                // Check if all items in the order have been received or back-ordered
-                $allItemsProcessed = $order->items()->get()->every(function ($item) {
-                    return ($item->received_quantity ?? 0) > 0 || 
-                           $item->backorders()->count() > 0;
-                });
-                
-                // If all items are processed, update order status if needed
-                if ($allItemsProcessed && $order->status === 'delivered') {
-                    $order->status = 'received';
-                    $order->received_by = auth()->id();
-                    $order->received_at = now();
-                    $order->save();
-                }
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Back orders have been recorded successfully'
-                ]);
+                return response()->json('Back orders have been recorded successfully', 200);
             });
             
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to record back orders: ' . $e->getMessage()
-            ], 500);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function removeBackOrder(Request $request)
+    {
+        try {
+            $request->validate([
+                'id' => 'required|exists:facility_backorders,id'
+            ]);
+            
+            $backorder = FacilityBackorder::findOrFail($request->id);
+            $backorder->delete();
+            
+            return response()->json('Back order has been removed successfully', 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
         }
     }
 

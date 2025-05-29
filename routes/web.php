@@ -131,6 +131,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             
             // Inventory check
             Route::post('/check/inventory', 'checkInventory')->name('orders.check-inventory');
+
+            // Back order
+            Route::post('/backorder', 'backorder')->name('orders.backorder');
+            Route::post('/remove-back-order', 'removeBackOrder')->name('orders.remove-back-order');
         });
 
         Route::controller(DispenceController::class)

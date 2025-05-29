@@ -8,44 +8,44 @@
         <div class="flex items-center justify-between">
           <div>
             <Link :href="route('orders.index')">Back to orders</Link>
-            <h1 class="text-2xl font-semibold text-gray-900">Order ID. {{ order?.value?.order_number }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Order ID. {{ props.order?.order_number }}</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <span :class="[statusClasses[order?.value?.status] || statusClasses.default]" class="flex items-center text-lg font-bold px-4 py-2">
+            <span :class="[statusClasses[props.order?.status] || statusClasses.default]" class="flex items-center text-lg font-bold px-4 py-2">
               <!-- Status Icon -->
               <span class="mr-3">
                 <!-- Pending Icon -->
-                <img v-if="order?.value?.status === 'pending'" src="/assets/images/pending.svg" class="w-6 h-6"
+                <img v-if="props.order?.status === 'pending'" src="/assets/images/pending.svg" class="w-6 h-6"
                   alt="Pending" />
 
                 <!-- Approved Icon -->
-                <img v-else-if="order?.value?.status === 'approved'" src="/assets/images/approved.png" class="w-6 h-6"
+                <img v-else-if="props.order?.status === 'approved'" src="/assets/images/approved.png" class="w-6 h-6"
                   alt="Approved" />
 
                 <!-- In Process Icon -->
-                <img v-else-if="order?.value?.status === 'in_process'" src="/assets/images/inprocess.png" class="w-6 h-6"
+                <img v-else-if="props.order?.status === 'in_process'" src="/assets/images/inprocess.png" class="w-6 h-6"
                   alt="In Process" />
 
                 <!-- Dispatched Icon -->
-                <img v-else-if="order?.value?.status === 'dispatched'" src="/assets/images/dispatch.png" class="w-6 h-6"
+                <img v-else-if="props.order?.status === 'dispatched'" src="/assets/images/dispatch.png" class="w-6 h-6"
                   alt="Dispatched" />
 
                 <!-- Delivered Icon -->
-                <img v-else-if="order.status === 'delivered'" src="/assets/images/delivery.png" class="w-6 h-6"
+                <img v-else-if="props.order?.status === 'delivered'" src="/assets/images/delivery.png" class="w-6 h-6"
                   alt="Delivered" />
 
                 <!-- Received Icon -->
-                <img v-else-if="order.status === 'received'" src="/assets/images/received.png" class="w-6 h-6"
+                <img v-else-if="props.order?.status === 'received'" src="/assets/images/received.png" class="w-6 h-6"
                   alt="Received" />
 
                 <!-- Rejected Icon -->
-                <svg v-else-if="order.status === 'rejected'" class="w-6 h-6 text-red-700" fill="none"
+                <svg v-else-if="props.order?.status === 'rejected'" class="w-6 h-6 text-red-700" fill="none"
                   stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </span>
-              {{ order.status.toUpperCase() }}
+              {{ props.order?.status.toUpperCase() }}
             </span>
           </div>
         </div>
@@ -57,19 +57,19 @@
           <h2 class="text-lg font-medium text-gray-900">Facility Details</h2>
           <div class="flex items-center">
             <BuildingOfficeIcon class="h-5 w-5 text-gray-400 mr-2" />
-            <span class="text-sm text-gray-600">{{ order.facility?.name }}</span>
+            <span class="text-sm text-gray-600">{{ props.order.facility?.name }}</span>
           </div>
           <div class="flex items-center">
             <EnvelopeIcon class="h-5 w-5 text-gray-400 mr-2" />
-            <span class="text-sm text-gray-600">{{ order.facility?.email }}</span>
+            <span class="text-sm text-gray-600">{{ props.order.facility?.email }}</span>
           </div>
           <div class="flex items-center">
             <PhoneIcon class="h-5 w-5 text-gray-400 mr-2" />
-            <span class="text-sm text-gray-600">{{ order.facility?.phone }}</span>
+            <span class="text-sm text-gray-600">{{ props.order.facility?.phone }}</span>
           </div>
           <div class="flex items-center">
             <MapPinIcon class="h-5 w-5 text-gray-400 mr-2" />
-            <span class="text-sm text-gray-600">{{ order.facility?.address }}, {{ order.facility?.city }}</span>
+            <span class="text-sm text-gray-600">{{ props.order.facility?.address }}, {{ props.order.facility?.city }}</span>
           </div>
         </div>
         <div>
@@ -78,19 +78,19 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <p class="text-sm font-medium text-gray-500">Order Type</p>
-                <p class="text-sm text-gray-900">{{ order.order_type }}</p>
+                <p class="text-sm text-gray-900">{{ props.order.order_type }}</p>
               </div>
               <div>
                 <p class="text-sm font-medium text-gray-500">Order Date</p>
-                <p class="text-sm text-gray-900">{{ formatDate(order.order_date) }}</p>
+                <p class="text-sm text-gray-900">{{ formatDate(props.order.order_date) }}</p>
               </div>
               <div>
                 <p class="text-sm font-medium text-gray-500">Expected Date</p>
-                <p class="text-sm text-gray-900">{{ formatDate(order.expected_date) }}</p>
+                <p class="text-sm text-gray-900">{{ formatDate(props.order.expected_date) }}</p>
               </div>
               <div>
                 <p class="text-sm font-medium text-gray-500">Created By</p>
-                <p class="text-sm text-gray-900">{{ order.user.name }}</p>
+                <p class="text-sm text-gray-900">{{ props.order.user.name }}</p>
               </div>
             </div>
           </div>
@@ -104,7 +104,7 @@
 
           <!-- Timeline Progress -->
           <div class="absolute top-7 left-0 h-2 bg-green-500 z-0 transition-all duration-500 ease-in-out" :style="{
-            width: `${(statusOrder.indexOf(order.status) / (statusOrder.length - 1)) * 100}%`
+            width: `${(statusOrder.indexOf(props.order.status) / (statusOrder.length - 1)) * 100}%`
           }"></div>
 
           <!-- Timeline Steps -->
@@ -112,79 +112,79 @@
             <!-- Pending -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('pending') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
+                :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('pending') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
                 <img src="/assets/images/pending.svg" class="w-10 h-10" alt="Pending"
-                  :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('pending') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('pending') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-3 text-lg font-bold"
-                :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('pending') ? 'text-green-600' : 'text-gray-500'">Pending</span>
+                :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('pending') ? 'text-green-600' : 'text-gray-500'">Pending</span>
             </div>
 
             <!-- Approved -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('approved') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
+                :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('approved') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
                 <img src="/assets/images/approved.png" class="w-10 h-10" alt="Approved"
-                  :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('approved') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('approved') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-3 text-lg font-bold"
-                :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('approved') ? 'text-green-600' : 'text-gray-500'">Approved</span>
+                :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('approved') ? 'text-green-600' : 'text-gray-500'">Approved</span>
             </div>
 
             <!-- In Process -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('in_process') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
+                :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('in_process') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
                 <img src="/assets/images/inprocess.png" class="w-10 h-10" alt="In Process"
-                  :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('in_process') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('in_process') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-3 text-lg font-bold"
-                :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('in_process') ? 'text-green-600' : 'text-gray-500'">In
+                :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('in_process') ? 'text-green-600' : 'text-gray-500'">In
                 Process</span>
             </div>
 
             <!-- Dispatch -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('dispatched') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
+                :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('dispatched') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
                 <img src="/assets/images/dispatch.png" class="w-10 h-10" alt="Dispatch"
-                  :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('dispatched') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('dispatched') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-3 text-lg font-bold"
-                :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('dispatched') ? 'text-green-600' : 'text-gray-500'">Dispatch</span>
+                :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('dispatched') ? 'text-green-600' : 'text-gray-500'">Dispatch</span>
             </div>
 
             <!-- Delivered -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('delivered') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
+                :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('delivered') ? 'bg-white border-orange-500' : 'bg-white border-gray-200']">
                 <img src="/assets/images/delivery.png" class="w-10 h-10" alt="Delivered"
-                  :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('delivered') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('delivered') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-3 text-lg font-bold"
-                :class="statusOrder.indexOf(order.status) >= statusOrder.indexOf('delivered') ? 'text-green-600' : 'text-gray-500'">Delivered</span>
+                :class="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('delivered') ? 'text-green-600' : 'text-gray-500'">Delivered</span>
             </div>
 
             <!-- Received -->
             <div class="flex flex-col items-center">
-              <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10" :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('received') ?
-                (order.has_back_order ? 'bg-white border-orange-500' : 'bg-green-500 border-green-600') :
+              <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10" :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received') ?
+                (props.order.has_back_order ? 'bg-white border-orange-500' : 'bg-green-500 border-green-600') :
                 'bg-white border-gray-200']">
                 <img
-                  v-if="order.has_back_order && statusOrder.indexOf(order.status) >= statusOrder.indexOf('received')"
+                  v-if="props.order.has_back_order && statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received')"
                   src="/assets/images/received.png" class="w-10 h-10" alt="Partially Received" />
-                <img v-else-if="statusOrder.indexOf(order.status) >= statusOrder.indexOf('received')"
+                <img v-else-if="statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received')"
                   src="/assets/images/check.svg" class="w-10 h-10" alt="Completed" />
                 <img v-else src="/assets/images/received.png" class="w-10 h-10 opacity-40" alt="Received" />
               </div>
-              <span class="mt-3 text-lg font-bold" :class="[statusOrder.indexOf(order.status) >= statusOrder.indexOf('received') ?
-                (order.has_back_order ? 'text-orange-600' : 'text-green-600') :
+              <span class="mt-3 text-lg font-bold" :class="[statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received') ?
+                (props.order.has_back_order ? 'text-orange-600' : 'text-green-600') :
                 'text-gray-500']">
-                {{ statusOrder.indexOf(order.status) >= statusOrder.indexOf('received') ?
-                  (order.has_back_order ? 'Partially Received' : 'Completed') : 'Received' }}
+                {{ statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received') ?
+                  (props.order.has_back_order ? 'Partially Received' : 'Completed') : 'Received' }}
               </span>
               <button
-                v-if="order.has_back_order && statusOrder.indexOf(order.status) >= statusOrder.indexOf('received')"
+                v-if="props.order.has_back_order && statusOrder.indexOf(props.order.status) >= statusOrder.indexOf('received')"
                 @click="showBackOrderModal()"
                 class="mt-1 text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer">
                 View Back Order
@@ -199,17 +199,17 @@
       <table class="min-w-full border border-black mb-4">
         <thead>
           <tr class="bg-gray-50">
-            <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">Item
+            <th class="w-[40%] px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">Item
             </th>
             <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">
               Facility
               Indicators</th>
             <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">Ordered
               Quantity</th>
-            <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">
+            <th class="w-[30%] px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">
               Quantity to
               release</th>
-            <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">Days
+            <th class="w-[10%] px-3 py-3 text-left text-sm font-medium text-gray-500 uppercase border border-black">Days
             </th>
           </tr>
         </thead>
@@ -246,8 +246,9 @@
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
                  <div>
                   <label>Received Quantity</label>
-                  <input type="text" placeholder="0" v-model="item.received_quantity"
-                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
+                    <input type="text" placeholder="0" v-model="item.received_quantity"
+                      @input="validateReceivedQuantity(item)"
+                      class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
                  </div>
                   <button
                     v-if="order.status === 'delivered'"
@@ -276,7 +277,7 @@
             </td>
             <td class="px-3 py-3 text-sm text-gray-900 border border-black">
               <div class="w-full flex justify-center">
-                <input type="number" v-model="item.no_of_days"
+                <input type="number" v-model="item.no_of_days" readonly
                   class="w-[70%] rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
               </div>
             </td>
@@ -368,14 +369,14 @@
 
             <!-- Dispatch button -->
             <div class="relative">
-              <button @click="changeStatus(order.id, 'dispatched')"
-                :disabled="isLoading || order.status !== 'in_process'"
+              <button @click="changeStatus(props.order.id, 'dispatched')"
+                :disabled="isLoading || props.order.status !== 'in_process'"
                 :class="[
-                  order.status === 'in_process' ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 
-                  statusOrder.indexOf(order.status) > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+                  props.order.status === 'in_process' ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 
+                  statusOrder.indexOf(props.order.status) > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
                 ]"
                 class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                <svg v-if="isLoading && order.status === 'in_process'" class="animate-spin h-5 w-5 mr-2"
+                <svg v-if="isLoading && props.order.status === 'in_process'" class="animate-spin h-5 w-5 mr-2"
                   xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor"
@@ -387,7 +388,7 @@
                   <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(order.status) > statusOrder.indexOf('in_process') ? 'Dispatched' : 'Dispatch' }}</span>
                 </template>
               </button>
-              <div v-if="order.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+              <div v-if="props.order.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
             </div>
 
             <!-- Deliver button -->
@@ -571,17 +572,44 @@
 
       <div class="mb-4 bg-gray-50 p-3 rounded">
         <p class="text-sm font-medium text-gray-600">Product: {{ selectedItem?.product?.name }}</p>
-        <p class="text-sm font-medium text-gray-600">Expected Quantity: {{ selectedItem?.quantity }}</p>
-        <p class="text-sm font-medium text-gray-600">Received Quantity: {{ selectedItem?.received_quantity || 0 }}</p>
-        <p class="text-sm font-medium text-gray-600">Back Orders: {{ totalExistingDifferences }}</p>
-        <p class="text-sm font-medium text-yellow-800">Actual Mismatches: {{ actualMismatches }}</p>
+        
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="border-r pr-2">
+            <p class="text-sm font-medium text-gray-600">Quantity to Release:</p>
+            <p class="text-lg font-bold text-gray-800">{{ selectedItem?.quantity_to_release || 0 }}</p>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-600">Received Quantity:</p>
+            <p class="text-lg font-bold text-gray-800">{{ selectedItem?.received_quantity || 0 }}</p>
+          </div>
+        </div>
+        
+        <div class="mt-3 p-2 bg-yellow-50 rounded border border-yellow-200">
+          <div class="flex justify-between items-center">
+            <p class="text-sm font-medium text-gray-700">Missing Quantity (Back Order):</p>
+            <p class="text-lg font-bold" :class="missingQuantity > 0 ? 'text-red-600' : 'text-green-600'">{{ missingQuantity }}</p>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">This is the difference between quantity to release and received quantity</p>
+        </div>
+        
+        <div class="mt-3">
+          <div class="flex justify-between items-center">
+            <p class="text-sm font-medium text-gray-600">Existing Back Orders:</p>
+            <p class="text-sm font-bold text-gray-800">{{ totalExistingDifferences }}</p>
+          </div>
+          <div class="flex justify-between items-center mt-1">
+            <p class="text-sm font-medium text-yellow-800">Remaining to Allocate:</p>
+            <p class="text-sm font-bold" :class="remainingToAllocate > 0 ? 'text-red-600' : 'text-green-600'">{{ remainingToAllocate }}</p>
+          </div>
+        </div>
       </div>
 
       <!-- Batch-specific back orders -->
       <div class="mb-4">
         <h3 class="text-md font-medium text-gray-700 mb-2">Batch Information</h3>
         <div class="bg-gray-50 p-3 rounded mb-4">
-          <p class="text-sm text-gray-500 mb-2">Please select which batch(es) have issues and specify the problem type and quantity.</p>
+          <p class="text-sm text-gray-500 mb-2">Please allocate the missing quantity ({{ missingQuantity }}) across batches and specify the problem type.</p>
+          <p class="text-sm text-gray-500">Back orders represent the difference between quantity to release and received quantity.</p>
         </div>
         
         <div v-for="(allocation, allocIndex) in selectedItem?.inventory_allocations" :key="allocation.id" class="border rounded-md p-3 mb-3">
@@ -594,20 +622,15 @@
               <button 
                 @click="addBatchBackOrder(allocation)" 
                 class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-                :disabled="!canAddMoreToAllocation(allocation)"
+                :disabled="!canAddMoreToAllocation(allocation) || isSaving"
               >
                 Add Issue
               </button>
             </div>
           </div>
           
-          <div class="text-xs text-gray-600 mb-2">
-            <div>Barcode: {{ allocation.barcode || 'N/A' }}</div>
-            <div>Location: {{ allocation.location?.location || 'N/A' }}</div>
-            <div>Warehouse: {{ allocation.warehouse?.name || 'N/A' }}</div>
-          </div>
-          
           <!-- Back order rows for this batch -->
+          <span v-if="message" class="text-sm text-red-600">{{ message }}</span>
           <div v-if="getBatchBackOrders(allocation.id).length > 0" class="mt-3">
             <table class="min-w-full divide-y divide-gray-200 border">
               <thead class="bg-gray-50">
@@ -621,9 +644,9 @@
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="(row, rowIndex) in getBatchBackOrders(allocation.id)" :key="rowIndex" class="hover:bg-gray-50">
                   <td class="px-2 py-1">
-                    <select v-model="row.status" class="text-sm w-full border-gray-300 rounded-md shadow-sm">
-                      <option v-for="status in ['Missing', 'Damaged', 'Expired', 'Lost']" :key="status" :value="status">
-                        {{ status }}
+                    <select v-model="row.type" class="text-sm w-full border-gray-300 rounded-md shadow-sm">
+                      <option v-for="type in ['Missing', 'Damaged', 'Expired', 'Lost']" :key="type" :value="type">
+                        {{ type }}
                       </option>
                     </select>
                   </td>
@@ -632,7 +655,7 @@
                       type="number" 
                       v-model="row.quantity" 
                       @input="validateBatchBackOrderQuantity(row, allocation)"
-                      min="1" 
+                      min="0" 
                       :max="allocation.allocated_quantity"
                       class="text-sm w-full border-gray-300 rounded-md shadow-sm"
                     />
@@ -646,7 +669,7 @@
                     />
                   </td>
                   <td class="px-2 py-1 text-center">
-                    <button @click="removeBatchBackOrder(allocation.id, rowIndex)" class="text-red-600 hover:text-red-800">
+                    <button @click="removeBatchBackOrder(row, rowIndex)" class="text-red-600 hover:text-red-800">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
@@ -665,7 +688,16 @@
             <span :class="{'text-green-600': isValidForSave, 'text-red-600': !isValidForSave}">
               {{ totalBatchBackOrderQuantity }}
             </span>
-            <span class="text-gray-600"> / {{ selectedItem?.quantity - (selectedItem?.received_quantity || 0) }} items recorded</span>
+            <span class="text-gray-600"> / {{ missingQuantity }} items recorded</span>
+            <div v-if="missingQuantity > 0 && totalBatchBackOrderQuantity === missingQuantity" class="text-xs text-green-600 mt-1">
+              ✓ All missing items accounted for
+            </div>
+            <div v-else-if="missingQuantity > 0 && totalBatchBackOrderQuantity < missingQuantity" class="text-xs text-yellow-600 mt-1">
+              {{ missingQuantity - totalBatchBackOrderQuantity }} more items need to be allocated
+            </div>
+            <div v-else-if="missingQuantity > 0 && totalBatchBackOrderQuantity > missingQuantity" class="text-xs text-red-600 mt-1">
+              Over-allocated by {{ totalBatchBackOrderQuantity - missingQuantity }} items
+            </div>
           </div>
         </div>
 
@@ -674,12 +706,13 @@
             @click="saveBackOrders"
             class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="!isValidForSave || isSaving">
-            {{ isSaving ? 'Saving...' : 'Save Back Orders' }}
+            {{ isSaving ? 'Saving...' : 'Save Back Orders and Exit' }}
           </button>
           <button 
+            :disabled="isSaving"
             @click="attemptCloseModal"
             class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
-            Cancel
+            Exit
           </button>
         </div>
       </div>
@@ -723,6 +756,7 @@ const { order, error, products } = toRefs(props);
 
 // Back order modal state
 const showBackOrderModal = ref(false);
+const showModal = ref(false); // Added missing ref for the old modal
 const selectedItem = ref(null);
 const batchBackOrders = ref({});
 const showIncompleteBackOrderModal = ref(false);
@@ -740,7 +774,7 @@ const backOrderItems = computed(() => {
 // Computed properties for back order modal
 const missingQuantity = computed(() => {
   if (!selectedItem.value) return 0;
-  return selectedItem.value.quantity - (selectedItem.value.received_quantity || 0);
+  return selectedItem.value.quantity_to_release - (selectedItem.value.received_quantity || 0);
 });
 
 const totalBatchBackOrderQuantity = computed(() => {
@@ -772,7 +806,7 @@ const isValidForSave = computed(() => {
   
   // Check if all back orders have valid data
   const allValid = Object.values(batchBackOrders.value).every(rows => {
-    return rows.every(row => row.quantity > 0 && row.status);
+    return rows.every(row => row.quantity > 0 && row.type);
   });
   
   // Check if total matches the missing quantity
@@ -786,6 +820,119 @@ const openBackOrderModal = (item) => {
   selectedItem.value = item;
   batchBackOrders.value = {};
   showIncompleteBackOrderModal.value = false;
+  
+  // If there's no difference between quantity_to_release and received_quantity, no need for back orders
+  if (item.quantity_to_release <= (item.received_quantity || 0) && (!item.backorders || item.backorders.length === 0)) {
+    Swal.fire({
+      title: 'No Back Order Needed',
+      text: 'All quantities have been received. No back order is necessary.',
+      icon: 'info',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000
+    });
+    return;
+  }
+  
+  // Check for back orders in different places and load them
+  let hasExistingBackOrders = false;
+  
+  // 1. Check item.backorders (top-level back orders)
+  if (item.backorders && item.backorders.length > 0) {
+    hasExistingBackOrders = true;
+    // Group back orders by inventory allocation
+    item.backorders.forEach(backorder => {
+      const allocationId = backorder.inventory_allocation_id;
+      if (!batchBackOrders.value[allocationId]) {
+        batchBackOrders.value[allocationId] = [];
+      }
+      
+      // Find the corresponding allocation for this back order
+      const allocation = item.inventory_allocations.find(alloc => alloc.id === parseInt(allocationId));
+      
+      // Add the back order with its ID for tracking
+      batchBackOrders.value[allocationId].push({
+        id: backorder.id, // Store the ID for editing/deleting
+        inventory_allocation_id: allocationId,
+        quantity: backorder.quantity,
+        type: backorder.type || 'Missing', // Use type instead of status
+        notes: backorder.notes,
+        batch_number: allocation?.batch_number || '',
+        barcode: allocation?.barcode || '',
+        isExisting: true // Flag to indicate this is an existing back order
+      });
+    });
+  }
+  
+  // 2. Check inventory_allocations.backorders (nested back orders)
+  if (item.inventory_allocations && item.inventory_allocations.length > 0) {
+    item.inventory_allocations.forEach(allocation => {
+      if (allocation.backorders && allocation.backorders.length > 0) {
+        hasExistingBackOrders = true;
+        
+        // Make sure we have an array for this allocation
+        if (!batchBackOrders.value[allocation.id]) {
+          batchBackOrders.value[allocation.id] = [];
+        }
+        
+        // Add each back order from this allocation
+        allocation.backorders.forEach(backorder => {
+          // Check if we already added this back order (to avoid duplicates)
+          const alreadyAdded = batchBackOrders.value[allocation.id].some(bo => bo.id === backorder.id);
+          
+          if (!alreadyAdded) {
+            batchBackOrders.value[allocation.id].push({
+              id: backorder.id,
+              inventory_allocation_id: allocation.id,
+              quantity: backorder.quantity,
+              type: backorder.type || 'Missing', // Use type instead of status
+              notes: backorder.notes,
+              batch_number: allocation.batch_number || '',
+              barcode: allocation.barcode || '',
+              isExisting: true
+            });
+          }
+        });
+      }
+    });
+  }
+  // If no existing back orders or we still need more, pre-populate based on inventory allocations
+  else if (item.inventory_allocations && item.inventory_allocations.length > 0) {
+    // Calculate total missing quantity
+    const missingQty = item.quantity_to_release - (item.received_quantity || 0);
+    let remainingToAllocate = missingQty;
+    
+    // Distribute missing quantity across allocations proportionally
+    item.inventory_allocations.forEach(allocation => {
+      if (remainingToAllocate > 0) {
+        // Calculate how much to allocate to this batch (proportional to its size)
+        const allocationRatio = allocation.allocated_quantity / item.quantity_to_release;
+        let batchMissingQty = Math.min(
+          Math.round(missingQty * allocationRatio), // Proportional amount
+          allocation.allocated_quantity, // Cannot exceed allocation
+          remainingToAllocate // Cannot exceed what's left to allocate
+        );
+        
+        if (batchMissingQty > 0) {
+          // Add a back order for this allocation
+          const backOrders = getBatchBackOrders(allocation.id);
+          backOrders.push({
+            inventory_allocation_id: allocation.id,
+            quantity: batchMissingQty,
+            type: 'Missing',
+            notes: '',
+            batch_number: allocation.batch_number,
+            barcode: allocation.barcode,
+            isExisting: false // Flag to indicate this is a new back order
+          });
+          
+          remainingToAllocate -= batchMissingQty;
+        }
+      }
+    });
+  }
+  
   showBackOrderModal.value = true;
 };
 
@@ -799,28 +946,56 @@ const getBatchBackOrders = (allocationId) => {
 
 // Check if we can add more back orders to an allocation
 const canAddMoreToAllocation = (allocation) => {
+  // First check if there's a mismatch between quantity_to_release and received_quantity
+  if (!selectedItem.value || !(selectedItem.value.quantity_to_release > (selectedItem.value.received_quantity || 0))) {
+    return false;
+  }
+  
   // Get current back orders for this allocation
   const currentBackOrders = getBatchBackOrders(allocation.id);
   
   // Calculate total quantity already back-ordered for this allocation
   const totalBackOrdered = currentBackOrders.reduce((sum, bo) => sum + Number(bo.quantity || 0), 0);
   
-  // Can add more if there's still quantity available in this allocation
-  return totalBackOrdered < allocation.allocated_quantity;
+  // Calculate remaining quantity to back order overall
+  const remainingOverall = missingQuantity.value - totalBatchBackOrderQuantity.value;
+  
+  // Can add more if there's still quantity available in this allocation AND we need more back orders overall
+  return totalBackOrdered < allocation.allocated_quantity && remainingOverall > 0;
 };
 
 // Add a back order for a specific batch
 const addBatchBackOrder = (allocation) => {
   const currentBackOrders = getBatchBackOrders(allocation.id);
   
-  // Calculate remaining quantity for this allocation
-  const totalBackOrdered = currentBackOrders.reduce((sum, bo) => sum + Number(bo.quantity || 0), 0);
-  const remainingForAllocation = allocation.allocated_quantity - totalBackOrdered;
+  // Calculate total missing quantity (difference between quantity_to_release and received_quantity)
+  const totalMissingQuantity = missingQuantity.value;
   
-  // Add a new back order row for this batch
+  // Calculate how much has already been allocated in all back orders
+  const totalAlreadyAllocated = totalBatchBackOrderQuantity.value;
+  
+  // Calculate how much is still remaining to allocate
+  const remainingToAllocate = totalMissingQuantity - totalAlreadyAllocated;
+  
+  // Only add if there's quantity that still needs to be allocated
+  if (remainingToAllocate <= 0) {
+    Swal.fire({
+      title: 'Cannot Add Issue',
+      text: 'All missing quantity has already been allocated to back orders.',
+      icon: 'warning',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000
+    });
+    return;
+  }
+  
+  // Add a new back order row for this batch with a default quantity of the remaining to allocate
+  // (user can adjust this as needed)
   currentBackOrders.push({
     inventory_allocation_id: allocation.id,
-    quantity: remainingForAllocation,
+    quantity: remainingToAllocate,
     status: 'Missing',
     notes: '',
     batch_number: allocation.batch_number,
@@ -828,85 +1003,185 @@ const addBatchBackOrder = (allocation) => {
   });
 };
 
+const message = ref('');
+
+onMounted(() => {
+  setTimeout(() => {
+    message.value = '';
+  }, 2000);
+})
 // Remove a back order for a specific batch
-const removeBatchBackOrder = (allocationId, index) => {
-  if (batchBackOrders.value[allocationId]) {
-    batchBackOrders.value[allocationId].splice(index, 1);
+const removeBatchBackOrder = async (row, index) => {
+  message.value = '';
+  if (batchBackOrders.value[row.inventory_allocation_id]) {
+    batchBackOrders.value[row.inventory_allocation_id].splice(index, 1);
+    await axios.post(route('orders.remove-back-order'), {
+      id: row.id
+    })
+    .then((response) => {
+      message.value = response.data;
+    })
+    .catch((error) => {
+      message.value = error.response.data;
+      console.log(error.response.data);
+    });
   }
 };
 
 // Validate back order quantity for a specific batch
 const validateBatchBackOrderQuantity = (row, allocation) => {
-  // Ensure quantity is a valid number
-  if (isNaN(row.quantity) || row.quantity < 0) {
+  // Ensure quantity is a number and within valid range
+  const qty = Number(row.quantity);
+  if (isNaN(qty) || qty <= 0) {
     row.quantity = 0;
+    return;
   }
   
   // Get all back orders for this allocation
   const allocationBackOrders = getBatchBackOrders(allocation.id);
   
-  // Calculate total back ordered for this allocation
-  const totalForAllocation = allocationBackOrders.reduce((sum, bo) => sum + Number(bo.quantity || 0), 0);
+  // Calculate total back ordered for all allocations except this row
+  const totalOtherRows = Object.values(batchBackOrders.value).reduce((total, rows) => {
+    return total + rows.reduce((subtotal, backOrder) => {
+      // Skip the current row being validated
+      if (backOrder === row) return subtotal;
+      return subtotal + Number(backOrder.quantity || 0);
+    }, 0);
+  }, 0);
   
-  // If total exceeds allocation quantity, adjust this row
-  if (totalForAllocation > allocation.allocated_quantity) {
-    // Calculate how much to reduce by
-    const excess = totalForAllocation - allocation.allocated_quantity;
+  // Calculate maximum allowed for this row
+  const maxForThisRow = missingQuantity.value - totalOtherRows;
+  
+  // If the quantity exceeds what's available, adjust it
+  if (qty > maxForThisRow) {
+    row.quantity = maxForThisRow;
+    Swal.fire({
+      title: 'Quantity Adjusted',
+      text: 'The quantity has been adjusted to match the remaining missing quantity.',
+      icon: 'info',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000
+    });
     row.quantity = Math.max(0, row.quantity - excess);
   }
 };
 
 const saveBackOrders = async () => {
-  if (!isValidForSave.value) return;
+  // Check if there's a mismatch between back order quantity and missing quantity
+  if (totalBatchBackOrderQuantity.value !== missingQuantity.value) {
+    Swal.fire({
+      title: 'Cannot Save',
+      text: `The total back order quantity (${totalBatchBackOrderQuantity.value}) must exactly match the missing quantity (${missingQuantity.value}).`,
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+    return;
+  }
+  
+  // Check if all back orders have valid data
+  const allValid = Object.values(batchBackOrders.value).every(rows => {
+    return rows.every(row => row.quantity > 0 && row.type);
+  });
+  
+  if (!allValid) {
+    Swal.fire({
+      title: 'Invalid Data',
+      text: 'All back orders must have a quantity greater than 0 and a valid issue type.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+    return;
+  }
   
   isSaving.value = true;
   
-  try {
-    // Flatten the batch back orders into a single array
-    const backOrdersArray = [];
-    Object.entries(batchBackOrders.value).forEach(([allocationId, rows]) => {
-      rows.forEach(row => {
-        backOrdersArray.push({
+  // Prepare data for API
+  const backOrderData = {
+    order_item_id: selectedItem.value.id,
+    received_quantity: selectedItem.value.received_quantity || 0,
+    backorders: [],
+    deleted_backorders: []
+  };
+  
+  // Process each back order row
+  Object.entries(batchBackOrders.value).forEach(([allocationId, rows]) => {
+    rows.forEach(row => {
+      // If this is an existing back order, include its ID
+      if (row.isExisting && row.id) {
+        backOrderData.backorders.push({
+          id: row.id, // Include ID for updating
           inventory_allocation_id: allocationId,
           quantity: row.quantity,
-          status: row.status,
+          type: row.type,
           notes: row.notes || null
         });
-      });
+      } else {
+        // New back order
+        backOrderData.backorders.push({
+          inventory_allocation_id: allocationId,
+          quantity: row.quantity,
+          type: row.type,
+          notes: row.notes || null
+        });
+      }
     });
+  });
+  
+  // Check for deleted back orders
+  if (selectedItem.value.backorders) {
+    // Find IDs of existing back orders that are no longer in the batchBackOrders
+    const currentBackOrderIds = Object.values(batchBackOrders.value)
+      .flat()
+      .filter(row => row.isExisting && row.id)
+      .map(row => row.id);
     
-    const response = await axios.post(route('orders.backorder'), {
-      order_id: props.order.id,
-      item_id: selectedItem.value.id,
-      backorders: backOrdersArray
-    });
+    // Find back orders that have been removed
+    const deletedBackOrders = selectedItem.value.backorders
+      .filter(bo => !currentBackOrderIds.includes(bo.id))
+      .map(bo => bo.id);
     
-    Swal.fire({
-      title: 'Success!',
-      text: 'Back orders have been recorded successfully',
-      icon: 'success',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000
-    }).then(() => {
-      // Close modal and reload page to show updated data
-      showBackOrderModal.value = false;
-      router.reload();
-    });
-  } catch (error) {
-    Swal.fire({
-      title: 'Error!',
-      text: error.response?.data?.message || 'Failed to save back orders',
-      icon: 'error',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000
-    });
-  } finally {
-    isSaving.value = false;
+    backOrderData.deleted_backorders = deletedBackOrders;
   }
+    
+   await axios.post(route('orders.backorder'), backOrderData)
+    .then((response) => {
+      console.log(response);
+      isSaving.value = false;
+      Swal.fire({
+        title: 'Success!',
+        text: response.data,
+        icon: 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      }).then(() => {
+        // Close modal and reload page to show updated data
+        showBackOrderModal.value = false;
+        // Use Inertia to visit the current page with fresh data
+        router.visit(route('orders.show', props.order.id), {}, {
+          preserveScroll: true,
+          preserveState: false, // Don't preserve state to ensure fresh data
+          replace: true         // Replace current history entry instead of adding a new one
+        });
+      });
+    })
+    .catch((error) => {
+      console.log(error);
+      Swal.fire({
+        title: 'Error!',
+        text: error.response?.data?.message || 'Failed to save back orders',
+        icon: 'error',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
+      isSaving.value = false;
+    });
+    
 };
 
 const attemptCloseModal = () => {
@@ -953,6 +1228,35 @@ onMounted(() => {
 
 const formatDate = (date) => {
   return moment(date).format('DD/MM/YYYY');
+};
+
+// Validate received quantity to ensure it doesn't exceed quantity_to_release
+const validateReceivedQuantity = (item) => {
+  if (!item.quantity_to_release) return;
+  
+  // Convert to numbers for comparison
+  const qtyToRelease = Number(item.quantity_to_release);
+  let receivedQty = Number(item.received_quantity);
+  
+  // Ensure received quantity is a valid number
+  if (isNaN(receivedQty)) {
+    item.received_quantity = 0;
+    return;
+  }
+  
+  // Ensure received quantity doesn't exceed quantity_to_release
+  if (receivedQty > qtyToRelease) {
+    item.received_quantity = qtyToRelease;
+    Swal.fire({
+      title: 'Quantity Adjusted',
+      text: 'Received quantity cannot exceed quantity to release.',
+      icon: 'warning',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000
+    });
+  }
 };
 
 const statusOrder = ['pending', 'approved', 'in_process', 'dispatched', 'delivered', 'received'];
