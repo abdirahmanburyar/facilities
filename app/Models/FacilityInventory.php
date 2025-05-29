@@ -13,6 +13,7 @@ class FacilityInventory extends Model
         'product_id',
         'facility_id',
         'quantity',
+        'barcode',
         'expiry_date',
         'batch_number',
         'is_active',
