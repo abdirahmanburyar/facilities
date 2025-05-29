@@ -21,8 +21,11 @@ class Transfer extends Model
         'to_facility_id',
         'created_by',
         'approved_by',
+        'approved_at',
         'dispatched_by',
+        'dispatched_at',
         'rejected_by',
+        'rejected_at',
         'quantity',
         'transfer_date',
         'status',
@@ -33,7 +36,7 @@ class Transfer extends Model
     {
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
     }
-
+    
     public function fromFacility()
     {
         return $this->belongsTo(Facility::class, 'from_facility_id');

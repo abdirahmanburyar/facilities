@@ -226,7 +226,7 @@ class TransferController extends Controller
     public function index(Request $request)
     {
         // Start building the query
-        $query = Transfer::with('toWarehouse', 'toFacility', 'fromFacility', 'items');
+        $query = Transfer::with('toWarehouse', 'toWarehouse', 'toFacility', 'fromFacility', 'items')->withCount('items');
         
         // Apply filters
         // Filter by tab/status
@@ -391,7 +391,7 @@ class TransferController extends Controller
             return response()->json([
                 'message' => 'Transfer created successfully',
                 'transfer_id' => $transfer->transferID,
-                'transfer' => $transfer->load('fromWarehouse', 'toWarehouse', 'fromFacility', 'toFacility')
+                'transfer' => $transfer->load('toWarehouse', 'fromFacility', 'toFacility')
             ]);
         } catch (\Throwable $e) {
             DB::rollback();
@@ -402,7 +402,6 @@ class TransferController extends Controller
     public function show($id){
         $transfer = Transfer::where('id', $id)->with([
             'items.product', 
-            'fromWarehouse:id,name', 
             'toWarehouse:id,name', 
             'fromFacility:id,name', 
             'toFacility:id,name'

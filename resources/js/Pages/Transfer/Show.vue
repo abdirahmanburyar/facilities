@@ -1,5 +1,5 @@
 <template>
-  <AuthenticatedLayout :title="`Transfer - ${props.transfer.transferID}`">
+  <AuthenticatedLayout :title="props.transfer ? `Transfer - ${props.transfer.transferID}` : 'Transfer Details'">
     <!-- Transfer Header -->
     <div v-if="props.error">
       {{ props.error }}
@@ -8,45 +8,38 @@
       <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Transfer ID: {{ props.transfer.transferID }}</h1>
-            <p class="mt-1 text-sm text-gray-500">{{ formatDate(props.transfer.transfer_date) }}</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Transfer ID: {{ props.transfer?.transferID || 'N/A' }}</h1>
+            <p class="mt-1 text-sm text-gray-500">{{ formatDate(props.transfer?.transfer_date) }}</p>
           </div>
           <div class="flex items-center space-x-4">
-            <span :class="[statusClasses[props.transfer.status]]" class="flex items-center text-lg font-bold px-4 py-2">
+            <span :class="[statusClasses[props.transfer?.status || 'default']]" class="flex items-center text-lg font-bold px-4 py-2">
               <!-- Status Icon -->
               <span class="mr-3">
                 <!-- Pending Icon -->
-                <img v-if="props.transfer.status === 'pending'" src="/assets/images/pending.svg" class="w-6 h-6"
+                <img v-if="props.transfer?.status === 'pending'" src="/assets/images/pending.png" class="w-6 h-6"
                   alt="Pending" />
-
                 <!-- Approved Icon -->
-                <img v-else-if="props.transfer.status === 'approved'" src="/assets/images/approved.png" class="w-6 h-6"
+                <img v-else-if="props.transfer?.status === 'approved'" src="/assets/images/approved.png" class="w-6 h-6"
                   alt="Approved" />
-
                 <!-- In Process Icon -->
-                <img v-else-if="props.transfer.status === 'in_process'" src="/assets/images/inprocess.png"
-                  class="w-6 h-6" alt="In Process" />
-
+                <img v-else-if="props.transfer?.status === 'in_process'" src="/assets/images/inprocess.png" class="w-6 h-6"
+                  alt="In Process" />
                 <!-- Dispatched Icon -->
-                <img v-else-if="props.transfer.status === 'dispatched'" src="/assets/images/dispatch.png"
-                  class="w-6 h-6" alt="Dispatched" />
-
-                <!-- Delivered Icon -->
-                <img v-else-if="props.transfer.status === 'delivered'" src="/assets/images/delivery.png" class="w-6 h-6"
-                  alt="Delivered" />
-
+                <img v-else-if="props.transfer?.status === 'dispatched'" src="/assets/images/dispatch.png" class="w-6 h-6"
+                  alt="Dispatched" />
                 <!-- Received Icon -->
-                <img v-else-if="props.transfer.status === 'received'" src="/assets/images/received.png" class="w-6 h-6"
+                <img v-else-if="props.transfer?.status === 'received'" src="/assets/images/received.png" class="w-6 h-6"
                   alt="Received" />
-
                 <!-- Rejected Icon -->
-                <svg v-else-if="props.transfer.status === 'rejected'" class="w-6 h-6 text-red-700" fill="none"
-                  stroke="currentColor" viewBox="0 0 24 24">
+                <img v-else-if="props.transfer?.status === 'rejected'" src="/assets/images/rejected.png" class="w-6 h-6"
+                  alt="Rejected" />
+                <!-- Default Icon -->
+                <svg v-else class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </span>
-              {{ props.transfer.status.toUpperCase() }}
+              {{ props.transfer?.status ? props.transfer.status.charAt(0).toUpperCase() + props.transfer.status.slice(1).replace('_', ' ') : 'Unknown' }}
             </span>
           </div>
         </div>
@@ -56,16 +49,11 @@
         <!-- From Location Information -->
         <div class="bg-gray-50 rounded-lg p-4 space-y-2">
           <h2 class="text-lg font-medium text-gray-900">From Location Details</h2>
-          <div v-if="props.transfer.from_warehouse" class="flex items-center">
-            <BuildingOfficeIcon class="h-5 w-5 text-gray-400 mr-2" />
-            <span class="text-sm text-gray-600">Warehouse: {{ props.transfer.from_warehouse.name }}</span>
-          </div>
-          <div v-if="props.transfer.from_facility" class="flex items-center">
+          <div v-if="props.transfer?.from_facility" class="flex items-center">
             <BuildingOfficeIcon class="h-5 w-5 text-gray-400 mr-2" />
             <span class="text-sm text-gray-600">Facility: {{ props.transfer.from_facility.name }}</span>
           </div>
-          <div v-if="!props.transfer.from_warehouse && !props.transfer.from_facility"
-            class="text-sm text-gray-500 italic">
+          <div v-else class="text-sm text-gray-500 italic">
             No source location information available
           </div>
         </div>
@@ -73,15 +61,15 @@
         <!-- To Location Information -->
         <div class="bg-gray-50 rounded-lg p-4 space-y-2">
           <h2 class="text-lg font-medium text-gray-900">To Location Details</h2>
-          <div v-if="props.transfer.to_warehouse" class="flex items-center">
+          <div v-if="props.transfer?.to_warehouse" class="flex items-center">
             <BuildingOfficeIcon class="h-5 w-5 text-gray-400 mr-2" />
             <span class="text-sm text-gray-600">Warehouse: {{ props.transfer.to_warehouse.name }}</span>
           </div>
-          <div v-if="props.transfer.to_facility" class="flex items-center">
+          <div v-if="props.transfer?.to_facility" class="flex items-center">
             <BuildingOfficeIcon class="h-5 w-5 text-gray-400 mr-2" />
             <span class="text-sm text-gray-600">Facility: {{ props.transfer.to_facility.name }}</span>
           </div>
-          <div v-if="!props.transfer.to_warehouse && !props.transfer.to_facility" class="text-sm text-gray-500 italic">
+          <div v-if="!props.transfer?.to_warehouse && !props.transfer?.to_facility" class="text-sm text-gray-500 italic">
             No destination location information available
           </div>
         </div>
@@ -95,7 +83,7 @@
 
           <!-- Timeline Progress - green progress line -->
           <div class="absolute top-8 left-0 h-2 bg-green-500 z-0 transition-all duration-500 ease-in-out" :style="{
-            width: `${(statusOrder.indexOf(props.transfer.status) / (statusOrder.length - 1)) * 100}%`
+            width: `${(statusOrder.indexOf(props.transfer?.status || '') / (statusOrder.length - 1)) * 100}%`
           }"></div>
 
           <!-- Timeline Steps -->
@@ -103,84 +91,70 @@
             <!-- Pending -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('pending') ? 'border-orange-500' : 'border-gray-300'">
-                <img src="/assets/images/pending.svg" class="w-9 h-9 z-10" alt="Pending" />
+                :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('pending') ? 'border-orange-500' : 'border-gray-300'">
+                <img src="/assets/images/pending.png" class="w-9 h-9 z-10" alt="Pending" />
               </div>
               <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('pending'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('pending')
+                'text-green-600': statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('pending'),
+                'text-gray-700': statusOrder.indexOf(props.transfer?.status || '') === statusOrder.indexOf('pending'),
+                'text-gray-400': statusOrder.indexOf(props.transfer?.status || '') < statusOrder.indexOf('pending')
               }">Pending</span>
             </div>
 
             <!-- Approved -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('approved') ? 'border-orange-500' : 'border-gray-300'">
+                :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('approved') ? 'border-orange-500' : 'border-gray-300'">
                 <img src="/assets/images/approved.png" class="w-9 h-9 z-10" alt="Approved"
-                  :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('approved') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('approved') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('approved'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('approved')
+                'text-green-600': statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('approved'),
+                'text-gray-700': statusOrder.indexOf(props.transfer?.status || '') === statusOrder.indexOf('approved'),
+                'text-gray-400': statusOrder.indexOf(props.transfer?.status || '') < statusOrder.indexOf('approved')
               }">Approved</span>
             </div>
 
             <!-- In Process -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('in_process') ? 'border-orange-500' : 'border-gray-300'">
+                :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('in_process') ? 'border-orange-500' : 'border-gray-300'">
                 <img src="/assets/images/inprocess.png" class="w-9 h-9 z-10" alt="Processed"
-                  :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('in_process') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('in_process') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('in_process'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('in_process')
+                'text-green-600': statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('in_process'),
+                'text-gray-700': statusOrder.indexOf(props.transfer?.status || '') === statusOrder.indexOf('in_process'),
+                'text-gray-400': statusOrder.indexOf(props.transfer?.status || '') < statusOrder.indexOf('in_process')
               }">Processed</span>
             </div>
 
             <!-- Dispatched -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('transferred') ? 'border-orange-500' : 'border-gray-300'">
+                :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('dispatched') ? 'border-orange-500' : 'border-gray-300'">
                 <img src="/assets/images/dispatch.png" class="w-9 h-9 z-10" alt="Dispatched"
-                  :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('transferred') ? '' : 'opacity-40'" />
+                  :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('dispatched') ? '' : 'opacity-40'" />
               </div>
               <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('transferred'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('transferred'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('transferred')
+                'text-green-600': statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('dispatched'),
+                'text-gray-700': statusOrder.indexOf(props.transfer?.status || '') === statusOrder.indexOf('dispatched'),
+                'text-gray-400': statusOrder.indexOf(props.transfer?.status || '') < statusOrder.indexOf('dispatched')
               }">Dispatched</span>
-            </div>
-
-            <!-- Delivered -->
-            <div class="flex flex-col items-center">
-              <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('received') ? 'border-orange-500' : 'border-gray-300'">
-                <img src="/assets/images/received.png" class="w-9 h-9 z-10" alt="Delivered"
-                  :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('received') ? '' : 'opacity-40'" />
-              </div>
-              <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('received'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('received'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('received')
-              }">Delivered</span>
             </div>
 
             <!-- Received -->
             <div class="flex flex-col items-center">
               <div class="w-16 h-16 rounded-full flex items-center justify-center z-10 relative bg-white border-4"
-                :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('fully_received') ? 'border-orange-500' : 'border-gray-300'">
+                :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('received') ? 'border-orange-500' : 'border-gray-300'">
                 <img src="/assets/images/received.png" class="w-9 h-9 z-10"
-                  :class="statusOrder.indexOf(props.transfer.status) >= statusOrder.indexOf('fully_received') ? '' : 'opacity-40'"
+                  :class="statusOrder.indexOf(props.transfer?.status || '') >= statusOrder.indexOf('received') ? '' : 'opacity-40'"
                   alt="Received" />
               </div>
               <span class="mt-2 text-xs font-bold" :class="{
-                'text-green-600': statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('fully_received'),
-                'text-gray-700': statusOrder.indexOf(props.transfer.status) === statusOrder.indexOf('fully_received'),
-                'text-gray-400': statusOrder.indexOf(props.transfer.status) < statusOrder.indexOf('fully_received')
+                'text-green-600': statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('received'),
+                'text-gray-700': statusOrder.indexOf(props.transfer?.status || '') === statusOrder.indexOf('received'),
+                'text-gray-400': statusOrder.indexOf(props.transfer?.status || '') < statusOrder.indexOf('received')
               }">Received</span>
             </div>
           </div>
@@ -208,7 +182,7 @@
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="item in props.transfer.items" :key="item.id"
+          <tr v-for="item in props.transfer?.items || []" :key="item.id"
             class="hover:bg-gray-50 transition-colors duration-150">
             <td class="px-6 py-4 text-sm border border-black">
               <div class="flex flex-col">
@@ -247,7 +221,7 @@
               </Link>
             </td>
           </tr>
-          <tr v-if="!props.transfer.items || props.transfer.items.length === 0">
+          <tr v-if="!props.transfer?.items || props.transfer.items.length === 0">
             <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
               No items found in this transfer.
             </td>
@@ -264,89 +238,35 @@
         <div class="relative">
           <button 
             :class="[
-              props.transfer.status === 'pending' ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+              props.transfer?.status === 'pending' ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 
+              statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
             ]"  class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
-            <img src="/assets/images/pending.svg" class="w-5 h-5 mr-2" alt="Pending" />
+            <img src="/assets/images/pending.png" class="w-8 h-8 mr-2" alt="Pending" />
             <span class="text-sm font-bold text-white">Pending</span>
           </button>
-          <div v-if="props.transfer.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer?.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Approve button -->
         <div class="relative">
-          <a :href="route('transfers.approve', props.transfer.id)" v-if="props.transfer.status === 'pending'" 
+          <a :href="route('transfers.approve', props.transfer.id)" v-if="props.transfer?.status === 'pending'" 
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
+            <img src="/assets/images/approved.png" class="w-8 h-8 mr-2" alt="Approve" />
             <span class="text-sm font-bold text-white">Approve</span>
           </a>
           <button v-else
             :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+              statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
             ]"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
-            <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'Approved' : 'Approve' }}</span>
+            <img src="/assets/images/approved.png" class="w-8 h-8 mr-2" alt="Approve" />
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('pending') ? 'Approved' : 'Approve' }}</span>
           </button>
-          <div v-if="props.transfer.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer?.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
-
-        <!-- Process button -->
-        <div class="relative">
-          <a :href="route('transfers.in-process', props.transfer.id)" v-if="props.transfer.status === 'approved'" 
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/inprocess.png" class="w-5 h-5 mr-2" alt="Process" />
-            <span class="text-sm font-bold text-white">Process</span>
-          </a>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
-            <img src="/assets/images/inprocess.png" class="w-5 h-5 mr-2" alt="Process" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved') ? 'Processed' : 'Process' }}</span>
-          </button>
-          <div v-if="props.transfer.status === 'approved'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
-        </div>
-
-        <!-- Dispatch button -->
-        <div class="relative">
-          <a :href="route('transfers.dispatch', props.transfer.id)" v-if="props.transfer.status === 'in_process'" 
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/dispatch.png" class="w-5 h-5 mr-2" alt="Dispatch" />
-            <span class="text-sm font-bold text-white">Dispatch</span>
-          </a>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
-            <img src="/assets/images/dispatch.png" class="w-5 h-5 mr-2" alt="Dispatch" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process') ? 'Dispatched' : 'Dispatch' }}</span>
-          </button>
-          <div v-if="props.transfer.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
-        </div>
-
-        <!-- Complete Transfer button -->
-        <div class="relative">
-          <a :href="route('transfers.complete', props.transfer.id)" v-if="props.transfer.status === 'dispatched'" 
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/received.png" class="w-5 h-5 mr-2" alt="Complete Transfer" />
-            <span class="text-sm font-bold text-white">Complete Transfer</span>
-          </a>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
-            <img src="/assets/images/received.png" class="w-5 h-5 mr-2" alt="Complete Transfer" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'Completed' : 'Complete Transfer' }}</span>
-          </button>
-          <div v-if="props.transfer.status === 'dispatched'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
-        </div>
-
+        
         <!-- Reject button (only available for pending status) -->
-        <div class="relative" v-if="props.transfer.status === 'pending'">
+        <div class="relative" v-if="props.transfer?.status === 'pending'">
           <a :href="route('transfers.reject', props.transfer.id)" 
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-red-600 hover:bg-red-700 min-w-[160px]">
             <svg class="w-5 h-5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,8 +276,66 @@
           </a>
         </div>
 
+        <!-- Process button -->
+        <div class="relative">
+          <a :href="route('transfers.in-process', props.transfer.id)" v-if="props.transfer?.status === 'approved'" 
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
+            <img src="/assets/images/inprocess.png" class="w-8 h-8 mr-2" alt="Process" />
+            <span class="text-sm font-bold text-white">Process</span>
+          </a>
+          <button v-else
+            :class="[
+              statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('approved') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+            ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+            <img src="/assets/images/inprocess.png" class="w-8 h-8 mr-2" alt="Process" />
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('approved') ? 'Processed' : 'Process' }}</span>
+          </button>
+          <div v-if="props.transfer?.status === 'approved'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+        </div>
+
+        <!-- Dispatch button -->
+        <div class="relative">
+          <a :href="route('transfers.dispatch', props.transfer.id)" v-if="props.transfer?.status === 'in_process'" 
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
+            <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
+            <span class="text-sm font-bold text-white">Dispatch</span>
+          </a>
+          <button v-else
+            :class="[
+              statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+            ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+            <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('in_process') ? 'Dispatched' : 'Dispatch' }}</span>
+          </button>
+          <div v-if="props.transfer?.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+        </div>
+
+        <!-- Receive Transfer button (only for destination facility) -->
+        <div class="relative">
+          <a :href="route('transfers.receive', props.transfer.id)" 
+             v-if="props.transfer?.status === 'dispatched' && props.transfer?.to_facility_id === currentUserFacility?.id" 
+             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
+            <img src="/assets/images/received.png" class="w-8 h-8 mr-2" alt="Receive Transfer" />
+            <span class="text-sm font-bold text-white">Receive</span>
+          </a>
+          <div v-else
+            :class="[
+              statusOrder.indexOf(props.transfer?.status || '') > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300'
+            ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[60px]">
+            <img src="/assets/images/received.png" class="w-8 h-8" alt="Received" />
+          </div>
+          <div v-if="props.transfer?.status === 'dispatched' && props.transfer?.to_facility_id === currentUserFacility?.id" 
+               class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+        </div>
+
+        <!-- Placeholder for spacing -->
+        <div class="hidden"></div>
+
         <!-- Status indicator for rejected status -->
-        <div v-if="props.transfer.status === 'rejected'" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
+        <div v-if="props.transfer?.status === 'rejected'" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -365,12 +343,12 @@
         </div>
 
         <!-- Status indicator for received status -->
-        <div v-if="props.transfer.status === 'received'" 
+        <div v-if="props.transfer?.status === 'received'" 
           class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-green-100 text-green-800 min-w-[160px]">
           <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M9,16.17 L4.83,12 L3.41,13.41 L9,19 L21,7 L19.59,5.59 L9,16.17 Z" fill="currentColor" />
           </svg>
-          <span class="text-sm font-bold">Completed</span>
+          <span class="text-sm font-bold">{{ props.transfer.status }}</span>
         </div>
       </div>
     </div>
@@ -379,7 +357,11 @@
 <script setup>
 import { computed, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { usePage } from '@inertiajs/vue3';
 import moment from 'moment';
+
+// Get the current user's facility ID
+const currentUserFacility = computed(() => usePage().props.facility);
 
 const props = defineProps({
   transfer: {
@@ -396,7 +378,7 @@ function formatDate(date) {
 }
 
 // Define the status order for the timeline
-const statusOrder = ['pending', 'approved', 'in_process', 'transferred', 'received', 'fully_received'];
+const statusOrder = ['pending', 'approved', 'in_process', 'dispatched', 'received'];
 
 const getStatusProgress = (currentStatus) => {
   const currentIndex = statusOrder.indexOf(currentStatus);

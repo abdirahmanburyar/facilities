@@ -13,7 +13,7 @@ class TransferItem extends Model
         'barcode',
         'uom',
         'batch_number',
-        'expire_date',
+        'expire_date'
     ];
     
     public function transfer()

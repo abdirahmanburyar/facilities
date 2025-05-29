@@ -244,7 +244,7 @@
                                         {{ transfer.to_warehouse?.name || transfer.to_facility?.name }}
                                     </td>
                                     <td class="whitespace-nowrap text-sm text-gray-500 border border-black p-2">
-                                        {{ transfer.quantity }}
+                                        {{ transfer.items_count }}
                                     </td>
                                     <td class="text-sm text-gray-500 text-left border border-black p-2">
                                         <div class="flex items-center gap-2">
@@ -253,7 +253,7 @@
                                                 <!-- Show status progression up to current status - icons with labels -->
                                                 <!-- Always show pending as it's the initial state -->
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/pending.svg" class="w-8 h-8" alt="Pending" title="Pending" />
+                                                    <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending" title="Pending" />
                                                 </div>
                                                 
                                                 <!-- Show approved if status is approved or further -->
@@ -277,12 +277,7 @@
                                                     </div>
                                                 </template>
                                                 
-                                                <!-- Show transferred if status is transferred, delivered or received -->
-                                                <template v-if="['transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/delivery.png" class="w-8 h-8" alt="Transferred" title="Transferred" />
-                                                    </div>
-                                                </template>
+                                                <!-- Transfer icon removed as requested -->
                                                 
                                                 <!-- Show received if status is received -->
                                                 <template v-if="['received'].includes(transfer.status?.toLowerCase())">
@@ -324,7 +319,7 @@
                                                             </path>
                                                         </svg>
                                                         <!-- Show icon when not loading -->
-                                                        <img v-else :src="action.icon" class="w-5 h-5"
+                                                        <img v-else :src="action.icon" class="w-8 h-8"
                                                             :alt="action.label" />
                                                         {{ action.label }}
                                                     </button>
@@ -810,6 +805,12 @@ const getStatusActions = (transfer) => {
 
     // Check if the user has approval permissions
     const canApprove = usePage().props.auth.user.can_approve_transfers;
+    
+    // Only show actions for specific statuses: pending, approved, in_process, dispatched
+    // Exclude actions for: rejected, received (these are terminal states)
+    if (['rejected', 'received'].includes(status)) {
+        return actions; // Return empty actions array for terminal states
+    }
 
     switch (status) {
         case 'pending':
@@ -832,14 +833,7 @@ const getStatusActions = (transfer) => {
             }
             break;
         case 'dispatched':
-            // Only the source facility can complete a dispatched transfer
-            if (isFromCurrentUserFacility) {
-                actions.push({ label: 'Complete', status: 'transferred', color: 'indigo', icon: '/assets/images/delivery.png' });
-            }
-            break;
-        case 'transferred':
-        case 'delivered':
-            // Only the destination facility can receive a transferred/delivered transfer
+            // Only the destination facility can receive a dispatched transfer
             if (isToCurrentUserFacility) {
                 actions.push({ label: 'Receive', status: 'received', color: 'green', icon: '/assets/images/received.png' });
             }
