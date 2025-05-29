@@ -252,7 +252,7 @@
                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
                  </div>
                   <button
-                    v-if="order.status === 'delivered'"
+                    v-if="props.order.status === 'delivered'"
                     @click="openBackOrderModal(item)"
                     class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full"
                   >
@@ -1156,20 +1156,18 @@ const changeStatus = (orderId, newStatus) => {
         .then(response => {
           // Reset loading state
           isLoading.value = false;
-          console.log(response.data);
-
-          // Swal.fire({
-          //   title: 'Updated!',
-          //   text: 'Order status has been updated.',
-          //   icon: 'success',
-          //   toast: true,
-          //   position: 'top-end',
-          //   showConfirmButton: false,
-          //   timer: 3000
-          // }).then(() => {
-          //   // Reload the page to show the updated status
-          //   router.reload();
-          // });
+          Swal.fire({
+            title: 'Updated!',
+            text: response.data?.message,
+            icon: 'success',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+          }).then(() => {
+            // Reload the page to show the updated status
+            router.reload();
+          });
         })
         .catch(error => {
           console.log(error.response);

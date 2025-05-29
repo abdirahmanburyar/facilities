@@ -843,11 +843,7 @@ class OrderController extends Controller
             ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ], 500);
+            return response()->json($e->getMessage(), 500);
         }
     }
 
