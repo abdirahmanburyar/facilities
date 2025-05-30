@@ -22,7 +22,7 @@
                 </div>
                 </Link>
 
-                <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }"
+                <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }" v-if="$page.props.auth.can.order_view"
                     @click="setCurrentPage('orders')">
                 <div class="menu-content">
                     <div class="menu-icon">
@@ -34,7 +34,7 @@
                 </div>
                 </Link>
 
-                <Link :href="route('transfers.index')" class="menu-item"
+                <Link :href="route('transfers.index')" class="menu-item" v-if="$page.props.auth.can.transfer_view"
                     :class="{ active: route().current('transfers.*') }" @click="setCurrentPage('transfers')">
                 <div class="menu-content">
                     <div class="menu-icon">
@@ -46,9 +46,7 @@
                 </div> 
                 </Link>
 
-
-
-                <Link :href="route('inventories.index')" class="menu-item"
+                <Link :href="route('inventories.index')" class="menu-item" v-if="$page.props.auth.can.inventory_view"
                     :class="{ active: route().current('inventories.*') }" @click="setCurrentPage('inventories')">
                 <div class="menu-content">
                     <div class="menu-icon">
@@ -60,7 +58,7 @@
                 </div>
                 </Link>
 
-                <Link :href="route('dispence.index')" class="menu-item"
+                <Link :href="route('dispence.index')" class="menu-item" v-if="$page.props.auth.can.dispence_view"
                     :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
                 <div class="menu-content">
                     <div class="menu-icon">
