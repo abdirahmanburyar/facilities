@@ -279,6 +279,21 @@ const setupPermissionChangeListener = () => {
 
 };
 
+// Function to handle the permission event
+const handlePermissionEvent = (event) => {
+    console.log('🔄 Permission change detected, reloading page...');
+    
+    toast.info('Your permissions have been updated. The page will reload to apply changes.');
+    
+    // Reload the page after a short delay
+    setTimeout(() => {
+        console.log('🔄 Reloading page now...');
+        window.location.reload();
+    }, 3000);
+};
+
+
+
 
 
 </script>
