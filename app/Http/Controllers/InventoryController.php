@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\InventoryResource;
-use App\Models\Inventory;
+use App\Models\FacilityInventory;
 use App\Models\Product;
 use App\Models\Location;
 use App\Models\Category;
@@ -24,11 +24,11 @@ class InventoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Inventory::query();
+        $query = FacilityInventory::query();
 
         $user = auth()->user();
         
-        $query = $query->with(['product.dosage', 'warehouse']);
+        $query = $query->where('facility_id', $user->facility_id)->with(['product.dosage']);
 
         // Apply filters
         if ($request->has('search')) {
@@ -75,27 +75,23 @@ class InventoryController extends Controller
         // Get products for dropdown
         $products = Product::select('id', 'name')->get();
 
-        // Get warehouses for dropdown
-        $warehouses = \App\Models\Warehouse::where('id', auth()->user()->warehouse_id)->select('id', 'name', 'code')->pluck('name')->toArray();
-    
-
         // Get inventory status counts
-        $inStockCount = Inventory::whereRaw('quantity > (products.reorder_level * 5)')
-            ->join('products', 'inventories.product_id', '=', 'products.id')
+        $inStockCount = FacilityInventory::whereRaw('quantity > (products.reorder_level * 3)')
+            ->join('products', 'facility_inventories.product_id', '=', 'products.id')
             ->count();
 
-        $lowStockCount = Inventory::whereRaw('quantity <= (products.reorder_level * 5)')
-            ->join('products', 'inventories.product_id', '=', 'products.id')
+        $lowStockCount = FacilityInventory::whereRaw('quantity <= (products.reorder_level * 3)')
+            ->join('products', 'facility_inventories.product_id', '=', 'products.id')
             ->count();
 
-        $outOfStockCount = Inventory::where('quantity', 0)
+        $outOfStockCount = FacilityInventory::where('quantity', 0)
             ->count();
 
-        $soonExpiringCount = Inventory::where('expiry_date', '>', now())
+        $soonExpiringCount = FacilityInventory::where('expiry_date', '>', now())
             ->where('expiry_date', '<=', now()->addDays(30))
             ->count();
 
-        $expiredCount = Inventory::where('expiry_date', '<', now())
+        $expiredCount = FacilityInventory::where('expiry_date', '<', now())
             ->count();
         
         $inventoryStatusCounts = [
@@ -112,8 +108,7 @@ class InventoryController extends Controller
         return Inertia::render('Inventory/Index', [
             'inventories' => InventoryResource::collection($inventories),
             'products' => $products,
-            'warehouses' => $warehouses,
-            'filters' => $request->only('search', 'product_id', 'warehouse', 'dosage','category', 'location', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page'),
+            'filters' => $request->only('search', 'product_id', 'dosage','category', 'location', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page'),
             'inventoryStatusCounts' => $inventoryStatusCounts,
             'category' => Category::pluck('name')->toArray(),
             'dosage' => Dosage::pluck('name')->toArray(),
@@ -187,14 +182,4 @@ class InventoryController extends Controller
         }   
     }
     
-    public function getLocations(Request $request){
-        try {
-            $locations = Location::whereHas('warehouse', function($query) use($request){
-                $query->where('name', $request->warehouse);
-            })->pluck('location')->toArray();
-            return response()->json($locations, 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
 }

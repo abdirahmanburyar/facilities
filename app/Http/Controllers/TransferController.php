@@ -122,16 +122,6 @@ class TransferController extends Controller
         $transfer->update(['status' => 'transferred']);
         return redirect()->back()->with('success', 'Transfer delivered successfully');
     }
-    
-    public function receiveTransfer($id)
-    {
-        $transfer = Transfer::findOrFail($id);
-        if (!in_array($transfer->status, ['transferred', 'delivered'])) {
-            return redirect()->back()->with('error', 'Transfer must be transferred to be received');
-        }
-        $transfer->update(['status' => 'received']);
-        return redirect()->back()->with('success', 'Transfer received successfully');
-    }
 
     public function completeTransfer($id)
     {
@@ -455,162 +445,31 @@ class TransferController extends Controller
     /**
      * Delete a transfer item
      */
-    public function destroyItem($id)
-    {
-        try {
-            $transferItem = TransferItem::findOrFail($id);
-            
-            // Check if the transfer is in a state where items can be deleted
-            $transfer = Transfer::findOrFail($transferItem->transfer_id);
-            
-            if (!in_array($transfer->status, ['pending', 'draft'])) {
-                return response()->json([
-                    'message' => 'Cannot delete items from a transfer that is not in pending or draft status'
-                ], 403);
-            }
-            
-            // Delete the transfer item
-            $transferItem->delete();
-            
-            return response()->json([
-                'message' => 'Transfer item deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            logger()->error('Error deleting transfer item: ' . $e->getMessage(), [
-                'item_id' => $id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'message' => 'Failed to delete transfer item: ' . $e->getMessage()
-            ], 500);
-        }
-    }
     
-    /**
-     * Change the status of a transfer using a unified API endpoint
-     */
-    public function changeStatus(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            // Validate request
-            $validated = $request->validate([
-                'transfer_id' => 'required|exists:transfers,id',
-                'status' => ['required', Rule::in(['approved', 'rejected', 'in_process', 'dispatched', 'received'])]
-            ]);
-
-            $transfer = Transfer::with(['items.backorders'])->findOrFail($request->transfer_id);
-
-            // Define allowed transitions
-            $allowedTransitions = [
-                'pending' => ['approved', 'rejected'],
-                'approved' => ['in_process'],
-                'in_process' => ['dispatched'],
-                'dispatched' => ['received'],
-                'rejected' => ['approved'] // Allow rejected transfers to be approved again
-            ];
-
-            // Check if the transition is allowed
-            if (
-                !isset($allowedTransitions[$transfer->status]) ||
-                !in_array($request->status, $allowedTransitions[$transfer->status])
-            ) {
-                return response()->json("Status transition not allowed from {$transfer->status} to {$request->status}", 422);
-            }
-
-            $userId = auth()->id();
-            $now = now();
-
-            // Prepare updates for transfer
-            $updates = ['status' => $request->status];
-
-            // Add timestamp and user info based on the status
-            switch ($request->status) {
-                case 'approved':
-                    $updates['approved_by'] = $userId;
-                    $updates['approved_at'] = $now;
-                    
-                    // If transitioning from rejected to approved, clear rejection data
-                    if ($transfer->status === 'rejected') {
-                        $updates['rejected_by'] = null;
-                        $updates['rejected_at'] = null;
-                    }
-                    break;
-                case 'rejected':
-                    $updates['rejected_by'] = $userId;
-                    $updates['rejected_at'] = $now;
-                    break;
-                case 'in_process':
-                    $updates['process_started_at'] = $now;
-                    break;
-                case 'dispatched':
-                    $updates['dispatched_by'] = $userId;
-                    $updates['dispatched_at'] = $now;
-                    break;
-                case 'received':
-                    $updates['received_by'] = $userId;
-                    $updates['received_at'] = $now;
-                    
-                    // Process inventory changes when transfer is received
-                    $this->processInventoryChanges($transfer);
-                    break;
-            }
-
-            // Update the transfer
-            $transfer->update($updates);
-
-            // You can add event broadcasting here if needed
-            // event(new TransferEvent('Refreshed'));
-
-            DB::commit();
-            return response()->json(['message' => 'Transfer status updated successfully.', 'transfer' => $transfer], 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
 
     /**
      * Process inventory changes when a transfer is received
      */
-    private function processInventoryChanges(Transfer $transfer)
+    private function processInventoryChanges(Transfer $transfer, $items)
     {
-        // Get all items in this transfer
-        $items = TransferItem::where('transfer_id', $transfer->id)->with('product')->get();
-
         foreach ($items as $item) {
-            // Decrease inventory at source (if applicable)
-            if ($transfer->from_facility_id) {
-                $sourceInventory = FacilityInventory::where([
-                    'facility_id' => $transfer->from_facility_id,
-                    'product_id' => $item->product_id,
-                    'batch_number' => $item->batch_number
-                ])->first();
+            $inventory = FacilityInventory::where([
+                'facility_id' => $transfer['to_facility_id'],
+                'product_id' => $item['product_id'],
+                'batch_number' => $item['batch_number'],
+            ])->first();
 
-                if ($sourceInventory) {
-                    $sourceInventory->decrement('quantity', $item->quantity);
-                }
-            }
-
-            // Increase inventory at destination
-            if ($transfer->to_facility_id) {
-                // Check if inventory record exists
-                $destInventory = FacilityInventory::firstOrNew([
-                    'facility_id' => $transfer->to_facility_id,
-                    'product_id' => $item->product_id,
-                    'batch_number' => $item->batch_number
+            if ($inventory) {
+                $inventory->increment('quantity', $item['received_quantity']);
+            } else {
+                FacilityInventory::create([
+                    'facility_id' => $transfer['to_facility_id'],
+                    'product_id' => $item['product_id'],
+                    'batch_number' => $item['batch_number'],
+                    'quantity' => $item['received_quantity'],
+                    'expiry_date' => $item['expire_date'],
+                    'barcode' => $item['barcode'],
                 ]);
-
-                // If new record, set default values
-                if (!$destInventory->exists) {
-                    $destInventory->quantity = 0;
-                    $destInventory->expiry_date = $item->expiry_date;
-                }
-
-                // Increment quantity and save
-                $destInventory->quantity += $item->quantity;
-                $destInventory->save();
             }
         }
     }
@@ -995,6 +854,89 @@ class TransferController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function receiveTransfer(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'status' => 'required|in:received',
+                'items' => 'required|array',
+            ]);
+            $transfer = Transfer::findOrFail($request->transfer_id);
+            if(!$transfer || $transfer->status !== 'dispatched') {
+                return response()->json('Transfer must be dispatched to be received', 500);
+            }
+
+            if($transfer->from_facility_id != auth()->user()->facility_id) {
+                return response()->json('You are not authorized to receive this transfer', 500);
+            }
+
+            // Check if all items.quantity and items.received_quantity are equal
+            foreach ($request->items as $item) {
+                $areEqual = (int) $item['quantity'] == array_sum(array_column($item['backorders'], 'quantity')) + (int) $item['received_quantity'];
+                logger()->info('Item ID: ' . $item['id'] . ', Equal check: ' . ($areEqual ? 'true' : 'false'));
+                if(!$areEqual) {
+                    return response()->json([
+                        'id' => $item['id'],
+                        'message' => 'There is mismatch in quantity'
+                    ], 500);
+                }
+            }     
+            
+            logger()->info('Items: ' . json_encode($request->items));
+            
+            // Process inventory changes
+            $this->processInventoryChanges($transfer, $request->items);
+            
+            // Update transfer status
+            $transfer->status = 'received';
+            $transfer->save();
+
+            return response()->json(['message' => 'Transfer received successfully'], 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+    
+    public function destroyItem($id)
+    {
+        try {
+            return DB::transaction(function () use ($id) {
+                $transferItem = TransferItem::with('transfer')->find($id);
+                
+                
+                if (!in_array($transferItem->transfer->status, ['pending', 'draft']) || $transferItem->transfer->from_facility_id != auth()->user()->facility_id) {
+                    return response()->json('You are not authorized to delete this transfer item', 500);
+                }
+
+                $inventory = FacilityInventory::where('product_id', $transferItem->product_id)->where('facility_id', $transferItem->transfer->from_facility_id)->first();
+                if($inventory) {
+                    $inventory->quantity += $transferItem->quantity;
+                    $inventory->save();
+                }else{
+                    FacilityInventory::create([
+                        'product_id' => $transferItem->product_id,
+                        'facility_id' => $transferItem->transfer->from_facility_id,
+                        'quantity' => $transferItem->quantity,
+                        'batch_number' => $transferItem->batch_number,
+                        'expiry_date' => $transferItem->expiry_date,
+                        'barcode' => $transferItem->barcode,
+                        'uom' => $transferItem->uom,
+                    ]);
+                }
+            
+                // Delete the transfer item
+                $transferItem->transfer()->delete();
+                $transferItem->backorders()->delete();
+                $transferItem->delete();
+                
+                return response()->json('Transfer item deleted successfully', 200);
+            });
+        } catch (\Throwable $e) {
+            return response()->json($e->getMessage(), 500);
         }
     }
 }

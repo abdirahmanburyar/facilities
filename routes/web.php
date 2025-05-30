@@ -164,7 +164,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::post('/{id}/in-process', [TransferController::class, 'inProcess'])->name('transfers.inProcess');
         Route::post('/{id}/dispatch', [TransferController::class, 'dispatch'])->name('transfers.dispatch');
         Route::post('/{id}/complete', [TransferController::class, 'completeTransfer'])->name('transfers.completeTransfer');
-        Route::post('/{id}/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receive');
         
         // Route to get available inventories for transfer
         Route::get('/get-inventories', [TransferController::class, 'getInventories'])->name('transfers.getInventories');
@@ -188,6 +187,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::post('/bulk-in-process', [TransferController::class, 'bulkInProcess'])->name('transfers.bulkInProcess');
         Route::post('/bulk-dispatch', [TransferController::class, 'bulkDispatch'])->name('transfers.bulkDispatch');
         Route::post('/bulk-complete', [TransferController::class, 'bulkComplete'])->name('transfers.bulkComplete');
+
+        // receive transfer
+        Route::post('/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receiveTransfer');
+        Route::get('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
     });
 });
 

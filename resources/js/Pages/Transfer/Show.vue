@@ -254,7 +254,7 @@
             <td class="px-6 py-4 text-sm border border-black">
               <div class="flex flex-col">
                 <span class="font-medium">{{ item.product?.name || 'Unknown Product' }}</span>
-                <span class="text-xs text-gray-500">ID: {{ item.product_id }}</span>
+                <span class="text-xs text-gray-500">ID: {{ item.product?.productID }}</span>
               </div>
             </td>
             <td class="px-6 py-4 text-sm border border-black">
@@ -280,6 +280,7 @@
               <input 
                 type="number" 
                 v-model="item.received_quantity" 
+                v-if="currentUserFacility.id == props.transfer.to_facility_id"
                 min="0" 
                 :max="item.quantity" 
                 @input="validateReceivedQuantity(item)" 
@@ -287,20 +288,25 @@
                 class="w-full rounded-3xl"
               />
               <button 
-                v-if="(props.transfer.status === 'dispatched' || props.transfer.status === 'received') && 
+                v-if="currentUserFacility.id == props.transfer.to_facility_id && (props.transfer.status === 'dispatched' || props.transfer.status === 'received') && 
                       (item.quantity > (item.received_quantity || 0) || (item.backorders && item.backorders.length > 0))" 
                 @click="openBackOrderModal(item)" 
-                class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full"
+                class="mt-2 p-3 bg-yellow-500 text-black rounded-3xl hover:bg-yellow-600 text-sm w-full"
               >
                 {{ item.backorders && item.backorders.length > 0 ? 'View/Edit Back Order' : 'Back Order' }}
               </button>
+              <span v-if="error?.[item.id]" class="text-red-500 text-xs mt-2">{{ error?.[item.id] }}</span>
             </td>
             <td class="px-6 py-4 text-sm border border-black">
-              <Link :href="route('transfers.destroy', props.transfer.id)" method="delete" class="text-red-500 hover:text-red-700">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 10-2 0v6a1 1 0 10-2 0V4h-3.382a1 1 0 00-.894 1.553 1 1 0 00.447 1.894l1.742 1.742 1.742-1.742a1 1 0 00.894-1.553zM5.556 5.556A.75.75 0 016 6v6a.75.75 0 01-1.5 0V6a.75.75 0 01.556-.556zm7.442 0a.75.75 0 01-.556.556v6a.75.75 0 01-1.5 0V6a.75.75 0 01.556-.556zm0 8a.75.75 0 01-1.5 0V6a.75.75 0 011.5 0z" clip-rule="evenodd" />
-                </svg>
-              </Link>
+             <span v-if="isDeleting[item.id]" class="text-red-500 text-xs mt-2">Deleting...</span>
+             <button v-else @click="confirmDelete(item.id)" class="text-red-600 hover:text-red-900">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                      viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+              </button>
             </td>
           </tr>
           <tr v-if="!props.transfer.items || props.transfer.items.length === 0">
@@ -383,23 +389,21 @@
           <div v-if="props.transfer.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
-        <!-- Receive Transfer button (only for destination facility) -->
         <div class="relative">
-          <button @click="receiveTransfer(props.transfer.id)" 
-             v-if="props.transfer.status === 'dispatched' && props.transfer.to_facility_id === currentUserFacility?.id" 
-             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/received.png" class="w-8 h-8 mr-2" alt="Receive Transfer" />
-            <span class="text-sm font-bold text-white">Receive</span>
+          <button @click="receiveTransfer(props.transfer.id)" v-if="props.transfer.status === 'dispatched'" 
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
+            <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
+            <span class="text-sm font-bold text-white">Received</span>
           </button>
-          <div v-else
+          <button v-else
             :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300'
+              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
             ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[60px]">
-            <img src="/assets/images/received.png" class="w-8 h-8" alt="Received" />
-          </div>
-          <div v-if="props.transfer.status === 'dispatched' && props.transfer.to_facility_id === usePage().props.facility?.id" 
-               class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+            <img src="/assets/images/received.png" class="w-8 h-8 mr-2" alt="Dispatch" />
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'Received' : 'Receive' }}</span>
+          </button>
+          <div v-if="props.transfer.status === 'dispatched'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Reject button (only available for pending status) -->
@@ -421,14 +425,6 @@
           <span class="text-sm font-bold">Rejected</span>
         </div>
 
-        <!-- Status indicator for received status -->
-        <div v-if="props.transfer.status === 'received'" 
-          class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-green-100 text-green-800 min-w-[160px]">
-          <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9,16.17 L4.83,12 L3.41,13.41 L9,19 L21,7 L19.59,5.59 L9,16.17 Z" fill="currentColor" />
-          </svg>
-          <span class="text-sm font-bold">Completed</span>
-        </div>
       </div>
     </div>
   </AuthenticatedLayout>
@@ -704,9 +700,8 @@
         <button
           @click="attemptCloseModal"
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-          :disabled="isSaving"
         >
-          Cancel
+          Exit
         </button>
         <button
           @click="saveBackOrders"
@@ -734,7 +729,7 @@
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            Saving...
+           Saving...
           </span>
           <span v-else>Save Back Orders</span>
         </button>
@@ -746,7 +741,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import Modal from '@/Components/Modal.vue';
@@ -796,9 +791,6 @@ const openBackOrderModal = (item) => {
       });
     });
   }
-
-  // If transfer is already received, disable editing
-  isSaving.value = props.transfer.status === 'received';
 
   showBackOrderModal.value = true;
 };
@@ -948,6 +940,48 @@ const saveBackOrders = async () => {
   }
 };
 
+const isDeleting = ref([]);
+function confirmDelete(id){
+  Swal.fire({
+    title: "Confirm Delete",
+    text: "Are you sure you want to delete this transfer item? This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Yes, delete it!",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      isDeleting.value[id] = true;
+        // Call the delete endpoint
+        await axios.get(route("transfers.items.destroy", id))
+          .then((response) => {
+            isDeleting.value[id] = false;
+            console.log(response.data);
+            Swal.fire({
+              title: "Success!",
+              text: "Transfer item deleted successfully!",
+              icon: "success",
+              confirmButtonText: "OK",
+            }).then(() => {
+              // Reload the page to show updated status and inventory
+              window.location.reload();
+            });
+          })
+          .catch((error) => {
+            isDeleting.value[id] = false;
+            console.error(error);
+            Swal.fire({
+              title: "Error!",
+              text: error.response?.data || "Failed to delete transfer item",
+              icon: "error",
+              confirmButtonText: "OK",
+            });
+          });    
+    }
+  });
+}
+
 // Computed properties for back orders
 const missingQuantity = computed(() => {
   if (!selectedItem.value) return 0;
@@ -992,52 +1026,74 @@ const isValidForSave = computed(() => {
 
   return hasBackOrders && allValid && totalMatches;
 });
-
+const error = ref([]);
 // Function to receive transfer and update inventory
 const receiveTransfer = (transferId) => {
-    Swal.fire({
-        title: "Confirm Receipt",
-        text: "Are you sure you want to receive this transfer? This will update inventory quantities.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, receive it!",
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            // Set loading state
-            isLoading.value = true;
-            
-            try {
-                // Call the changeItemStatus endpoint
-                const response = await axios.post(route("transfers.changeItemStatus"), {
-                    transfer_id: transferId,
-                    status: "received"
-                });
-                
-                // Show success message with details
-                Swal.fire({
-                    title: "Success!",
-                    text: response.data.message,
-                    icon: "success",
-                    confirmButtonText: "OK",
-                }).then(() => {
-                    // Reload the page to show updated status and inventory
-                    window.location.reload();
-                });
-            } catch (error) {
-                console.error(error);
-                Swal.fire({
-                    title: "Error!",
-                    text: error.response?.data || "Failed to receive transfer",
-                    icon: "error",
-                    confirmButtonText: "OK",
-                });
-            } finally {
-                isLoading.value = false;
-            }
+  // Clear previous errors
+  error.value = [];
+  
+  Swal.fire({
+    title: "Confirm Receipt",
+    text: "Are you sure you want to receive this transfer? This will update inventory quantities.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Yes, receive it!",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      // Set loading state
+      isLoading.value = true;
+      
+      try {
+        // Call the receiveTransfer endpoint
+        const response = await axios.post(route("transfers.receiveTransfer"), {
+          transfer_id: transferId,
+          status: "received",
+          items: props.transfer.items
+        });
+        
+        console.log(response.data);
+        isLoading.value = false;
+        
+        // Show success message with details
+        Swal.fire({
+          title: "Success!",
+          text: "Transfer received successfully!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          // Reload the page to show updated status and inventory
+          router.reload();
+        });
+      } catch (err) {
+        isLoading.value = false;
+        
+        // Handle item-specific errors
+        if (err.response?.data?.id) {
+          // Create a new object to ensure reactivity
+          const newErrors = {...error.value};
+          newErrors[err.response.data.id] = err.response.data.message;
+          error.value = newErrors;
+          
+          Swal.fire({
+            title: "Validation Error",
+            text: err.response.data.message,
+            icon: "error",
+            confirmButtonText: "OK",
+          });
+        } else {
+          // Handle general errors
+          Swal.fire({
+            title: "Error!",
+            text: err.response?.data || "Failed to receive transfer",
+            icon: "error",
+            confirmButtonText: "OK",
+          });
         }
-    });
+      }
+    }
+  });
 };
 
 // Function to change transfer status
