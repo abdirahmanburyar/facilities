@@ -148,7 +148,7 @@
                             </div>
                         <!-- </div> -->
                         <div v-if="img">
-                            <img :src="img" alt="Inventory illustration" class="svg-image" heigth="50" />
+                            <img :src="img" alt="Inventory illustration" class="svg-image" height="50" />
                         </div>
                     </div>
                     <div class="user-section">
@@ -160,7 +160,7 @@
                                 <div class="user-details">
                                     <span class="user-role">Pharmaceutical Manager</span>
                                     <span class="user-name">{{ $page.props.auth.user?.name }}</span>
-                                    <span class="user-name">{{ $page.props.warehouse?.name }}</span>
+                                    <span class="user-name">{{ $page.props.facility?.name }}</span>
                                 </div>
                             </div>
                             <button class="logout-button" @click="logout">
@@ -208,6 +208,11 @@
 import { ref, onMounted, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { usePage } from '@inertiajs/vue3';
+import { useToast } from 'vue-toastification';
+
+const page = usePage();
+
+const toast = useToast();
 
 const props = defineProps({
     title: {
@@ -238,6 +243,44 @@ const setCurrentPage = (page) => {
 const logout = () => {
     router.post(route('logout'));
 };
+
+
+// Setup permission change listener
+onMounted(() => {
+    setupPermissionChangeListener();
+    console.log(window.Echo);
+    
+});
+
+// Function to handle permission change events
+const setupPermissionChangeListener = () => {
+    if (!window.Echo) {
+        console.warn('⚠️ Echo not available, permission change listener not set up');
+        return;
+    }
+    
+    // Get the current user ID
+    const currentUserId = page.props.auth?.user?.id;
+    if (!currentUserId) {
+        console.warn('⚠️ User ID not available, permission change listener not set up');
+        return;
+    }
+    
+    console.log('🔄 Setting up permission change listener for user:', currentUserId);
+    
+    // Listen on the private user channel
+    const channel = window.Echo.private(`user.${currentUserId}`);
+    
+    // Listen for permission change events
+    channel.listen('.permissions-changed', (event) => {
+        console.log('🔔 Permission changed event received:', event);
+        handlePermissionEvent(event);
+    });
+
+};
+
+
+
 </script>
 
 <style scoped>
