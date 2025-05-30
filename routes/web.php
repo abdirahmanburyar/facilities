@@ -166,10 +166,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         
         // Route to get available inventories for transfer
         Route::get('/get-inventories', [TransferController::class, 'getInventories'])->name('transfers.getInventories');
-        
-        // Route to delete a transfer item
-        Route::delete('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
-        
+               
         
         // Back order functionality
         Route::post('/backorder', [TransferController::class, 'backorder'])->name('transfers.backorder');
