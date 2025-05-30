@@ -344,6 +344,7 @@ class TransferController extends Controller
             'items.product', 
             'items.backorders', 
             'toWarehouse', 
+            'fromWarehouse', 
             'fromFacility', 
             'toFacility'
         ])->first();

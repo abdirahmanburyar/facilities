@@ -34,7 +34,6 @@ const loading = ref(false);
 const selectedDestination = ref(null);
 const selectedInventory = ref(null);
 const filteredInventories = ref([]);
-const availableInventories = ref([]);
 const searchQuery = ref('');
 const loadingInventories = ref(false);
 
