@@ -1,6 +1,6 @@
 <template>
-  <AuthenticatedLayout :title="`Transfer - ${props.transfer.transferID}`">
-    <!-- Transfer Header -->
+   <AuthenticatedLayout title="Optimize Your Transfers" description="Moving Supplies, Bridging needs"
+   img="/assets/images/transfer.png">    <!-- Transfer Header -->
     <div v-if="props.error">
       {{ props.error }}
     </div>

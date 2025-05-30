@@ -271,56 +271,44 @@
                 <!-- Statistics Section (3 cols) -->
                 <div class="col-span-3 p-6">
                     <div class="flex justify-between gap-2">
+                        <!-- Pending -->
+                        <div class="flex flex-col items-center">
+                            <div class="h-[350px] w-14 bg-amber-50 rounded-2xl relative overflow-hidden px-2 shadow-md">
+                                <img src="/assets/images/pending_small.png" class="h-10 w-10 object-contain" alt="Pending" />
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
+                                    :style="{ height: props.statistics.pending.percentage + '%' }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
+                                        {{ props.statistics.pending.percentage }}%
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="mt-2 text-xs font-medium text-gray-900">Pending</span>
+                        </div>
+
                         <!-- Approved -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-12 bg-blue-100 rounded-2xl relative overflow-hidden px-2">
-                                <div
-                                    class="absolute top-3 left-1/2 transform -translate-x-1/2 bg-blue-50 p-2 rounded-lg z-10">
-                                    <img src="/assets/images/approved_small.png" alt="Approved"
-                                        class="h-full w-full object-cover" />
-                                </div>
-                                <div class="absolute bottom-0 w-full bg-blue-500 transition-all duration-500"
+                            <div class="h-[350px] w-14 bg-blue-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
+                                <img src="/assets/images/approved_small.png" class="h-10 w-10 object-contain" alt="Approved" />
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                                     :style="{ height: props.statistics.approved.percentage + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-medium text-sm">
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
                                         {{ props.statistics.approved.percentage }}%
-                                        <!-- <div class="text-xs opacity-75">{{ props.statistics.approved.stages.join(' → ')
-                                        }}</div> -->
                                     </div>
                                 </div>
                             </div>
                             <span class="mt-2 text-xs font-medium text-gray-900">Approved</span>
                         </div>
 
-                        <!-- Pending Approval -->
-                        <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-12 bg-orange-100 rounded-2xl relative overflow-hidden px-2">
-                                <div
-                                    class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-orange-50 p-2 rounded-lg z-10">
-                                    <img src="/assets/images/pending_small.png" class="h-6 w-6" alt="Pending" />
-                                </div>
-                                <div class="absolute bottom-0 w-full bg-orange-500 transition-all duration-500"
-                                    :style="{ height: props.statistics.pending.percentage + '%' }">
-                                    <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-medium text-sm">
-                                        {{ props.statistics.pending.percentage }}%
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Pending<br>Approval</span>
-                        </div>
-
                         <!-- In Process -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-12 bg-gray-100 rounded-2xl relative overflow-hidden px-2">
-                                <div
-                                    class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-50 p-2 rounded-lg z-10">
-                                    <img src="/assets/images/inprocess.png" class="h-6 w-6" alt="In Process" />
-                                </div>
-                                <div class="absolute bottom-0 w-full bg-gray-500 transition-all duration-500"
+                            <div class="h-[350px] w-14 bg-slate-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
+                                <img src="/assets/images/inprocess.png" class="h-10 w-10 object-contain" alt="In Process" />
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-500 transition-all duration-500"
                                     :style="{ height: props.statistics.in_process.percentage + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-medium text-sm">
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
                                         {{ props.statistics.in_process.percentage }}%
                                     </div>
                                 </div>
@@ -328,43 +316,34 @@
                             <span class="mt-2 text-xs font-medium text-gray-900">In Process</span>
                         </div>
 
-                        <!-- Delivered -->
+                        <!-- Dispatched -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-12 bg-green-100 rounded-2xl relative overflow-hidden px-2">
-                                <div
-                                    class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-green-50 p-2 rounded-lg z-10">
-                                    <img src="/assets/images/delivery.png" class="h-6 w-6" alt="Delivered" />
-                                </div>
-                                <div class="absolute bottom-0 w-full bg-green-500 transition-all duration-500"
-                                    :style="{ height: (props.statistics.transferred?.percentage || 0) + '%' }">
+                            <div class="h-[350px] w-14 bg-purple-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
+                                <img src="/assets/images/dispatch.png" class="h-10 w-10 object-contain" alt="Dispatched" />
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
+                                    :style="{ height: (props.statistics.dispatched?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-medium text-sm">
-                                        {{ props.statistics.transferred?.percentage || 0 }}%
-                                        <!-- <div class="text-xs opacity-75">{{ props.statistics.transferred?.stages?.join(' → ') || '' }}</div> -->
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
+                                        {{ props.statistics.dispatched?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Transferred</span>
+                            <span class="mt-2 text-xs font-medium text-gray-900">Dispatched</span>
                         </div>
 
-                        <!-- Rejected -->
+                        <!-- Received -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-12 bg-red-100 rounded-2xl relative overflow-hidden px-2">
-                                <div
-                                    class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-red-50 p-2 rounded-lg z-10">
-                                    <img src="/assets/images/rejected.png" class="h-6 w-6" alt="Rejected" />
-                                </div>
-                                <div class="absolute bottom-0 w-full bg-red-500 transition-all duration-500"
-                                    :style="{ height: props.statistics.rejected.percentage + '%' }">
+                            <div class="h-[350px] w-14 bg-emerald-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
+                                <img src="/assets/images/received.png" class="h-10 w-10 object-contain" alt="Received" />
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
+                                    :style="{ height: (props.statistics.received?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-medium text-sm">
-                                        {{ props.statistics.rejected.percentage }}%
-                                        <!-- <div class="text-xs opacity-75">{{ props.statistics.rejected.stages.join(' → ')
-                                        }}</div> -->
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
+                                        {{ props.statistics.received?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Rejected<br>Transfers</span>
+                            <span class="mt-2 text-xs font-medium text-gray-900">Received</span>
                         </div>
                     </div>
                 </div>
