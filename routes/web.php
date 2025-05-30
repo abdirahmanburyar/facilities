@@ -163,7 +163,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::post('/{id}/reject', [TransferController::class, 'reject'])->name('transfers.reject');
         Route::post('/{id}/in-process', [TransferController::class, 'inProcess'])->name('transfers.inProcess');
         Route::post('/{id}/dispatch', [TransferController::class, 'dispatch'])->name('transfers.dispatch');
-        Route::post('/{id}/complete', [TransferController::class, 'completeTransfer'])->name('transfers.completeTransfer');
         
         // Route to get available inventories for transfer
         Route::get('/get-inventories', [TransferController::class, 'getInventories'])->name('transfers.getInventories');
@@ -171,8 +170,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         // Route to delete a transfer item
         Route::delete('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
         
-        // Unified API endpoint for changing transfer status
-        Route::post('/change-status', [TransferController::class, 'changeStatus'])->name('transfers.changeStatus');
         
         // Back order functionality
         Route::post('/backorder', [TransferController::class, 'backorder'])->name('transfers.backorder');
@@ -181,16 +178,12 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         // Item status change
         Route::post('/change-item-status', [TransferController::class, 'changeItemStatus'])->name('transfers.changeItemStatus');
         
-        // Bulk Status Change Routes
-        Route::post('/bulk-approve', [TransferController::class, 'bulkApprove'])->name('transfers.bulkApprove');
-        Route::post('/bulk-reject', [TransferController::class, 'bulkReject'])->name('transfers.bulkReject');
-        Route::post('/bulk-in-process', [TransferController::class, 'bulkInProcess'])->name('transfers.bulkInProcess');
-        Route::post('/bulk-dispatch', [TransferController::class, 'bulkDispatch'])->name('transfers.bulkDispatch');
-        Route::post('/bulk-complete', [TransferController::class, 'bulkComplete'])->name('transfers.bulkComplete');
-
         // receive transfer
         Route::post('/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receiveTransfer');
         Route::get('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
+
+        // update transfer item quantity
+        Route::post('/update-item', [TransferController::class, 'updateItem'])->name('transfers.update-item');
     });
 });
 

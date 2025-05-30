@@ -2,35 +2,6 @@
     <AuthenticatedLayout title="Optimize Your Transfers" description="Moving Supplies, Bridging needs"
         img="/assets/images/transfer.png">
         <div class="">
-            <!-- Bulk Actions Panel -->
-            <div v-if="selectedTransfers.length > 0"
-                class="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 px-4 py-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm font-medium text-gray-700">{{ selectedTransfers.length }} items
-                            selected</span>
-                        <div class="flex space-x-2">
-                            <template v-for="action in getBulkStatusActions()" :key="action.status">
-                                <button @click="bulkChangeStatus(action.status)"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-150"
-                                    :class="[
-                                        `text-${action.color}-700 bg-${action.color}-50 hover:bg-${action.color}-100`,
-                                        'font-medium cursor-pointer'
-                                    ]">
-                                    {{ action.label }}
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-                    <button @click="clearSelection" class="text-gray-500 hover:text-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
 
             <!-- Header Section -->
             <div class="flex flex-col mb-6 space-y-6">
@@ -672,7 +643,6 @@ const statusTabs = [
     { value: 'approved', label: 'Approved', color: 'green' },
     { value: 'in_process', label: 'In Process', color: 'blue' },
     { value: 'dispatched', label: 'Dispatched', color: 'purple' },
-    { value: 'delivered', label: 'Delivered', color: 'indigo' },
     { value: 'received', label: 'Received', color: 'gray' },
     { value: 'rejected', label: 'Rejected', color: 'red' },
 ];
@@ -906,7 +876,7 @@ const changeStatus = (transferId, newStatus) => {
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         confirmButtonText: 'Yes, change it!'
-    }).then((result) => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
             let routeName;
             switch (newStatus) {
@@ -922,13 +892,6 @@ const changeStatus = (transferId, newStatus) => {
                 case 'dispatched':
                     routeName = 'transfers.dispatch';
                     break;
-                case 'transferred':
-                case 'delivered':
-                    routeName = 'transfers.completeTransfer';
-                    break;
-                case 'received':
-                    routeName = 'transfers.receive';
-                    break;
                 default:
                     Toast.fire({
                         icon: 'error',
@@ -942,7 +905,7 @@ const changeStatus = (transferId, newStatus) => {
             // Set loading state for this specific action
             loadingActions.value[`${transferId}_${newStatus}`] = true;
 
-            axios.post(route(routeName, transferId))
+            await axios.post(route(routeName, transferId))
                 .then(response => {
                     Toast.fire({
                         icon: 'success',
@@ -976,65 +939,5 @@ const markInProcess = (transferId) => {
     changeStatus(transferId, 'in_process');
 };
 
-const completeTransfer = (transferId) => {
-    changeStatus(transferId, 'delivered');
-};
 
-const bulkChangeStatus = async (newStatus) => {
-    try {
-        const result = await Swal.fire({
-            title: 'Are you sure?',
-            text: `Do you want to change the status of ${selectedTransfers.value.length} transfers to ${newStatus}?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Yes, change it!'
-        });
-
-        if (result.isConfirmed) {
-            let route;
-            switch (newStatus) {
-                case 'approved':
-                    route = 'transfers.bulkApprove';
-                    break;
-                case 'rejected':
-                    route = 'transfers.bulkReject';
-                    break;
-                case 'in_process':
-                    route = 'transfers.bulkInProcess';
-                    break;
-                case 'dispatched':
-                    route = 'transfers.bulkDispatch';
-                    break;
-                case 'delivered':
-                    route = 'transfers.bulkComplete';
-                    break;
-                default:
-                    Toast.fire({
-                        icon: 'error',
-                        title: 'Invalid status transition'
-                    });
-                    return;
-            }
-
-            await axios.post(window.route(route), {
-                transferIds: selectedTransfers.value
-            });
-
-            await Toast.fire({
-                icon: 'success',
-                title: 'Transfers have been updated successfully.'
-            });
-
-            selectedTransfers.value = [];
-            router.reload();
-        }
-    } catch (error) {
-        Toast.fire({
-            icon: 'error',
-            title: error.response?.data?.message || 'Failed to update transfers'
-        });
-    }
-};
 </script>

@@ -275,7 +275,10 @@
               </div>
             </td>
             <td class="px-6 py-4 text-sm border border-black">
-              <input type="number" v-model="item.quantity" min="1" :max="item.quantity" required class="w-full rounded-3xl"/>
+              <input type="number" v-model="item.quantity" min="1"
+              @keyup.enter="updateTransferItemQuantity(item)"
+               required class="w-full rounded-3xl"/>
+               <p v-if="isItemUpdating[item.id]" class="text-xs text-gray-500">Updating...</p>
               <label>Quantity received</label>
               <input 
                 type="number" 
@@ -337,18 +340,13 @@
 
         <!-- Approve button -->
         <div class="relative">
-          <button @click="changeStatus(props.transfer.id, 'approved')" v-if="props.transfer.status === 'pending'" 
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
-            <img src="/assets/images/approved.png" class="w-8 h-8 mr-2" alt="Approve" />
-            <span class="text-sm font-bold text-white">Approve</span>
-          </button>
-          <button v-else
+          <button
             :class="[
               statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
             ]"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
             <img src="/assets/images/approved.png" class="w-8 h-8 mr-2" alt="Approve" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'Approved' : 'Approve' }}</span>
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'Approved' : 'Waiting to be Approved' }}</span>
           </button>
           <div v-if="props.transfer.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
@@ -390,7 +388,7 @@
         </div>
 
         <div class="relative">
-          <button @click="receiveTransfer(props.transfer.id)" v-if="props.transfer.status === 'dispatched'" 
+          <button @click="receiveTransfer(props.transfer.id)" v-if="props.transfer.status === 'dispatched' && props.transfer.to_facility_id === currentUserFacility.id" 
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
             <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
             <span class="text-sm font-bold text-white">Received</span>
@@ -401,7 +399,9 @@
             ]"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
             <img src="/assets/images/received.png" class="w-8 h-8 mr-2" alt="Dispatch" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'Received' : 'Receive' }}</span>
+            <span class="text-sm font-bold text-white">
+              {{props.transfer.to_facility_id != currentUserFacility.id && props.transfer.status === 'dispatched' ? 'Waiting to be Received' : 'Received'}}
+            </span>
           </button>
           <div v-if="props.transfer.status === 'dispatched'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
@@ -747,7 +747,9 @@ import Swal from 'sweetalert2';
 import Modal from '@/Components/Modal.vue';
 import moment from 'moment';
 import { BuildingOfficeIcon } from '@heroicons/vue/24/outline';
+import { useToast } from 'vue-toastification';
 
+const toast = useToast();
 // Get the current user's facility ID
 const currentUserFacility = computed(() => usePage().props.facility);
 
@@ -812,6 +814,44 @@ const addBackOrder = () => {
     notes: "",
   });
 };
+
+// Update transfer item quantity
+
+const isItemUpdating = ref([]);
+async function updateTransferItemQuantity(item){
+
+  if(item.quantity < 1){
+    item.quantity = 1;
+    return;
+  }
+
+  isItemUpdating.value[item.id] = true;
+
+  await axios.post(route("transfers.update-item"), {
+    id: item.id,
+    quantity: item.quantity,
+  })
+  .then((response) => {
+    isItemUpdating.value[item.id] = false;
+    console.log(response.data);
+    toast.success(response.data);
+  })
+  .catch((error) => {
+    isItemUpdating.value[item.id] = false;
+    console.error(error.response?.data);
+    
+    // Check if the response has a structured error with quantity
+    if (error.response?.data && typeof error.response.data === 'object' && error.response.data.quantity) {
+      // Reset the item quantity to the original value returned from the server
+      item.quantity = error.response.data.quantity;
+      // Show the error message
+      toast.error(error.response.data.message || "Failed to update transfer item");
+    } else {
+      // Handle the old response format or other errors
+      toast.error(error.response?.data || "Failed to update transfer item");
+    }
+  })
+}
 
 // Remove a back order row
 const removeBackOrder = async (index) => {
@@ -1112,25 +1152,26 @@ const changeStatus = (transferId, newStatus) => {
             isLoading.value = true;
 
             await axios
-                .post(route("transfers.changeStatus"), {
+                .post(route("transfers.changeItemStatus"), {
                     transfer_id: transferId,
                     status: newStatus,
                 })
                 .then((response) => {
                     // Reset loading state
                     isLoading.value = false;
-                    Swal.fire({
-                        title: "Updated!",
-                        text: response.data?.message || "Transfer status updated successfully",
-                        icon: "success",
-                        toast: true,
-                        position: "top-end",
-                        showConfirmButton: false,
-                        timer: 3000,
-                    }).then(() => {
-                        // Reload the page to show the updated status
-                        router.reload();
-                    });
+                    console.log(response.data);
+                    // Swal.fire({
+                    //     title: "Updated!",
+                    //     text: response.data?.message || "Transfer status updated successfully",
+                    //     icon: "success",
+                    //     toast: true,
+                    //     position: "top-end",
+                    //     showConfirmButton: false,
+                    //     timer: 3000,
+                    // }).then(() => {
+                    //     // Reload the page to show the updated status
+                    //     router.reload();
+                    // });
                 })
                 .catch((error) => {
                     console.log(error.response);
