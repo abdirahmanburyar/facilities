@@ -70,7 +70,7 @@
                 </div>
                 </Link>
 
-                <!-- <Link :href="route('expired.index')" class="menu-item" :class="{ active: route().current('expired.*') }"
+                <Link :href="route('expired.index')" class="menu-item" :class="{ active: route().current('expired.*') }" v-if="$page.props.auth.can.expired_view"
                     @click="setCurrentPage('expired')">
                 <div class="menu-content">
                     <div class="menu-icon">
@@ -80,7 +80,7 @@
                     </div>
                     <span class="menu-text">Expires</span>
                 </div>
-                </Link> -->
+                </Link>
 
                 <!-- Liquidate and disposals -->
                 <!-- <Link :href="route('liquidate-disposal.liquidates')" class="menu-item"

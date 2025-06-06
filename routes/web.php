@@ -5,6 +5,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\ExpiredController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\OrderController;
@@ -64,6 +65,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware(PermissionMiddleware::class.':user.delete')->name('roles.destroy');
     Route::post('/users/{user}/roles', [RoleController::class, 'assignRoles'])->middleware(PermissionMiddleware::class.':user.edit')->name('users.roles.assign');
     
+
+    
+    // Expired Management Routes
+    Route::prefix('expired')->group(function () {
+        Route::get('/', [ExpiredController::class, 'index'])->name('expired.index');
+        Route::get('/create', [ExpiredController::class, 'create'])->name('expired.create');
+        Route::post('/', [ExpiredController::class, 'store'])->name('expired.store');
+        Route::get('/{expired}/edit', [ExpiredController::class, 'edit'])->name('expired.edit');
+        Route::put('/{expired}', [ExpiredController::class, 'update'])->name('expired.update');
+        Route::delete('/{expired}', [ExpiredController::class, 'destroy'])->name('expired.destroy');
+        Route::get('/{transfer}/transfer', [ExpiredController::class, 'transfer'])->name('expired.transfer');
+        Route::post('/dispose', [ExpiredController::class, 'dispose'])->name('expired.dispose');
+    });
    
     // Inventory Routes
     Route::controller(InventoryController::class)

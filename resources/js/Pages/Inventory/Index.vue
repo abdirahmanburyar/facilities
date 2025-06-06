@@ -95,7 +95,8 @@ const formatDate = (date) => {
 
 // Check if inventory is low
 const isLowStock = (inventory) => {
-    return inventory.quantity > 0 && inventory.quantity <= inventory.reorder_level;
+    return inventory.quantity > 0 && inventory.quantity <= 120;
+    // return inventory.quantity > 0 && inventory.quantity <= inventory.reorder_level;
 };
 
 // Check if inventory is out of stock
