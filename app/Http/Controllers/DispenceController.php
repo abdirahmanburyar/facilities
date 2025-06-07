@@ -65,12 +65,13 @@ class DispenceController extends Controller
     public function store(Request $request)
     {
         try {
+            DB::beginTransaction();
             $validated = $request->validate([
                 'patient_name' => 'required|string|max:255',
                 'phone_number' => 'required|string|max:255',
                 'diagnosis' => 'required|string|max:255',
                 'items' => 'required|array',
-                'items.*.product_id' => 'required|exists:facility_inventories,id',
+                'items.*.product_id' => 'required|exists:products,id',
                 'items.*.dose' => 'required|numeric',
                 'items.*.frequency' => 'required|numeric',
                 'items.*.start_date' => 'required|date',
@@ -78,71 +79,51 @@ class DispenceController extends Controller
                 'items.*.quantity' => 'required|numeric|min:1',
             ]);
 
-            // First validate if we have enough stock for all items
-            foreach ($validated['items'] as $item) {
-                $inventory = FacilityInventory::where('id', $item['product_id'])
-                    ->where('facility_id', auth()->user()->facility_id)
-                    ->first();
-
-                if (!$inventory) {
-                    return response()->json(['error' => 'Product not found in your facility'], 404);
-                }
-
-                if ($inventory->quantity < $item['quantity']) {
-                    return response()->json('Insufficient stock for product: ' . $inventory->product->name . ' Available: ' . $inventory->quantity . ' Requested: ' . $item['quantity'], 500);
+            $dispence = Dispence::create([
+                'patient_name' => $validated['patient_name'],
+                'patient_phone' => $validated['phone_number'],
+                'diagnosis' => $validated['diagnosis'],
+                'dispence_date' => Carbon::now()->toDateString(),
+                'dispenced_by' => auth()->user()->id,
+                'facility_id' => auth()->user()->facility_id,
+            ]);
+            foreach($validated['items'] as $item){
+                $totalQuantity = 0;
+                foreach($validated['items'] as $item){
+                    $remainingQuantity = $item['quantity'] - $totalQuantity;
+                    $inventories = FacilityInventory::where('facility_id', auth()->user()->facility_id)
+                        ->where('product_id', $item['product_id'])
+                        ->where('quantity', '>', 0)
+                        ->orderBy('expiry_date', 'asc')
+                        ->get();
+                    foreach($inventories as $inventory){
+                        $quantityToDeduct = min($remainingQuantity, $inventory->quantity);
+                        $dispence->items()->create([
+                            'product_id' => $item['product_id'],
+                            'dose' => $item['dose'],
+                            'batch_number' => $inventory->batch_number,
+                            'expiry_date' => $inventory->expiry_date,
+                            'barcode' => $inventory->barcode,
+                            'uom' => $inventory->uom ?? 'N/A',
+                            'frequency' => $item['frequency'],
+                            'start_date' => $item['start_date'],
+                            'duration' => $item['duration'],
+                            'quantity' => $quantityToDeduct,
+                        ]);
+                        $inventory->decrement('quantity', $quantityToDeduct);
+                        $totalQuantity += $quantityToDeduct;
+                        $remainingQuantity -= $quantityToDeduct;
+                        if($remainingQuantity <= 0){
+                            break 2;
+                        }
+                    }
                 }
             }
-
-            // If all validations pass, wrap in transaction
-            return DB::transaction(function () use ($validated) {
-                // Generate dispence number (DIS-YYYYMMDD-XXXX)
-                $today = Carbon::now();
-                $latestDispence = Dispence::whereDate('created_at', $today)
-                    ->latest()
-                    ->first();
-
-                $sequence = $latestDispence ? (int)substr($latestDispence->dispence_number, -4) + 1 : 1;
-                $dispence_number = sprintf('DIS-%s-%04d', $today->format('Ymd'), $sequence);
-
-                $dispence = Dispence::create([
-                    'dispence_number' => $dispence_number,
-                    'dispence_date' => $today,
-                    'diagnosis' => $validated['diagnosis'],
-                    'patient_name' => $validated['patient_name'],
-                    'patient_phone' => $validated['phone_number'], // Changed from phone_number to patient_phone
-                    'facility_id' => auth()->user()->facility_id,
-                    'dispenced_by' => auth()->id(),
-                ]);
-
-                foreach ($validated['items'] as $item) {
-                    $facilityInventory = FacilityInventory::lockForUpdate()
-                        ->where('id', $item['product_id'])
-                        ->where('facility_id', auth()->user()->facility_id)
-                        ->first();
-
-                    // Double-check quantity one last time
-                    if ($facilityInventory->quantity < $item['quantity']) {
-                        throw new \Exception('Stock changed while processing. Please try again.');
-                    }
-
-                    $facilityInventory->decrement('quantity', $item['quantity']);
-
-                    $dispence->items()->create([
-                        'product_id' => $item['product_id'],
-                        'dose' => $item['dose'],
-                        'frequency' => $item['frequency'],
-                        'start_date' => $item['start_date'],
-                        'duration' => $item['duration'],
-                        'quantity' => $item['quantity'],
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
-                    ]);
-                }
-
-                return response()->json('Dispence created successfully', 200);
-            });
+            DB::commit();
+           return response()->json("Dispence created successfully", 200);
 
         } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json($th->getMessage(), 500);
         }
     }
@@ -158,4 +139,6 @@ class DispenceController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
+
+
 }

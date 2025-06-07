@@ -1176,7 +1176,7 @@ class OrderController extends Controller
                 ->where('product_id', $productId)
                 ->where('facility_id', $facilityId)
                 ->sum('quantity');
-            
+                
             // Calculate Average Monthly Consumption (AMC) from the last 4 months' AMC values
             $now = Carbon::now();
             $currentMonth = $now->format('Y-m');
@@ -1194,6 +1194,8 @@ class OrderController extends Controller
                 ->whereIn('month_year', $months)
                 ->select('month_year', 'amc')
                 ->sum('amc');
+
+            // logger()->info("amcValues:", $amcValues);
             
             // Calculate average of the AMC values
             $totalAmc = $amcValues;
@@ -1212,15 +1214,6 @@ class OrderController extends Controller
             // Create the quarter start date without time component
             $quarterStartDate = Carbon::createFromDate($now->year, $month, $day)->startOfDay();
             $nowDate = Carbon::now()->startOfDay();
-            
-            // Add temporary debug output to the response
-            $debug = [
-                'now' => $nowDate->format('Y-m-d'),
-                'quarter' => $quarter,
-                'quarter_start_date' => $quarterStartDate->format('Y-m-d'),
-                'day_from_constant' => $day,
-                'month_from_constant' => $month
-            ];
             
             // Calculate days since quarter start (ensure positive value) - without time component
             $daysSinceQuarterStart = $quarterStartDate->diffInDays($nowDate);
@@ -1245,9 +1238,11 @@ class OrderController extends Controller
                 ->first();
 
             $totalInventory = DB::table('inventories')
-                ->where('product_id', $productId)
-                ->where('expiry_date', '>=', Carbon::now()->addMonths(3)->toDateString())
+                ->where('product_id', $request->product_id)
+                ->where('expiry_date', '>=', Carbon::now()->addMonths(1)->toDateString())
                 ->sum('quantity');
+
+            logger()->info($totalInventory);
                 
             if ((int) $requiredQuantity > (int) $totalInventory) {
                 return response()->json('Insufficient inventory to fulfill the required quantity.', 500);
@@ -1260,8 +1255,7 @@ class OrderController extends Controller
                 'amc' => $amc,
                 'days_since_quarter_start' => $daysSinceQuarterStart,
                 'no_of_days' => $daysSinceQuarterStart,
-                'insufficient_inventory' => false,
-                'debug' => $debug
+                'insufficient_inventory' => false
             ], 200);
             
         } catch (\Throwable $e) {

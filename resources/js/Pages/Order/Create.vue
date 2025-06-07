@@ -306,6 +306,7 @@ async function checkInventory(index, selected) {
             isLoading.value = false;
         })
         .catch((error) => {
+            console.log(error);
             isLoading.value = false;
             Swal.fire({
                 icon: "error",

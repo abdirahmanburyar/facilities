@@ -83,17 +83,17 @@
                 </Link>
 
                 <!-- Liquidate and disposals -->
-                <!-- <Link :href="route('liquidate-disposal.liquidates')" class="menu-item"
-                    :class="{ active: route().current('liquidate-disposal.*') }" @click="setCurrentPage('liquidate-disposal')">
+                <Link :href="route('dispence.index')" class="menu-item"
+                    :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('liquidate-disposal.*')" src="/assets/images/liquidate-disposal-b.png"
-                            class="liquidate-disposal-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/liquidate-disposal-w.png" class="liquidate-disposal-icon" style="height: 24px" />
+                        <img v-if="route().current('dispence.*')" src="/assets/images/dispence-b.png"
+                            class="dispence-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/dispence-w.png" class="dispence-icon" style="height: 24px" />
                     </div>
-                    <span class="menu-text">Liquidate/Disposal</span>
+                    <span class="menu-text">Dispence</span>
                 </div>
-                </Link> -->
+                </Link>
                 
 
               

@@ -315,7 +315,6 @@ watch(() => form.value.items, (items) => {
 }, { deep: true });
 
 const submit = async () => {
-    console.log(form.value);
     isProcessing.value = true;
     await axios.post(route('dispence.store'), form.value)
         .then((response) => {
@@ -350,4 +349,5 @@ function reloadDispences(){
         only: ['inventories']
     })
 }
+
 </script>

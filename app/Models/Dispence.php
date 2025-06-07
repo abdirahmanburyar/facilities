@@ -30,4 +30,15 @@ class Dispence extends Model
     {
         return $this->hasMany(DispenceItem::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($dispence) {
+            $lastDispence = self::latest('dispence_number')->first();
+            $number = $lastDispence ? (int)substr($lastDispence->dispence_number, 8) + 1 : 1;
+            $dispence->dispence_number = 'DISP-' . date('Ymd') . '-' . str_pad($number, 5, '0', STR_PAD_LEFT);
+        });
+    }
 }

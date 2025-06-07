@@ -20,6 +20,10 @@ return new class extends Migration
             $table->date('start_date');
             $table->integer('duration');
             $table->integer('quantity');
+            $table->string('barcode')->nullable();
+            $table->string('batch_number');
+            $table->date('expiry_date');
+            $table->string('uom');
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->timestamps();
