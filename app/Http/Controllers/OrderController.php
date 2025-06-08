@@ -1064,8 +1064,8 @@ class OrderController extends Controller
                 $order = $orderItem->order;
                 
                 // Update the order item's received quantity with the value from the frontend
-                $orderItem->received_quantity = $request->received_quantity;
-                $orderItem->save();
+                // $orderItem->received_quantity = $request->received_quantity;
+                // $orderItem->save();
                 
                 // Calculate total back order quantity
                 $totalBackOrderQty = collect($request->backorders)->sum('quantity');

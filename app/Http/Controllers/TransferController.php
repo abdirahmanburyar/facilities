@@ -418,12 +418,7 @@ class TransferController extends Controller
         }
     }
     
-    /**
-     * Handle back orders for transfer items
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+
     public function backorder(Request $request)
     {
         try {
@@ -659,7 +654,6 @@ class TransferController extends Controller
             // Check if all items.quantity and items.received_quantity are equal
             foreach ($request->items as $item) {
                 $areEqual = (int) $item['quantity'] == array_sum(array_column($item['backorders'], 'quantity')) + (int) $item['received_quantity'];
-                logger()->info('Item ID: ' . $item['id'] . ', Equal check: ' . ($areEqual ? 'true' : 'false'));
                 if(!$areEqual) {
                     return response()->json([
                         'id' => $item['id'],

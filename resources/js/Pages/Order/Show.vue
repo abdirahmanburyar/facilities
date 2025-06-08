@@ -468,6 +468,7 @@
                     <td
                         class="px-3 py-3 text-sm text-gray-900 border border-black"
                     >
+                    {{ item }}
                         <div class="flex justify-between items-start gap-2">
                             <div class="w-[30%]">
                                 <input

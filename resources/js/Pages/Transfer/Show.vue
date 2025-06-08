@@ -288,6 +288,7 @@
                 min="0" 
                 :max="item.quantity" 
                 @input="validateReceivedQuantity(item)" 
+                :readonly="props.transfer.status == 'received'"
                 required 
                 class="w-full rounded-3xl"
               />
