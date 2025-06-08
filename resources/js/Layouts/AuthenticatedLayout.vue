@@ -1,11 +1,12 @@
 <template>
     <div class="app-container">
+        <!-- Permission changes are now handled globally in app.js -->
         <!-- Sidebar -->
-        <div :class="['sidebar', { 'sidebar-open': sidebarOpen }]" >
+        <div :class="['sidebar', { 'sidebar-open': sidebarOpen }]" class="p-0" >
             <div class="white-box" style="border-color: white;">
                 <Link :href="route('dashboard')" class="logo-container flex justify-between">
-                <img src="/assets/images/moh.png" class="moh-logo" style="height: 50px" />
-                <img src="/assets/images/psi.jpg" class="psi-logo" style="height: 50px" />
+                <img src="/assets/images/moh.png" class="moh-logo" style="height: 30px" />
+                <img src="/assets/images/psi.jpg" class="psi-logo" style="height: 30px" />
                 </Link>
 
             </div>
@@ -125,9 +126,9 @@
         <!-- Main Content -->
         <div :class="['main-content', { 'main-content-expanded': !sidebarOpen }]">
             <!-- Top Navigation -->
-            <div class="top-nav">
+            <div class="top-nav h-16 text-xs">
                 <div class="inventory-banner">
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-center">
                         <!-- <div class="flex flex-col"> -->
                             <button @click="toggleSidebar" class="back-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -144,7 +145,7 @@
                             </div>
                         <!-- </div> -->
                         <div v-if="img">
-                            <img :src="img" alt="Inventory illustration" class="svg-image" height="50" />
+                            <img :src="img" alt="Inventory illustration" class="svg-image" height="30" />
                         </div>
                     </div>
                     <div class="user-section">
@@ -156,7 +157,7 @@
                                 <div class="user-details">
                                     <span class="user-role">Pharmaceutical Manager</span>
                                     <span class="user-name">{{ $page.props.auth.user?.name }}</span>
-                                    <span class="user-name">{{ $page.props.facility?.name }}</span>
+                                    <span class="user-name">{{ $page.props.warehouse?.name }}</span>
                                 </div>
                             </div>
                             <button class="logout-button" @click="logout">
@@ -202,11 +203,9 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
-import { usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { useToast } from 'vue-toastification';
-
-const page = usePage();
 
 const toast = useToast();
 
@@ -225,27 +224,14 @@ const props = defineProps({
     }
 });
 
+const page = usePage();
+const debug = ref(false); // Set to true to see permissions debug info
 const sidebarOpen = ref(true);
 const currentPage = ref('dashboard');
-
-const toggleSidebar = () => {
-    sidebarOpen.value = !sidebarOpen.value;
-};
-
-const setCurrentPage = (page) => {
-    currentPage.value = page;
-};
-
-const logout = () => {
-    router.post(route('logout'));
-};
-
 
 // Setup permission change listener
 onMounted(() => {
     setupPermissionChangeListener();
-    console.log(window.Echo);
-    
 });
 
 // Function to handle permission change events
@@ -290,8 +276,17 @@ const handlePermissionEvent = (event) => {
 
 
 
+const toggleSidebar = () => {
+    sidebarOpen.value = !sidebarOpen.value;
+};
 
+const setCurrentPage = (page) => {
+    currentPage.value = page;
+};
 
+const logout = () => {
+    router.post(route('logout'));
+};
 </script>
 
 <style scoped>
@@ -314,11 +309,12 @@ const handlePermissionEvent = (event) => {
 }
 
 .sidebar-open {
-    width: 130px;
-    min-width: 130px;
+    width: 100px;
+    min-width: 100px;
     transform: translateX(0);
     opacity: 1;
     visibility: visible;
+    margin-top: 29px;
 }
 
 .white-box {
@@ -404,11 +400,11 @@ const handlePermissionEvent = (event) => {
     text-decoration: none;
     transition: all 0.3s ease;
     position: relative;
-    margin: 0.3rem 0;
+    margin: 0.1rem 0;
     padding: 0;
     z-index: 1;
     width: 100%;
-    height: 50px;
+    height: 33px;
 }
 
 .menu-item:hover {
@@ -426,7 +422,7 @@ const handlePermissionEvent = (event) => {
     margin-right: -25px;
     padding-right: 25px;
     z-index: 5;
-    height: 44px;
+    height: 46px;
     display: flex;
     align-items: center;
     width: 100%;
@@ -468,7 +464,7 @@ const handlePermissionEvent = (event) => {
 }
 
 .menu-content {
-    margin-left: 15px;
+    margin-left: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -477,7 +473,7 @@ const handlePermissionEvent = (event) => {
     padding: 0;
     position: relative;
     z-index: 10;
-    height: 100%;
+    height: 60%;
 }
 
 .menu-icon {
@@ -497,7 +493,7 @@ const handlePermissionEvent = (event) => {
     white-space: nowrap;
     transition: opacity 0.3s ease;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 10px;
     font-weight: 500;
     line-height: 1;
     width: 100%;
@@ -533,7 +529,7 @@ const handlePermissionEvent = (event) => {
     color: white;
     padding: 0.5rem 1.5rem;
     width: 100%;
-    height: 120px;
+    height: 68px;
     position: relative;
     overflow: hidden;
     border-top-left-radius: 40px;
@@ -578,7 +574,7 @@ const handlePermissionEvent = (event) => {
 }
 
 .svg-image {
-    height: 110px;
+    height: 70px;
     margin-left: 30px;
 }
 
@@ -662,8 +658,8 @@ main {
 @media (min-width: 1025px) {
     .sidebar-open {
         transform: translateX(0);
-        width: 130px;
-        min-width: 130px;
+        width: 100px;
+        min-width: 100px;
         opacity: 1;
         visibility: visible;
     }
@@ -680,7 +676,7 @@ main {
 /* When sidebar is open, adjust the main content margin on desktop */
 @media (min-width: 1025px) {
     .sidebar-open+.main-content {
-        margin-left: 130px;
+        margin-left: 100px;
     }
 }
 
@@ -703,19 +699,19 @@ main {
 }
 
 /* Adjust margin for Dashboard menu item specifically */
-.menu-item[href="/"] {
-    margin-top: 2rem;
-}
+/* .menu-item[href="/"] {
+    margin-top: 30px;
+} */
 
 /* Add helper class for SVG icons */
 .menu-icon svg {
-    width: 24px;
-    height: 24px;
+    width: 15px;
+    height: 15px;
     fill: currentColor;
 }
 
 /* When sidebar is open, set appropriate margin */
 .sidebar-open+.main-content {
-    width: calc(100% - 130px);
+    width: calc(100% - 100px);
 }
 </style>

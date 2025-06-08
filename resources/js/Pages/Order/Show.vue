@@ -25,7 +25,7 @@
                             <!-- Pending Icon -->
                             <img
                                 v-if="props.order?.status === 'pending'"
-                                src="/assets/images/pending.svg"
+                                src="/assets/images/pending.png"
                                 class="w-6 h-6"
                                 alt="Pending"
                             />
@@ -192,7 +192,7 @@
                             ]"
                         >
                             <img
-                                src="/assets/images/pending.svg"
+                                src="/assets/images/pending.png"
                                 class="w-10 h-10"
                                 alt="Pending"
                                 :class="
@@ -327,69 +327,32 @@
                             :class="[
                                 statusOrder.indexOf(props.order.status) >=
                                 statusOrder.indexOf('received')
-                                    ? props.order.has_back_order
-                                        ? 'bg-white border-orange-500'
-                                        : 'bg-green-500 border-green-600'
+                                    ? 'bg-white border-green-500'
                                     : 'bg-white border-gray-200',
                             ]"
                         >
                             <img
-                                v-if="
-                                    props.order.has_back_order &&
-                                    statusOrder.indexOf(props.order.status) >=
-                                        statusOrder.indexOf('received')
-                                "
                                 src="/assets/images/received.png"
                                 class="w-10 h-10"
-                                alt="Partially Received"
-                            />
-                            <img
-                                v-else-if="
+                                alt="Dispatch"
+                                :class="
                                     statusOrder.indexOf(props.order.status) >=
                                     statusOrder.indexOf('received')
+                                        ? ''
+                                        : 'opacity-40'
                                 "
-                                src="/assets/images/check.svg"
-                                class="w-10 h-10"
-                                alt="Completed"
-                            />
-                            <img
-                                v-else
-                                src="/assets/images/received.png"
-                                class="w-10 h-10 opacity-40"
-                                alt="Received"
                             />
                         </div>
                         <span
                             class="mt-3 text-lg font-bold"
-                            :class="[
+                            :class="
                                 statusOrder.indexOf(props.order.status) >=
                                 statusOrder.indexOf('received')
-                                    ? props.order.has_back_order
-                                        ? 'text-orange-600'
-                                        : 'text-green-600'
-                                    : 'text-gray-500',
-                            ]"
-                        >
-                            {{
-                                statusOrder.indexOf(props.order.status) >=
-                                statusOrder.indexOf("received")
-                                    ? props.order.has_back_order
-                                        ? "Partially Received"
-                                        : "Completed"
-                                    : "Received"
-                            }}
-                        </span>
-                        <button
-                            v-if="
-                                props.order.has_back_order &&
-                                statusOrder.indexOf(props.order.status) >=
-                                    statusOrder.indexOf('received')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
                             "
-                            @click="showBackOrderModal()"
-                            class="mt-1 text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer"
+                            >Recieved</span
                         >
-                            View Back Order
-                        </button>
                     </div>
                 </div>
             </div>
