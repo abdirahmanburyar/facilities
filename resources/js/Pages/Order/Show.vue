@@ -611,7 +611,7 @@
                             : '',
                     ]"
                     :disabled="status !== 'dispatched' && status !== 'received' || isLoading"
-                    @click="status === 'received' ? changeStatus(props.order.id, 'received') : null"
+                    @click="status === 'dispatched' ? changeStatus(props.order.id, 'received') : null"
                 >
                     <!-- Icons for each status -->
                     <img
@@ -1818,7 +1818,7 @@ const changeStatus = (orderId, newStatus) => {
                         icon: "success",
                         toast: true,
                         position: "top-end",
-                        showConfirmButton: false,
+                        showConfirmButton: true,
                         timer: 3000,
                     }).then(() => {
                         // Reload the page to show the updated status
