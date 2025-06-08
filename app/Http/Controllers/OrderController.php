@@ -731,6 +731,8 @@ class OrderController extends Controller
                 'status' => 'required|in:received'
             ]);
 
+            logger()->info($request->all());
+
             $order = Order::with('items.inventory_allocations.backorders','items.inventory_allocations.warehouse','items.inventory_allocations.location','items.product', 'facility')
                 ->where('status', 'dispatched')
                 ->where('id', $request->order_id)
@@ -783,9 +785,9 @@ class OrderController extends Controller
                     ];
                     
                     // Update the allocation status
-                    $allocation->update([
-                        'status' => $request->status
-                    ]);
+                    // $allocation->update([
+                    //     'status' => $request->status
+                    // ]);
                     
                     // Add to facility inventory if actual quantity is greater than 0
                     if ($actualQuantity > 0) {

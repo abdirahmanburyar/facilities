@@ -602,16 +602,22 @@
                     :class="[
                         statusOrder.indexOf(props.order.status) >=
                         statusOrder.indexOf(status)
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-500',
+                            ? props.order.status === 'received'
+                                ? 'bg-white text-gray-700'
+                                : status !== 'received'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                            : status === 'received'
+                                ? 'bg-gray-100 text-gray-500'
+                                : 'bg-gray-300 text-gray-500',
                         status === 'received' &&
                         statusOrder.indexOf(props.order.status) >=
                         statusOrder.indexOf('dispatched')
-                            ? 'bg-green-500 text-white'
+                            ? 'cursor-pointer'
                             : '',
                     ]"
                     :disabled="status !== 'dispatched' && status !== 'received' || isLoading"
-                    @click="status === 'dispatched' ? changeStatus(props.order.id, 'received') : null"
+                    @click="status === 'received' && props.order.status !== 'received' ? changeStatus(props.order.id, 'received') : null"
                 >
                     <!-- Icons for each status -->
                     <img
@@ -644,9 +650,7 @@
                         class="w-5 h-5 mr-2"
                         alt="Received"
                     />
-                    <span v-if="status === 'dispatched'">Mark as Received</span>
-                    <span v-else-if="status === 'received'">Received</span>
-                    <span v-else>{{
+                    <span>{{
                         status.charAt(0).toUpperCase() +
                         status.slice(1).replace("_", " ")
                     }}</span>
@@ -1793,6 +1797,7 @@ const statusOrder = [
 
 // Function to change order status
 const changeStatus = (orderId, newStatus) => {
+    console.log(newStatus);
     Swal.fire({
         title: "Are you sure?",
         text: `Do you want to change the order status to ${newStatus}?`,
