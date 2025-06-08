@@ -13,6 +13,7 @@ use App\Models\InventoryAllocation;
 use App\Models\FacilityBackorder;
 use App\Models\FacilityInventory;
 // App Events and Resources
+use App\Models\EligibleItem;
 use App\Events\OrderEvent;
 use App\Http\Resources\OrderResource;
 
@@ -995,7 +996,10 @@ class OrderController extends Controller
     }
 
     public function create(Request $request){
-        $items = Product::get();
+        $facility = Facility::find(auth()->user()->facility_id);
+        $items = Product::whereHas('eligible', function($q) use ($facility) {
+            $q->where('facility_type', $facility->facility_type);
+        })->get();
         return Inertia::render('Order/Create', [
             'items' => $items
         ]);
@@ -1151,115 +1155,165 @@ class OrderController extends Controller
     public function checkInventory(Request $request)
     {
         try {
+            logger()->info('Starting checkInventory', ['request' => $request->all()]);
+    
             $request->validate([
                 'product_id' => 'required|exists:products,id'
             ]);
             
             $productId = $request->product_id;
-            $facilityId = auth()->user()->facility_id;
-            
-            // Check if the item is in an active order pipeline
+            $user = auth()->user();
+            $facility = Facility::find($user->facility_id);
+            if (!$facility) {
+                logger()->error('Facility not found', ['facility_id' => $user->facility_id]);
+                return response()->json("Facility not found.", 500);
+            }
+            logger()->info('Facility found', ['facility_id' => $facility->id]);
+    
+            // Check eligibility without facility_id as per your logic
+            $isEligible = EligibleItem::where('product_id', $productId)
+                ->where('facility_type', $facility->facility_type)
+                ->with('product');
+    
+            if (!$isEligible->exists()) {
+                logger()->info('Product not eligible', ['product_id' => $productId]);
+                return response()->json("This item is not eligible for ordering.", 500);
+            }
+            logger()->info('Product is eligible', ['product_id' => $productId]);
+    
+            // Check if product is in active order pipeline (status != received)
             $inThePipeline = OrderItem::where('product_id', $productId)
-                ->whereHas('order', function ($query) use ($facilityId) {
-                    $query->where('facility_id', $facilityId)
+                ->whereHas('order', function ($query) use ($facility) {
+                    $query->where('facility_id', $facility->id)
                         ->where('status', '!=', 'received');
                 })
-                ->exists();
-                
+                ->first();
+    
             if ($inThePipeline) {
+                logger()->info('Active order pipeline found', ['product_id' => $productId]);
                 return response()->json("This item is already in an active order pipeline.", 500);
             }
-            
-            // Get current Stock on Hand (SOH) for the facility - aggregate all quantities
-            // Use groupBy to ensure proper aggregation if there are multiple entries for the same product
+            logger()->info('No active order pipeline found for product');
+    
+            // Calculate Stock on Hand (SOH)
             $soh = DB::table('facility_inventories')
                 ->where('product_id', $productId)
-                ->where('facility_id', $facilityId)
+                ->where('facility_id', $facility->id)
                 ->sum('quantity');
-                
-            // Calculate Average Monthly Consumption (AMC) from the last 4 months' AMC values
-            $now = Carbon::now();
-            $currentMonth = $now->format('Y-m');
-            
-            // Get the current month and previous 3 months
+            logger()->info('Stock on Hand calculated', ['soh' => $soh]);
+    
+            // Get last 4 months for AMC calculation (exclude current month)
             $months = [];
-            for ($i = 0; $i < 4; $i++) {
+            for ($i = 1; $i <= 4; $i++) {
                 $months[] = Carbon::now()->subMonths($i)->format('Y-m');
             }
-
-            // Get AMC values for the last 4 months for this product and facility
-            $amcValues = DB::table('monthly_consumptions')
-                ->where('product_id', $productId)
-                ->where('facility_id', $facilityId)
+            logger()->info('Last 4 months for AMC calculation', ['months' => $months]);
+    
+            // Get report IDs for those months and facility
+            $reportIds = DB::table('monthly_consumption_reports')
+                ->where('facility_id', $facility->id)
                 ->whereIn('month_year', $months)
-                ->select('month_year', 'amc')
-                ->sum('amc');
-
-            // logger()->info("amcValues:", $amcValues);
-            
-            // Calculate average of the AMC values
-            $totalAmc = $amcValues;
-            $countAmc = 4;
-            
-            // Average of the last 4 months' AMC values, or 0 if none found
-            $amc = $totalAmc / $countAmc;
-                        
-            // Get number of days since the start of the quarter
-            $quarter = $now->quarter;
-            // Format is 'DD-MM' in the constant, so we need to parse it correctly
-            $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
-            $day = $quarterStartDateParts[0];
-            $month = $quarterStartDateParts[1];
-            
-            // Create the quarter start date without time component
-            $quarterStartDate = Carbon::createFromDate($now->year, $month, $day)->startOfDay();
-            $nowDate = Carbon::now()->startOfDay();
-            
-            // Calculate days since quarter start (ensure positive value) - without time component
-            $daysSinceQuarterStart = $quarterStartDate->diffInDays($nowDate);
-            $debug['days_since_quarter_start'] = $daysSinceQuarterStart;
-            
-            // Calculate days remaining in the 120-day period
-            $daysRemaining = 120 - $daysSinceQuarterStart;
-            $debug['days_remaining'] = $daysRemaining;
-            
-            // Quantity on Order (QOO) - default to 0 as specified
-            $qoo = 0;
-            
-            // Calculate required quantity using the formula:
-            // AMC * (120 days - days since quarter start) - SOH - QOO
-            $requiredQuantity = ceil($amc * $daysRemaining) - $soh - $qoo;
-            $requiredQuantity = max(0, $requiredQuantity); // Ensure it's not negative
-            
-            // Get product name
-            $product = DB::table('products')
-                ->where('id', $productId)
-                ->select('name')
+                ->pluck('id');
+            logger()->info('Consumption report IDs found', ['report_ids' => $reportIds]);
+    
+            // Total consumption over last 4 months for the product
+            $totalConsumption = DB::table('monthly_consumption_items')
+                ->whereIn('parent_id', $reportIds)
+                ->where('product_id', $productId)
+                ->sum('quantity');
+            logger()->info('Total consumption over 4 months', ['total_consumption' => $totalConsumption]);
+    
+            // Average Monthly Consumption (AMC) = total / 4 months
+            $amc = $totalConsumption / 4;
+            logger()->info('AMC calculated', ['amc' => $amc]);
+    
+            // Determine days since last received order update, fallback to quarter start if none
+            $lastReceivedOrder = Order::where('facility_id', $facility->id)
+                ->where('status', 'received')
+                ->whereHas('items', function ($q) use ($productId) {
+                    $q->where('product_id', $productId);
+                })
+                ->orderBy('updated_at', 'desc')
                 ->first();
-
+    
+            if ($lastReceivedOrder) {
+                $lastReceivedDate = Carbon::parse($lastReceivedOrder->updated_at)->startOfDay();
+                $daysSince = $lastReceivedDate->diffInDays(Carbon::now()->startOfDay());
+                logger()->info('Last received order found', ['updated_at' => $lastReceivedDate, 'days_since' => $daysSince]);
+            } else {
+                // Fallback: use quarter start date
+                $now = Carbon::now();
+                $quarter = $now->quarter;
+                $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
+                $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
+                $daysSince = $quarterStart->diffInDays($now->startOfDay());
+                logger()->info('No received order found. Using quarter start as fallback', [
+                    'quarter' => $quarter,
+                    'quarter_start' => $quarterStart,
+                    'days_since' => $daysSince
+                ]);
+            }
+    
+            // Days remaining in 120-day cycle
+            $daysRemaining = 120 - $daysSince;
+            logger()->info('Days remaining in 120-day period', ['days_remaining' => $daysRemaining]);
+    
+            // Quantity on Order (QOO) default to 0
+            $qoo = 0;
+            logger()->info('QOO assumed as zero');
+    
+            // Calculate projected consumption:
+            // AMC is average monthly, so convert to daily by dividing by ~30 days
+            $projectedConsumption = ($amc / 30) * $daysRemaining;
+            logger()->info('Projected consumption calculated', [
+                'amc' => $amc,
+                'days_remaining' => $daysRemaining,
+                'projected_consumption' => $projectedConsumption
+            ]);
+    
+            // Calculate required quantity = projected consumption - SOH - QOO
+            $requiredQuantity = ceil($projectedConsumption - $soh - $qoo);
+            $requiredQuantity = max(0, $requiredQuantity);
+    
+            // If no AMC and no SOH and quantity zero, assign default order quantity (first time order)
+            if ($amc == 0 && $soh == 0 && $requiredQuantity == 0) {
+                $requiredQuantity = 50; // default value for first order, adjust as needed
+                logger()->info('No AMC and SOH, assigning default required quantity', ['default_quantity' => $requiredQuantity]);
+            }
+    
+            $product = $isEligible->first()->product;
+    
+            // Check total available inventory (with expiry check)
             $totalInventory = DB::table('inventories')
-                ->where('product_id', $request->product_id)
+                ->where('product_id', $product->id)
                 ->where('expiry_date', '>=', Carbon::now()->addMonths(1)->toDateString())
                 ->sum('quantity');
-
-            logger()->info($totalInventory);
-                
-            if ((int) $requiredQuantity > (int) $totalInventory) {
-                return response()->json('Insufficient inventory to fulfill the required quantity.', 500);
+            logger()->info('Total inventory available checked', ['available_inventory' => $totalInventory]);
+    
+            if ($requiredQuantity > $totalInventory) {
+                logger()->warning('Insufficient inventory to fulfill required quantity', ['required' => $requiredQuantity, 'available' => $totalInventory]);
+                return response()->json('Insufficient inventory to fulfill the required quantity. available inventory: ' . $totalInventory . ' Required quantity: ' . $requiredQuantity, 500);
             }
-            
+    
+            logger()->info('Inventory check passed, returning response');
+    
             return response()->json([
-                'name' => $product ? $product->name : null,
+                'name' => $product->name,
                 'quantity' => $requiredQuantity,
                 'soh' => $soh,
                 'amc' => $amc,
-                'days_since_quarter_start' => $daysSinceQuarterStart,
-                'no_of_days' => $daysSinceQuarterStart,
+                'days_since_quarter_start' => $daysSince,
+                'no_of_days' => $daysSince,
                 'insufficient_inventory' => false
             ], 200);
-            
+    
         } catch (\Throwable $e) {
+            logger()->error('Error in checkInventory', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json($e->getMessage(), 500);
         }
     }
+    
+
+    
+
 }

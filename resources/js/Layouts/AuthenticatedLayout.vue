@@ -93,9 +93,7 @@
                     </div>
                     <span class="menu-text">Dispence</span>
                 </div>
-                </Link>
-                
-
+                </Link>               
               
                 <!-- <Link :href="route('reports.index')" class="menu-item"
                     :class="{ active: route().current('reports.*') }" @click="setCurrentPage('reports')">
