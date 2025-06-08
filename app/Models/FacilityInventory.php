@@ -15,6 +15,7 @@ class FacilityInventory extends Model
         'quantity',
         'barcode',
         'expiry_date',
+        'uom',
         'batch_number',
         'is_active',
     ];

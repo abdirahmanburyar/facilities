@@ -728,10 +728,8 @@ class OrderController extends Controller
 
             $request->validate([
                 'order_id' => 'required|exists:orders,id',
-                'status' => 'required|in:received'
+                'status' => 'required'
             ]);
-
-            logger()->info($request->all());
 
             $order = Order::with('items.inventory_allocations.backorders','items.inventory_allocations.warehouse','items.inventory_allocations.location','items.product', 'facility')
                 ->where('status', 'dispatched')
@@ -744,88 +742,33 @@ class OrderController extends Controller
             
             foreach ($order->items as $item) {
                 // Debug information for this item
-                $itemDebug = [
-                    'item_id' => $item->id,
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product->name,
-                    'quantity_to_release' => $item->quantity_to_release,
-                    'received_quantity' => $item->received_quantity,
-                    'allocations' => []
-                ];
                 
                 foreach ($item->inventory_allocations as $allocation) {
                     // Calculate total back order quantity for this allocation
-                    $backOrderTotal = 0;
-                    $backOrderDetails = [];
-                    
-                    if ($allocation->backorders && count($allocation->backorders) > 0) {
-                        foreach ($allocation->backorders as $backorder) {
-                            $backOrderTotal += $backorder->quantity;
-                            $backOrderDetails[] = [
-                                'id' => $backorder->id,
-                                'type' => $backorder->type,
-                                'quantity' => $backorder->quantity,
-                                'notes' => $backorder->notes
-                            ];
-                        }
+                    if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                        DB::rollback();
+                        return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                     }
-                    
-                    // Calculate actual quantity to add to inventory (allocation quantity minus back orders)
-                    $actualQuantity = $item->received_quantity;
-                    
-                    // Debug information for this allocation
-                    $allocationDebug = [
-                        'allocation_id' => $allocation->id,
-                        'batch_number' => $allocation->batch_number,
-                        'expiry_date' => $allocation->expiry_date,
-                        'allocated_quantity' => $allocation->allocated_quantity,
-                        'back_order_total' => $backOrderTotal,
-                        'actual_quantity_to_add' => $actualQuantity,
-                        'back_orders' => $backOrderDetails
-                    ];
-                    
-                    // Update the allocation status
-                    // $allocation->update([
-                    //     'status' => $request->status
-                    // ]);
-                    
-                    // Add to facility inventory if actual quantity is greater than 0
-                    if ($actualQuantity > 0) {
-                        // Check if facility inventory already exists for this product/batch
-                        $facilityInventory = FacilityInventory::where('facility_id', $order->facility_id)
-                            ->where('product_id', $item->product_id)
-                            ->where('batch_number', $allocation->batch_number)
-                            ->first();
-                        
-                        if ($facilityInventory) {
-                            // Update existing inventory
-                            $facilityInventory->increment('quantity', $actualQuantity);
-                            $allocationDebug['inventory_action'] = 'updated_existing';
-                            $allocationDebug['inventory_id'] = $facilityInventory->id;
-                            $allocationDebug['new_total'] = $facilityInventory->fresh()->quantity;
-                        } else {
-                            // Create new inventory record
-                            $facilityInventory = FacilityInventory::create([
-                                'facility_id' => $order->facility_id,
-                                'product_id' => $item->product_id,
-                                'quantity' => $actualQuantity,
-                                'batch_number' => $allocation->batch_number,
-                                'expiry_date' => $allocation->expiry_date,
-                                'is_active' => 1,
-                                'created_by' => auth()->id(),
-                                'updated_by' => auth()->id()
-                            ]);
-                            $allocationDebug['inventory_action'] = 'created_new';
-                            $allocationDebug['inventory_id'] = $facilityInventory->id;
-                        }
-                    } else {
-                        $allocationDebug['inventory_action'] = 'skipped_zero_quantity';
+                    $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
+                    $inventory = FacilityInventory::where('product_id', $allocation->product_id)
+                        ->where('batch_number', $allocation->batch_number)
+                        ->where('expiry_date', $allocation->expiry_date)
+                        ->first();
+
+                    if($inventory){
+                        $inventory->increment('quantity', $finalQuantity);
+                    }else{
+                        FacilityInventory::create([
+                            'facility_id' => $order->facility_id,
+                            'product_id' => $allocation->product_id,
+                            'batch_number' => $allocation->batch_number,
+                            'expiry_date' => $allocation->expiry_date,
+                            'quantity' => $finalQuantity,
+                            'barcode' => $allocation->barcode,
+                            'uom' => $allocation->uom,
+                        ]);
                     }
-                    
-                    $itemDebug['allocations'][] = $allocationDebug;
                 }
-                
-                $debugInfo[] = $itemDebug;
             }
             
             // Update order status to received
@@ -839,12 +782,7 @@ class OrderController extends Controller
             DB::commit();
             
             // Return debug information along with success message
-            return response()->json([
-                'message' => 'Order received successfully and inventory updated.',
-                'order_id' => $order->id,
-                'new_status' => $order->status,
-                'debug_info' => $debugInfo
-            ], 200);
+            return response()->json('Order received successfully and inventory updated.', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json($e->getMessage(), 500);
@@ -1064,18 +1002,20 @@ class OrderController extends Controller
                 $order = $orderItem->order;
                 
                 // Update the order item's received quantity with the value from the frontend
-                // $orderItem->received_quantity = $request->received_quantity;
-                // $orderItem->save();
+                $orderItem->received_quantity = $request->received_quantity;
                 
                 // Calculate total back order quantity
                 $totalBackOrderQty = collect($request->backorders)->sum('quantity');
                 
                 // Ensure the back order quantity doesn't exceed the difference between ordered and received
-                $maxBackOrderQty = $orderItem->quantity - $orderItem->received_quantity;
+                $maxBackOrderQty = $orderItem->received_quantity - $orderItem->quantity;
+
+                logger()->info($maxBackOrderQty);
                 
                 if ($totalBackOrderQty > $maxBackOrderQty) {
                     return response()->json('Total back order quantity exceeds the maximum allowed.', 500);
                 }
+                $orderItem->save();
                 
                 // Process deleted back orders first
                 if ($request->has('deleted_backorders') && !empty($request->deleted_backorders)) {

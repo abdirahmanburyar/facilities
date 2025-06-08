@@ -17,6 +17,7 @@ class OrderItem extends Model
         'quantity_on_order',
         'qer',
         'quantity_to_release',
+        'received_quantity',
         'no_of_days',
         'amc',
     ];

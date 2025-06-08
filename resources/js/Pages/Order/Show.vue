@@ -151,7 +151,7 @@
                                 Created By
                             </p>
                             <p class="text-sm text-gray-900">
-                                {{ props.order.user.name }}
+                                {{ props.order.user?.name }}
                             </p>
                         </div>
                     </div>
@@ -468,7 +468,6 @@
                     <td
                         class="px-3 py-3 text-sm text-gray-900 border border-black"
                     >
-                    {{ item }}
                         <div class="flex justify-between items-start gap-2">
                             <div class="w-[30%]">
                                 <input
@@ -1556,6 +1555,15 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
     // Get all back orders for this allocation
     const allocationBackOrders = getBatchBackOrders(allocation.id);
 
+    // Calculate total back ordered for this allocation except this row
+    const totalOtherRowsInAllocation = allocationBackOrders.reduce(
+        (subtotal, backOrder) => {
+            // Skip the current row being validated
+            if (backOrder === row) return subtotal;
+            return subtotal + Number(backOrder.quantity || 0);
+        }, 0
+    );
+
     // Calculate total back ordered for all allocations except this row
     const totalOtherRows = Object.values(batchBackOrders.value).reduce(
         (total, rows) => {
@@ -1571,22 +1579,32 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
         0
     );
 
-    // Calculate maximum allowed for this row
-    const maxForThisRow = missingQuantity.value - totalOtherRows;
+    // Calculate maximum allowed for this row based on overall missing quantity
+    const maxForThisRowByMissing = missingQuantity.value - totalOtherRows;
+    
+    // Calculate maximum allowed for this row based on allocation quantity
+    const maxForThisRowByAllocation = allocation.allocated_quantity - totalOtherRowsInAllocation;
+    
+    // Take the smaller of the two maximums
+    const maxForThisRow = Math.min(maxForThisRowByMissing, maxForThisRowByAllocation);
 
-    // If the quantity exceeds what's available, adjust it
+    // when propograting the value to the imput first check how much it needs
+    // for example this batch needs 20 and by default he is given 30
+
+    // If the quantity exceeds what's available, set it to 0
     if (qty > maxForThisRow) {
-        row.quantity = maxForThisRow;
+        row.quantity = 0;
         Swal.fire({
-            title: "Quantity Adjusted",
-            text: "The quantity has been adjusted to match the remaining missing quantity.",
-            icon: "info",
+            title: "Invalid Quantity",
+            text: qty > maxForThisRowByAllocation 
+                ? `Quantity cannot exceed the allocated quantity for batch ${allocation.batch_number}` 
+                : "The quantity exceeds the remaining missing quantity.",
+            icon: "warning",
             toast: true,
             position: "top-end",
             showConfirmButton: false,
             timer: 2000,
         });
-        row.quantity = Math.max(0, row.quantity - excess);
     }
 };
 
