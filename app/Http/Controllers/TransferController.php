@@ -166,7 +166,9 @@ class TransferController extends Controller
     public function index(Request $request)
     {
         // Start building the query
-        $query = Transfer::with('toWarehouse', 'toWarehouse', 'toFacility', 'fromFacility', 'items')->withCount('items');
+        $query = Transfer::where('to_facility_id', auth()->user()->facility_id)
+        ->orWhere('from_facility_id', auth()->user()->facility_id)
+        ->with('toWarehouse', 'toWarehouse', 'toFacility', 'fromFacility', 'items')->withCount('items');
         
         // Apply filters
         // Filter by tab/status

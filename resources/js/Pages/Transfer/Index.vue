@@ -4,7 +4,7 @@
         <div class="mb-[100px]">
 
             <!-- Header Section -->
-            <div class="flex flex-col mb-6 space-y-6">
+            <div class="flex flex-col mb-6">
                 <!-- Buttons First -->
                 <div class="flex items-center space-x-4 justify-end">
                     <!-- New Transfer -->
@@ -124,8 +124,8 @@
             <div class="grid grid-cols-12 gap-2">
                 <!-- Table Section (9 cols) -->
                 <div class="col-span-9">
-                    <div class="shadow overflow-x-auto max-w-full">
-                        <table class="min-w-full border border-black divide-y divide-black overflow-hidden border-collapse">
+                    <div class="shadow overflow-auto max-w-full">
+                        <table class="min-w-full border border-black border-collapse">
                             <thead class="bg-gray-50 border-b border-black">
                                 <tr>
                                     <th scope="col"
