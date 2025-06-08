@@ -294,20 +294,22 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
             // Validate request
-            $validated = $request->validate([
+            $request->validate([
                 'order_id' => 'required|exists:orders,id',
-                'status' => ['required', Rule::in(['delivered'])]
+                'status' => ['required|in:received']
             ]);
 
-            $order = Order::findOrFail($request->order_id);
+            $order = Order::where('id', $request->order_id)->first();
+
+            if(!$order) return response()->json("Order not found", 500);
 
             // Define allowed transitions
             $allowedTransitions = [
                 'pending' => ['approved'],
                 'approved' => ['in_process'],
                 'in_process' => ['dispatched'],
-                'dispatched' => ['delivered'],
-                'rejected' => ['approved'] // Allow rejected orders to be approved
+                'rejected' => ['approved'], // Allow rejected orders to be approved
+                'received' => ['received'],
             ];
 
             // Check if the transition is allowed
@@ -344,11 +346,6 @@ class OrderController extends Controller
                 case 'dispatched':
                     $updates['dispatched_by'] = $userId;
                     $updates['dispatched_at'] = $now;
-                    break;
-                case 'delivered':
-                    $updates['delivered'] = true;
-                    $updates['delivered_at'] = $now;
-                    $updates['delivered_by'] = $userId;
                     break;
             }
 
@@ -735,10 +732,11 @@ class OrderController extends Controller
             ]);
 
             $order = Order::with('items.inventory_allocations.backorders','items.inventory_allocations.warehouse','items.inventory_allocations.location','items.product', 'facility')
-                ->where('status', 'delivered')
-                ->findOrFail($request->order_id);
-            if($order->status != 'delivered'){
-                return response()->json('Order is not delivered', 500);
+                ->where('status', 'dispatched')
+                ->where('id', $request->order_id)
+                ->first();
+            if($order->status != 'dispatched'){
+                return response()->json('Order is not dispatched', 500);
             }
             $debugInfo = []; // For debugging purposes
             
@@ -834,7 +832,7 @@ class OrderController extends Controller
 
             // Broadcast event if needed
             // Kafka::publishOrderPlaced('Refreshed');
-            // event(new OrderEvent('Refreshed'));
+            event(new OrderEvent('Refreshed'));
 
             DB::commit();
             

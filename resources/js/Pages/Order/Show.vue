@@ -54,14 +54,6 @@
                                 alt="Dispatched"
                             />
 
-                            <!-- Delivered Icon -->
-                            <img
-                                v-else-if="props.order?.status === 'delivered'"
-                                src="/assets/images/delivery.png"
-                                class="w-6 h-6"
-                                alt="Delivered"
-                            />
-
                             <!-- Received Icon -->
                             <img
                                 v-else-if="props.order?.status === 'received'"
@@ -328,41 +320,6 @@
                         >
                     </div>
 
-                    <!-- Delivered -->
-                    <div class="flex flex-col items-center">
-                        <div
-                            class="w-16 h-16 rounded-full border-4 flex items-center justify-center z-10"
-                            :class="[
-                                statusOrder.indexOf(props.order.status) >=
-                                statusOrder.indexOf('delivered')
-                                    ? 'bg-white border-orange-500'
-                                    : 'bg-white border-gray-200',
-                            ]"
-                        >
-                            <img
-                                src="/assets/images/delivery.png"
-                                class="w-10 h-10"
-                                alt="Delivered"
-                                :class="
-                                    statusOrder.indexOf(props.order.status) >=
-                                    statusOrder.indexOf('delivered')
-                                        ? ''
-                                        : 'opacity-40'
-                                "
-                            />
-                        </div>
-                        <span
-                            class="mt-3 text-lg font-bold"
-                            :class="
-                                statusOrder.indexOf(props.order.status) >=
-                                statusOrder.indexOf('delivered')
-                                    ? 'text-green-600'
-                                    : 'text-gray-500'
-                            "
-                            >Delivered</span
-                        >
-                    </div>
-
                     <!-- Received -->
                     <div class="flex flex-col items-center">
                         <div
@@ -526,14 +483,14 @@
                                         placeholder="0"
                                         v-model="item.received_quantity"
                                         :disabled="
-                                            props.order.status !== 'delivered'
+                                            props.order.status !== 'dispatched'
                                         "
                                         @input="validateReceivedQuantity(item)"
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                                     />
                                 </div>
                                 <button
-                                    v-if="props.order.status === 'delivered'"
+                                    v-if="props.order.status === 'dispatched'"
                                     @click="openBackOrderModal(item)"
                                     class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full"
                                 >
@@ -632,13 +589,12 @@
 
             <!-- Status indicators with pills -->
             <div class="flex flex-wrap gap-2 mb-6 justify-center">
-                <div
+                <button
                     v-for="status in [
                         'pending',
                         'approved',
                         'in_process',
                         'dispatched',
-                        'delivered',
                         'received',
                     ]"
                     :key="status"
@@ -648,12 +604,19 @@
                         statusOrder.indexOf(status)
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-500',
+                        status === 'received' &&
+                        statusOrder.indexOf(props.order.status) >=
+                        statusOrder.indexOf('dispatched')
+                            ? 'bg-green-500 text-white'
+                            : '',
                     ]"
+                    :disabled="status !== 'dispatched' && status !== 'received' || isLoading"
+                    @click="status === 'received' ? changeStatus(props.order.id, 'received') : null"
                 >
                     <!-- Icons for each status -->
                     <img
                         v-if="status === 'pending'"
-                        src="/assets/images/pending.svg"
+                        src="/assets/images/pending.png"
                         class="w-5 h-5 mr-2"
                         alt="Pending"
                     />
@@ -676,12 +639,6 @@
                         alt="Dispatched"
                     />
                     <img
-                        v-else-if="status === 'delivered'"
-                        src="/assets/images/delivery.png"
-                        class="w-5 h-5 mr-2"
-                        alt="Delivered"
-                    />
-                    <img
                         v-else-if="status === 'received'"
                         src="/assets/images/received.png"
                         class="w-5 h-5 mr-2"
@@ -691,59 +648,14 @@
                         status.charAt(0).toUpperCase() +
                         status.slice(1).replace("_", " ")
                     }}</span>
-                </div>
-            </div>
-
-            <!-- Only show Receive button when status is delivered -->
-            <div v-if="props.order.status === 'delivered'" class="mt-6">
-                <button
-                    @click="changeStatus(props.order.id, 'received')"
-                    :disabled="isLoading"
-                    class="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706]"
-                >
-                    <svg
-                        v-if="isLoading"
-                        class="animate-spin h-5 w-5 mr-2"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                    >
-                        <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                        ></circle>
-                        <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                    </svg>
-                    <template v-else>
-                        <img
-                            src="/assets/images/received.png"
-                            class="w-6 h-6 mr-3"
-                            alt="Receive"
-                        />
-                        <span class="text-base font-bold text-white"
-                            >Mark as Received</span
-                        >
-                    </template>
                 </button>
-                <p class="text-sm text-gray-600 mt-2 text-center">
-                    Click to mark this order as received. This will update
-                    inventory levels.
-                </p>
             </div>
 
-            <!-- Show a message if the order is already received -->
+            <!-- Show a message if the order is already dispatched -->
             <div
-                v-else-if="
+                v-if="
                     statusOrder.indexOf(props.order.status) >
-                    statusOrder.indexOf('delivered')
+                    statusOrder.indexOf('dispatched')
                 "
                 class="mt-6"
             >
@@ -761,7 +673,7 @@
                 </div>
             </div>
 
-            <!-- Show a message if the order is not yet delivered -->
+            <!-- Show a message if the order is not yet dispatched -->
             <div v-else class="mt-6">
                 <div
                     class="bg-yellow-100 text-yellow-800 p-4 rounded-lg text-center"
@@ -772,7 +684,7 @@
                         }}" stage.
                     </p>
                     <p class="text-sm mt-1">
-                        The order must be in the "delivered" stage before it can
+                        The order must be in the "dispatched" stage before it can
                         be received.
                     </p>
                 </div>
@@ -1812,7 +1724,6 @@ const statusClasses = {
     approved: "bg-green-100 text-green-800 rounded-full font-bold",
     "in process": "bg-blue-100 text-blue-800 rounded-full font-bold",
     dispatched: "bg-purple-100 text-purple-800 rounded-full font-bold",
-    delivered: "bg-gray-100 text-gray-800 rounded-full font-bold",
     received:
         "bg-green-100 text-green-800 rounded-full font-bold flex items-center",
     partially_received: "bg-orange-100 text-orange-800 rounded-full font-bold",
@@ -1875,7 +1786,6 @@ const statusOrder = [
     "approved",
     "in_process",
     "dispatched",
-    "delivered",
     "received",
 ];
 
@@ -1912,7 +1822,14 @@ const changeStatus = (orderId, newStatus) => {
                         timer: 3000,
                     }).then(() => {
                         // Reload the page to show the updated status
-                        router.reload();
+                        router.get(route("orders.show", props.order.id), {}, {
+                            preserveScroll: true,
+                            preserveState: false,
+                            replace: true,
+                            only: [
+                                'orders'
+                            ]
+                        });
                     });
                 })
                 .catch((error) => {
