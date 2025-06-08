@@ -644,7 +644,9 @@
                         class="w-5 h-5 mr-2"
                         alt="Received"
                     />
-                    <span>{{
+                    <span v-if="status === 'dispatched'">Mark as Received</span>
+                    <span v-else-if="status === 'received'">Received</span>
+                    <span v-else>{{
                         status.charAt(0).toUpperCase() +
                         status.slice(1).replace("_", " ")
                     }}</span>
