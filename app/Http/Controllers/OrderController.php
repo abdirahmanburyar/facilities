@@ -1233,6 +1233,7 @@ class OrderController extends Controller
                 ->whereHas('items', function ($q) use ($productId) {
                     $q->where('product_id', $productId);
                 })
+                ->where('order_type', 'quarterly')
                 ->orderBy('updated_at', 'desc')
                 ->first();
     
