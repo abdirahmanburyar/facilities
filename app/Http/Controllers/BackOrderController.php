@@ -235,7 +235,7 @@ class BackOrderController extends Controller
                     if($inventory){
                         $inventory->increment('quantity', $request->quantity);
                         if($item->transferItem){
-                            $item->transferItem->decrement('quantity', $request->quantity);
+                            $item->transferItem->increment('quantity', $request->quantity);
                         }else{
                             $item->orderItem->increment('received_quantity', $request->quantity);
                         }
@@ -262,11 +262,11 @@ class BackOrderController extends Controller
                     ]);
                     
                     // Delete the record
-                    if($item->transferItem) {
-                        $item->transferItem->decrement('quantity', $request->quantity);
-                    } else {
-                        $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-                    }
+                    // if($item->transferItem) {
+                    //     $item->transferItem->decrement('quantity', $request->quantity);
+                    // } else {
+                    //     $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                    // }
                     $item->decrement('quantity', $request->quantity);
                     $item->refresh();
                     
