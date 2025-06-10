@@ -453,7 +453,7 @@
                                     />
                                 </div>
                                 <button
-                                    v-if="props.order.status === 'dispatched'"
+                                    v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
                                     @click="openBackOrderModal(item)"
                                     class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full"
                                 >
