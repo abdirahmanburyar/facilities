@@ -222,7 +222,7 @@ class BackOrderController extends Controller
                     'quantity' => 'required|integer|min:1',
                 ]);
                 
-                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type')->find($request->id);
+                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type,facility_id')->find($request->id);
                 
                 if ($item) {
                     $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id)
