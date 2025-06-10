@@ -836,6 +836,9 @@
                 <h2 v-else class="text-lg font-medium text-gray-900 mb-4">
                     Back Order Details
                 </h2>
+                <span v-if="message" class="text-sm text-red-600">{{
+                            message
+                        }}</span>
 
                 <div class="mb-4 bg-gray-50 p-3 rounded">
                     <p class="text-sm font-medium text-gray-600">
@@ -959,11 +962,8 @@
                                 </button>
                             </div>
                         </div>
-
                         <!-- Back order rows for this batch -->
-                        <span v-if="message" class="text-sm text-red-600">{{
-                            message
-                        }}</span>
+                        
                         <div
                             v-if="getBatchBackOrders(allocation.id).length > 0"
                             class="mt-3"
@@ -1023,6 +1023,7 @@
                                                     {{ type }}
                                                 </option>
                                             </select>
+                                            <span>{{ row.finalized }}</span>
                                         </td>
                                         <td class="px-2 py-1">
                                             <input
@@ -1057,6 +1058,7 @@
                                                         rowIndex
                                                     )
                                                 "
+                                                :disabled="row.finalized"
                                                 class="text-red-600 hover:text-red-800"
                                             >
                                                 <svg

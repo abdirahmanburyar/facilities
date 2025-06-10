@@ -111,7 +111,9 @@ class BackOrderController extends Controller
                 $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
                 $item->decrement('quantity', $request->quantity);
                 if ($item->quantity == 0) {
-                    $item->delete();
+                    $item->update([
+                        'finalized' => "Liquidated"
+                    ]);
                 }
             }
             // Commit the transaction
@@ -190,11 +192,13 @@ class BackOrderController extends Controller
                 ]);
                 
                 // Delete the record
-                $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-                $item->decrement('quantity', $request->quantity);
-                if ($item->quantity == 0) {
-                    $item->delete();
-                }
+                // $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                // $item->decrement('quantity', $request->quantity);
+                // if ($item->quantity == 0) {
+                // }
+                $item->update([
+                    'finalized' => "Disposed"
+                ]);
             }
 
             // Commit the transaction
