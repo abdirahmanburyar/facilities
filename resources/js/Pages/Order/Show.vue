@@ -437,6 +437,7 @@
                                     type="text"
                                     placeholder="0"
                                     v-model="item.quantity_to_release"
+                                    readonly
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                                 />
                                 <div>
