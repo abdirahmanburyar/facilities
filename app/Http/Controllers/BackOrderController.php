@@ -6,8 +6,10 @@ use App\Models\FacilityBackorder;
 use App\Http\Resources\BackOrderResource;
 use Carbon\Carbon;
 use App\Models\BackOrderHistory;
+use App\Models\FacilityInventory;
 use App\Models\Liquidate;
 use Illuminate\Http\Request;
+
 use App\Models\Disposal;
 use Illuminate\Support\Facades\DB;
 
