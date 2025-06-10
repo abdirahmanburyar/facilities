@@ -228,7 +228,7 @@ class BackOrderController extends Controller
                 
                 if ($item) {
                     $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id ?? $item->transferItem->product_id)
-                        ->where('facility_id', $item->orderItem->order->facility_id ?? $item->transferItem->to_facility_id)
+                        ->where('facility_id', $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id)
                         ->where('batch_number', $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number)
                         ->first();
 
@@ -239,7 +239,7 @@ class BackOrderController extends Controller
                     }else{
                         FacilityInventory::create([
                             'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
-                            'facility_id' => $item->orderItem->order->facility_id ?? $item->transferItem->to_facility_id,
+                            'facility_id' => $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id,
                             'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number,
                             'quantity' => $request->quantity,
                             'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom,
