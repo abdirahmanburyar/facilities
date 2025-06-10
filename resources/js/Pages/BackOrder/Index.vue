@@ -386,14 +386,14 @@
                         </div>
                         <div>
                             <p class="text-sm font-medium text-gray-500">
-                                Order Info
+                                Info
                             </p>
                             <p class="text-sm text-gray-900">
                                 {{
-                                    selectedItem.order_item?.order?.order_number
+                                    selectedItem.order_item?.order?.order_number || "TransferID: " + selectedItem.transfer_item?.transfer?.transferID
                                 }}
                                 -
-                                {{ selectedItem.order_item?.order?.order_type }}
+                                {{ selectedItem.order_item?.order?.order_type || '' }}
                             </p>
                             <p class="text-sm font-medium text-gray-500">
                                 Status
