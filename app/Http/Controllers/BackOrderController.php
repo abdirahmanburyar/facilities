@@ -146,7 +146,7 @@ class BackOrderController extends Controller
             DB::beginTransaction();
             
             // Get the packing list to include its number in the note
-            $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type')->find($request->id);
+            $item = FacilityBackorder::with('inventoryAllocation','transferItem.transfer','orderItem.order:id,order_number,order_type')->find($request->id);
             
             // Generate note based on condition and source
             $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->type .' - '. $request->note : 'Unknown';
@@ -171,22 +171,24 @@ class BackOrderController extends Controller
                 'product_id' => $item->inventoryAllocation->product_id,
                 'disposal_by' => auth()->id(),
                 'disposed_at' => Carbon::now(),
-                'order_item_id' => $item->orderItem->id,
+                'order_item_id' => $item->orderItem->id ?? null,
+                'transfer_item_id' => $item->transferItem->id ?? null,
                 'quantity' => $request->quantity,
                 'status' => 'pending', // Default status is pending
                 'note' => $note,
-                'barcode' => $item->inventoryAllocation->barcode,
-                'expire_date' => $item->inventoryAllocation->expiry_date,
-                'batch_number' => $item->inventoryAllocation->batch_number,
-                'uom' => $item->inventoryAllocation->uom,
+                'barcode' => $item->inventoryAllocation->barcode ?? $item->transferItem->barcode ?? 'N/A',
+                'expire_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date ?? 'N/A',
+                'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number ?? 'N/A',
+                'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom ?? 'N/A',
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
             ]);
 
             if ($item) {
                 // Create a record in BackOrderHistory before deleting
                 BackOrderHistory::create([
-                    'order_id' => $item->order_id,
-                    'product_id' => $item->inventoryAllocation->product_id,
+                    'order_id' => $item->order_id ?? null,
+                    'transfer_id' => $item->transferItem->id ?? null,
+                    'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
                     'quantity' => $request->quantity,
                     'status' => 'Disposal',
                     'note' => $note,
