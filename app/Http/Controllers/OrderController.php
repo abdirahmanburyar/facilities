@@ -998,7 +998,7 @@ class OrderController extends Controller
 
             return DB::transaction(function () use ($request) {
                 // Get the order item and its associated order
-                $orderItem = OrderItem::findOrFail($request->order_item_id);
+                $orderItem = OrderItem::with('inventory_allocations')->find($request->order_item_id);
                 $order = $orderItem->order;
                 
                 // Update the order item's received quantity with the value from the frontend
@@ -1008,9 +1008,7 @@ class OrderController extends Controller
                 $totalBackOrderQty = collect($request->backorders)->sum('quantity');
                 
                 // Ensure the back order quantity doesn't exceed the difference between ordered and received
-                $maxBackOrderQty = $orderItem->received_quantity - $orderItem->quantity;
-
-                logger()->info($maxBackOrderQty);
+                $maxBackOrderQty = collect($orderItem->inventory_allocations)->sum('allocated_quantity');
                 
                 if ($totalBackOrderQty > $maxBackOrderQty) {
                     return response()->json('Total back order quantity exceeds the maximum allowed.', 500);

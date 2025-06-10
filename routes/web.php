@@ -11,6 +11,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
+use App\Http\Controllers\BackOrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -125,6 +126,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         //     Route::post('/update-items', 'updateItem')->name('orders.update-item');           
 
         // });
+
+        // Backorder routes
+        Route::controller(BackOrderController::class)->prefix('backorders')->group(function () {
+            Route::get('/', 'index')->name('backorders.index');
+            // backorders.liquidate
+            Route::post('/liquidate', 'liquidate')->name('backorders.liquidate');
+            // Route::get('/{id}/show', 'show')->name('backorders.show');
+            // Route::post('/store', 'store')->name('backorders.store');
+            // Route::get('/create', 'create')->name('backorders.create');
+            // Route::get('/{backorder}/edit', 'edit')->name('backorders.edit');
+            // Route::put('/{backorder}', 'update')->name('backorders.update');
+            // Route::delete('/{backorder}', 'destroy')->name('backorders.destroy');
+        });
 
         // Order Management Routes
         Route::controller(OrderController::class)->prefix('orders')->group(function () {

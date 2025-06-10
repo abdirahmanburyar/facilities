@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FacilityBackorder extends Model
 {
+    protected $table = 'facility_backorders';
     protected $fillable = [
         'order_item_id',
         'transfer_item_id',
@@ -15,6 +16,7 @@ class FacilityBackorder extends Model
         'quantity',
         'notes',
         'status',
+        'finalized',
         'created_by',
         'updated_by',
         'reviewed_by',

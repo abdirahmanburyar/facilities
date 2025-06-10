@@ -40,7 +40,6 @@ const statusTabs = [
     { value: 'approved', label: 'Approved', color: 'green' },
     { value: 'in_process', label: 'In Process', color: 'blue' },
     { value: 'dispatched', label: 'Dispatched', color: 'purple' },
-    { value: 'delivered', label: 'Delivered', color: 'indigo' },
     { value: 'received', label: 'Received', color: 'green' },
     { value: 'rejected', label: 'Rejected', color: 'red' }
 ];
@@ -242,13 +241,13 @@ const formatDate = (date) => {
        <div class="mb-6">
          <!-- Filters Section -->
          <div class="flex items-center justify-between mb-4">
-            <h1 class="text-3xl font-bold text-gray-900">Facility Orders</h1>
+            <h1 class="text-xl font-bold text-gray-900">Facility Orders</h1>
             <Link :href="route('orders.create')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
                 Create New Order
             </Link>
         </div>
 
-        <div class="bg-white mb-6 p-4">
+        <div class="bg-white mb-6">
             <div class="flex flex-wrap gap-4 items-center mb-5">
                 <!-- Search -->
                 <div class="relative w-full sm:w-auto flex-grow min-w-[250px]">
@@ -292,7 +291,7 @@ const formatDate = (date) => {
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8">
                     <button v-for="tab in statusTabs" :key="tab.value" @click="handleTabClick(tab.value)"
-                        class="whitespace-nowrap py-4 px-1 border-b-4 font-bold text-lg" :class="[
+                        class="whitespace-nowrap py-4 px-1 border-b-4 font-bold text-xs" :class="[
                             currentStatus === tab.value ?
                                 `border-${tab.color}-500 text-${tab.color}-600` :
                                 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -319,35 +318,35 @@ const formatDate = (date) => {
                                 <tr>
                                     <!-- Checkbox column removed -->
                                     <th
-                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
+                                        class="px-6 py-3 text-left text-xs text-black uppercase">
                                         Order Number
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
+                                        class="px-6 py-3 text-left text-xs text-black uppercase">
                                         Facility
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
+                                        class="px-6 py-3 text-left text-xs text-black uppercase">
                                         Order Type
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
+                                        class="px-6 py-3 text-left text-xs text-black uppercase">
                                         Date
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-sm font-medium text-black uppercase tracking-wider border border-black">
+                                        class="px-6 py-3 text-left text-xs text-black uppercase">
                                         Status
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white">
+                            <tbody class="bg-white border-b border-grey-500">
                                 <tr v-if="orders.data?.length === 0">
                                     <td colspan="6" class="px-6 py-16 text-center">
                                         <div class="flex flex-col items-center justify-center">
                                             <img src="/assets/images/empty-order.svg" alt="No orders" class="w-32 h-32 mb-4" 
                                                 onerror="this.onerror=null; this.src='/assets/images/empty-box.png'">
                                             <h3 class="text-lg font-medium text-gray-900 mb-1">No Orders Found</h3>
-                                            <p class="text-sm text-gray-500 max-w-md">
+                                            <p class="text-xs text-gray-500 max-w-md">
                                                 {{ currentStatus ? 
                                                     `There are no orders with '${statusTabs.find(t => t.value === currentStatus)?.label || currentStatus}' status.` : 
                                                     'There are no orders matching your current filters.' }}
@@ -364,60 +363,55 @@ const formatDate = (date) => {
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-for="order in orders.data" :key="order.id" :class="{
+                                <tr v-for="order in orders.data" :key="order.id" class="border-b" :class="{
                                     'hover:bg-gray-50': true,
                                     'text-red-500 border border-red-500': order.status === 'rejected'
                                 }">
                                     <!-- Checkbox cell removed -->
-                                    <td class="px-6 py-4 border border-black">
+                                    <td class="px-6 text-xs py-4">
                                         <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                     </td>
-                                    <td class="px-6 py-4 border border-black">
+                                    <td class="px-6 text-xs py-4">
                                         {{ order.facility?.name }}
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 border border-black">
+                                    <td class="px-6 text-xs py-4">
                                         {{ order.order_type }}
                                     </td>
 
-                                    <td class="px-6 py-4 text-sm text-gray-500 border border-black">
-                                        <div class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</div>
+                                    <td class="px-6 text-xs py-4">
+                                        <div class="text-xs text-gray-900">{{ formatDate(order.created_at) }}</div>
                                         <div class="text-xs text-gray-500">Expected: {{ formatDate(order.expected_date)
                                             }}</div>
                                     </td>
-                                    <td class="px-6 py-4 border border-black">
+                                    <td class="px-6 py-4">
                                         <div class="flex items-center gap-2">
                                             <!-- Status Progress Icons - Only show actions taken -->
                                             <div class="flex items-center gap-1">
                                                 <!-- Always show pending as it's the initial state -->
-                                                <img src="/assets/images/pending.svg" class="w-12 h-12" alt="pending" />
+                                                <img src="/assets/images/pending.png" class="w-10 h-10" alt="pending" />
 
                                                 <!-- Only show approved if status is approved or further -->
                                                 <img v-if="['approved', 'in_process', 'dispatched', 'delivered', 'received'].includes(order.status)"
-                                                    src="/assets/images/approved.png" class="w-12 h-12"
+                                                    src="/assets/images/approved.png" class="w-10 h-10"
                                                     alt="Approved" />
                                                 <!-- Only show rejected if status is rejected -->
                                                 <img v-if="order.status === 'rejected'"
-                                                    src="/assets/images/rejected.svg" class="w-12 h-12"
+                                                    src="/assets/images/rejected.svg" class="w-10 h-10"
                                                     alt="Rejected" />
 
                                                 <!-- Only show in_process if status is in_process or further -->
                                                 <img v-if="['in_process', 'dispatched', 'delivered', 'received'].includes(order.status)"
-                                                    src="/assets/images/inprocess.png" class="w-12 h-12"
+                                                    src="/assets/images/inprocess.png" class="w-10 h-10"
                                                     alt="In Process" />
 
                                                 <!-- Only show dispatched if status is dispatched or further -->
                                                 <img v-if="['dispatched', 'delivered', 'received'].includes(order.status)"
-                                                    src="/assets/images/dispatch.png" class="w-12 h-12"
+                                                    src="/assets/images/dispatch.png" class="w-10 h-10"
                                                     alt="Dispatched" />
-
-                                                <!-- Only show delivered if status is delivered or received -->
-                                                <img v-if="['delivered', 'received'].includes(order.status)"
-                                                    src="/assets/images/delivery.png" class="w-12 h-12"
-                                                    alt="Delivered" />
 
                                                 <!-- Only show received if status is received -->
                                                 <img v-if="order.status === 'received'"
-                                                    src="/assets/images/received.png" class="w-12 h-12"
+                                                    src="/assets/images/received.png" class="w-10 h-10"
                                                     alt="Received" />
                                             </div>
                                         </div>
@@ -431,8 +425,7 @@ const formatDate = (date) => {
             <!-- Status Statistics -->
             <div class="lg:col-span-1">
                 <div class="sticky top-4 sticky:mt-5">
-                    <h3 class="text-sm font-bold text-gray-900 mb-6">Order Statistics</h3>
-                    <div class="space-y-8">
+                    <div class="space-y-5">
                         <!-- Pending -->
                         <div class="relative">
                             <div class="flex items-center mb-2">

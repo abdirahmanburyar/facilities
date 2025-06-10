@@ -96,17 +96,17 @@
                 </div>
                 </Link>               
               
-                <!-- <Link :href="route('reports.index')" class="menu-item"
-                    :class="{ active: route().current('reports.*') }" @click="setCurrentPage('reports')">
+                <Link :href="route('backorders.index')" class="menu-item"
+                    :class="{ active: route().current('backorders.*') }" @click="setCurrentPage('backorders')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('reports.*')" src="/assets/images/facility-b.png"
-                            class="facility-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/facility-w.png" class="facility-icon" style="height: 24px" />
+                        <img v-if="route().current('backorders.*')" src="/assets/images/backorder-b.png"
+                            class="backorder-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/backorder-w.png" class="backorder-icon" style="height: 24px" />
                     </div>
-                    <span class="menu-text">Reports</span>
+                    <span class="menu-text">Backorders</span>
                 </div>
-                </Link> -->
+                </Link>
 
                 <!-- <Link :href="route('assets.index')" class="menu-item" :class="{ active: route().current('assets.*') }"
                     @click="setCurrentPage('assets')">
@@ -180,10 +180,10 @@
                 <div class="flex-1">
                     <slot />
                 </div>
-                <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+                <div class="fixed text-xs bottom-0 left-0 right-0 bg-white border-t border-gray-200">
                     <div class="container mx-auto py-2">
                         <div class="flex justify-center items-center gap-4">
-                            <img src="/assets/images/vista.png" alt="Vista" class="w-[80px]" />
+                            <img src="/assets/images/vista.png" alt="Vista" class="w-[50px]" />
                             <span class="flex items-center text-gray-400">|</span>
                             <span class="flex items-center text-gray-600">Copyright 2025 Vista. All rights
                                 reserved.</span>

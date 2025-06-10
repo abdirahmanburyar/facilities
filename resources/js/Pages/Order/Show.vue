@@ -8,7 +8,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <Link :href="route('orders.index')">Back to orders</Link>
-                    <h1 class="text-2xl font-semibold text-gray-900">
+                    <h1 class="text-sm font-semibold text-gray-900">
                         Order ID. {{ props.order?.order_number }}
                     </h1>
                 </div>
@@ -18,7 +18,7 @@
                             statusClasses[props.order?.status] ||
                                 statusClasses.default,
                         ]"
-                        class="flex items-center text-lg font-bold px-4 py-2"
+                        class="flex items-center text-xs font-bold px-4 py-2"
                     >
                         <!-- Status Icon -->
                         <span class="mr-3">
@@ -1136,7 +1136,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="flex gap-2">
                         <button
                             @click="saveBackOrders"
@@ -1480,8 +1479,6 @@ const addBatchBackOrder = (allocation) => {
     });
 };
 
-const message = ref("");
-
 onMounted(() => {
     setTimeout(() => {
         message.value = "";
@@ -1571,7 +1568,9 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
     }
 };
 
+const message = ref('');
 const saveBackOrders = async () => {
+    message.value = "";
     // Check if there's a mismatch between back order quantity and missing quantity
     if (totalBatchBackOrderQuantity.value !== missingQuantity.value) {
         Swal.fire({
@@ -1651,8 +1650,9 @@ const saveBackOrders = async () => {
     await axios
         .post(route("orders.backorder"), backOrderData)
         .then((response) => {
-            console.log(response);
             isSaving.value = false;
+            showBackOrderModal.value = false;
+
             Swal.fire({
                 title: "Success!",
                 text: response.data,
@@ -1663,7 +1663,6 @@ const saveBackOrders = async () => {
                 timer: 3000,
             }).then(() => {
                 // Close modal and reload page to show updated data
-                showBackOrderModal.value = false;
                 // Use Inertia to visit the current page with fresh data
                 router.visit(
                     route("orders.show", props.order.id),
@@ -1677,18 +1676,8 @@ const saveBackOrders = async () => {
             });
         })
         .catch((error) => {
-            console.log(error);
-            Swal.fire({
-                title: "Error!",
-                text:
-                    error.response?.data?.message ||
-                    "Failed to save back orders",
-                icon: "error",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 3000,
-            });
+            console.log(error.response);
+            message.value = error.response?.data;
             isSaving.value = false;
         });
 };
