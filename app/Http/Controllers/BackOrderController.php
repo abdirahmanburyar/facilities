@@ -30,7 +30,7 @@ class BackOrderController extends Controller
                 $backorders->where('status', $request->status);
             }
 
-            $backorders->with('product:id,name,productID','inventoryAllocation','orderItem.order:id,order_number,order_type');
+            $backorders->with('product:id,name,productID','inventoryAllocation','orderItem.order:id,order_number,order_type','transferItem.transfer');
 
             $backorders = $backorders->paginate($request->filled('per_page', 2), ['*'], 'page', $request->filled('page', 1))
                 ->withQueryString();

@@ -80,21 +80,20 @@
                                         >Batch Number:
                                         {{
                                             item.inventory_allocation
-                                                ?.batch_number
+                                                ?.batch_number || item.transfer_item?.batch_number || "N/A"
                                         }}</span
                                     >
                                     <span class="text-gray-600"
                                         >Barcode:
                                         {{
                                             item.inventory_allocation
-                                                ?.barcode || "N/A"
+                                                ?.barcode || item.transfer_item?.barcode || "N/A"
                                         }}</span
                                     >
                                     <span class="text-gray-600"
                                         >UoM:
                                         {{
-                                            item.inventory_allocation?.uom ||
-                                            "N/A"
+                                            item.inventory_allocation?.uom || item.transfer_item?.uom || "N/A"
                                         }}</span
                                     >
                                 </div>
@@ -122,7 +121,7 @@
                                         >Allocated QTY:
                                         {{
                                             item.inventory_allocation
-                                                ?.allocated_quantity
+                                                ?.allocated_quantity || item.transfer_item?.quantity || "N/A"
                                         }}</span
                                     >
                                     <span
