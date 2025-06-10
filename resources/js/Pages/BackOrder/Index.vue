@@ -55,7 +55,9 @@
                             <th class="px-4 py-3 text-left">Item</th>
                             <th class="px-4 py-3 text-left">Item Info</th>
                             <th class="px-4 py-3 text-left">Type</th>
-                            <th class="w-[200px] px-4 py-3 text-left">Quantity</th>
+                            <th class="w-[200px] px-4 py-3 text-left">
+                                Quantity
+                            </th>
                             <th class="px-4 py-3 text-left">Notes</th>
                             <th class="px-4 py-3 text-left">Status</th>
                             <th class="px-4 py-3 text-left">Created At</th>
@@ -74,9 +76,27 @@
                             <td class="px-4 py-2">{{ item.product?.name }}</td>
                             <td class="px-4 py-2">
                                 <div class="flex flex-col">
-                                    <span class="text-gray-600">Batch Number: {{ item.inventory_allocation?.batch_number }}</span>
-                                    <span class="text-gray-600">Barcode: {{ item.inventory_allocation?.barcode || 'N/A'}}</span>
-                                    <span class="text-gray-600">UoM: {{ item.inventory_allocation?.uom || 'N/A'}}</span>
+                                    <span class="text-gray-600"
+                                        >Batch Number:
+                                        {{
+                                            item.inventory_allocation
+                                                ?.batch_number
+                                        }}</span
+                                    >
+                                    <span class="text-gray-600"
+                                        >Barcode:
+                                        {{
+                                            item.inventory_allocation
+                                                ?.barcode || "N/A"
+                                        }}</span
+                                    >
+                                    <span class="text-gray-600"
+                                        >UoM:
+                                        {{
+                                            item.inventory_allocation?.uom ||
+                                            "N/A"
+                                        }}</span
+                                    >
                                 </div>
                             </td>
                             <td class="px-4 py-2">
@@ -98,8 +118,17 @@
                             </td>
                             <td class="px-4 py-2">
                                 <div class="flex flex-col">
-                                    <span>Allocated QTY: {{ item.inventory_allocation?.allocated_quantity }}</span>
-                                    <span>Backordered QTY: {{ item.quantity }}</span>
+                                    <span
+                                        >Allocated QTY:
+                                        {{
+                                            item.inventory_allocation
+                                                ?.allocated_quantity
+                                        }}</span
+                                    >
+                                    <span
+                                        >Backordered QTY:
+                                        {{ item.quantity }}</span
+                                    >
                                 </div>
                             </td>
                             <td class="px-4 py-2">{{ item.notes }}</td>
@@ -120,10 +149,15 @@
                                         ['Missing', 'Lost'].includes(item.type)
                                     "
                                 >
-                                <!-- @click="liquidate(item)" -->
-                                <button
-                                @click="handleAction('Liquidate', { ...item, status: item.status, quantity: item.quantity })"
-
+                                    <!-- @click="liquidate(item)" -->
+                                    <button
+                                        @click="
+                                            handleAction('Liquidate', {
+                                                ...item,
+                                                status: item.status,
+                                                quantity: item.quantity,
+                                            })
+                                        "
                                         class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-red-500 text-white hover:bg-red-600"
                                     >
                                         Liquidate
@@ -143,7 +177,13 @@
                                     "
                                 >
                                     <button
-                                        @click="dispose(item)"
+                                        @click="
+                                            handleAction('Dispose', {
+                                                ...item,
+                                                status: item.status,
+                                                quantity: item.quantity,
+                                            })
+                                        "
                                         class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-yellow-500 text-white hover:bg-yellow-600"
                                     >
                                         Dispose
@@ -166,62 +206,126 @@
             />
         </div>
 
-          <!-- Liquidation Modal -->
-          <Modal :show="showLiquidateModal" max-width="xl" @close="showLiquidateModal = false">
-            <form id="liquidationForm" class="p-6 space-y-4" @submit.prevent="submitLiquidation">
-                <h2 class="text-lg font-medium text-gray-900 mb-4">Liquidate Item</h2>
+        <!-- Liquidation Modal -->
+        <Modal
+            :show="showLiquidateModal"
+            max-width="xl"
+            @close="showLiquidateModal = false"
+        >
+            <form
+                id="liquidationForm"
+                class="p-6 space-y-4"
+                @submit.prevent="submitLiquidation"
+            >
+                <h2 class="text-lg font-medium text-gray-900 mb-4">
+                    Liquidate Item
+                </h2>
 
                 <!-- Product Info -->
                 <div v-if="selectedItem" class="bg-gray-50 p-4 rounded-lg">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-sm font-medium text-gray-500">Item</p>
-                            <p class="text-sm text-gray-900">{{ selectedItem.product.name }}</p>
-                            <p class="text-sm font-medium text-gray-500">Item Condition</p>
-                            <p class="text-sm text-gray-900">{{ selectedItem.type }}</p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Item
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.product.name }}
+                            </p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Item Condition
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.type }}
+                            </p>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-500">Order Info</p>
-                            <p class="text-sm text-gray-900">{{ selectedItem.order_item?.order?.order_number }} - {{ selectedItem.order_item?.order?.order_type }}</p>
-                            <p class="text-sm font-medium text-gray-500">Status</p>
-                            <p class="text-sm text-gray-900">{{ selectedItem.status }}</p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Order Info
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{
+                                    selectedItem.order_item?.order?.order_number
+                                }}
+                                -
+                                {{ selectedItem.order_item?.order?.order_type }}
+                            </p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Status
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.status }}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Quantity -->
                 <div>
-                    <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity</label>
-                    <input type="number" id="quantity" v-model="liquidateForm.quantity"
+                    <label
+                        for="quantity"
+                        class="block text-sm font-medium text-gray-700"
+                        >Quantity</label
+                    >
+                    <input
+                        type="number"
+                        id="quantity"
+                        v-model="liquidateForm.quantity"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        :min="1" :max="selectedItem?.quantity" required>
+                        :min="1"
+                        :max="selectedItem?.quantity"
+                        required
+                    />
                 </div>
 
                 <!-- Note -->
                 <div>
-                    <label for="note" class="block text-sm font-medium text-gray-700">Note</label>
-                    <textarea id="note" v-model="liquidateForm.note"
+                    <label
+                        for="note"
+                        class="block text-sm font-medium text-gray-700"
+                        >Note</label
+                    >
+                    <textarea
+                        id="note"
+                        v-model="liquidateForm.note"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        rows="3" required></textarea>
+                        rows="3"
+                        required
+                    ></textarea>
                 </div>
 
                 <!-- Attachments -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Attachments (PDF files)</label>
-                    <input type="file" ref="attachments" @change="(e) => handleFileChange('liquidate', e)"
+                    <label class="block text-sm font-medium text-gray-700"
+                        >Attachments (PDF files)</label
+                    >
+                    <input
+                        type="file"
+                        ref="attachments"
+                        @change="(e) => handleFileChange('liquidate', e)"
                         class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                        multiple accept=".pdf" required>
+                        multiple
+                        accept=".pdf"
+                        required
+                    />
                 </div>
 
                 <!-- Selected Files Preview -->
                 <div v-if="liquidateForm.attachments.length > 0" class="mt-2">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Selected Files:</h4>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">
+                        Selected Files:
+                    </h4>
                     <ul class="space-y-2">
-                        <li v-for="(file, index) in liquidateForm.attachments" :key="index"
-                            class="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-2 rounded">
+                        <li
+                            v-for="(file, index) in liquidateForm.attachments"
+                            :key="index"
+                            class="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-2 rounded"
+                        >
                             <span>{{ file.name }}</span>
-                            <button type="button" @click="removeLiquidateFile(index)"
-                                class="text-red-500 hover:text-red-700">
+                            <button
+                                type="button"
+                                @click="removeFile('liquidate', index)"
+                                class="text-red-500 hover:text-red-700"
+                            >
                                 Remove
                             </button>
                         </li>
@@ -230,20 +334,170 @@
 
                 <!-- Action Buttons -->
                 <div class="mt-6 flex justify-end space-x-3">
-                    <button type="button"
+                    <button
+                        type="button"
                         class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        @click="showLiquidateModal = false">
+                        @click="showLiquidateModal = false"
+                    >
                         Cancel
                     </button>
-                    <button type="submit"
+                    <button
+                        type="submit"
                         class="inline-flex justify-center rounded-md border border-transparent bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-                        :disabled="isSubmitting">
-                        {{ isSubmitting ? 'Liquidating...' : 'Liquidate' }}
+                        :disabled="isSubmitting"
+                    >
+                        {{ isSubmitting ? "Liquidating..." : "Liquidate" }}
                     </button>
                 </div>
             </form>
         </Modal>
 
+        <!-- disposals -->
+        <!-- Dispose Modal -->
+        <Modal
+            :show="showDisposeModal"
+            max-width="xl"
+            @close="showDisposeModal = false"
+        >
+            <form
+                id="disposeForm"
+                class="p-6 space-y-4"
+                @submit.prevent="submitDisposal"
+            >
+                <h2 class="text-lg font-medium text-gray-900 mb-4">
+                    Dispose Item
+                </h2>
+
+                <!-- Product Info -->
+                <div v-if="selectedItem" class="bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">
+                                Item
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.product.name }}
+                            </p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Item Condition
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.type }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">
+                                Order Info
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{
+                                    selectedItem.order_item?.order?.order_number
+                                }}
+                                -
+                                {{ selectedItem.order_item?.order?.order_type }}
+                            </p>
+                            <p class="text-sm font-medium text-gray-500">
+                                Status
+                            </p>
+                            <p class="text-sm text-gray-900">
+                                {{ selectedItem.status }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quantity -->
+                <div>
+                    <label
+                        for="quantity"
+                        class="block text-sm font-medium text-gray-700"
+                        >Quantity</label
+                    >
+                    <input
+                        type="number"
+                        id="quantity"
+                        v-model="disposeForm.quantity"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        :min="1"
+                        :max="selectedItem?.quantity"
+                        required
+                    />
+                </div>
+
+                <!-- Note -->
+                <div>
+                    <label
+                        for="note"
+                        class="block text-sm font-medium text-gray-700"
+                        >Note</label
+                    >
+                    <textarea
+                        id="note"
+                        v-model="disposeForm.note"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        rows="3"
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- Attachments -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700"
+                        >Attachments (PDF files)</label
+                    >
+                    <input
+                        type="file"
+                        ref="attachments"
+                        @change="(e) => handleFileChange('dispose', e)"
+                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        multiple
+                        accept=".pdf"
+                        required
+                    />
+                </div>
+
+                <!-- Selected Files Preview -->
+                <div v-if="disposeForm.attachments.length > 0" class="mt-2">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">
+                        Selected Files:
+                    </h4>
+                    <ul class="space-y-2">
+                        <li
+                            v-for="(file, index) in disposeForm.attachments"
+                            :key="index"
+                            class="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-2 rounded"
+                        >
+                            <span>{{ file.name }}</span>
+                            <button
+                                type="button"
+                                @click="removeFile('dispose', index)"
+                                class="text-red-500 hover:text-red-700"
+                            >
+                                Remove
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        @click="showDisposeModal = false"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex justify-center rounded-md border border-transparent bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                        :disabled="isSubmitting"
+                    >
+                        {{ isSubmitting ? "Disposing..." : "Dispose" }}
+                    </button>
+                </div>
+            </form>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 
@@ -252,9 +506,9 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { TailwindPagination } from "laravel-vue-pagination";
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
-import Swal from 'sweetalert2'
-import axios from 'axios'
-import Modal from '@/Components/Modal.vue';
+import Swal from "sweetalert2";
+import axios from "axios";
+import Modal from "@/Components/Modal.vue";
 
 const props = defineProps({
     backorders: Object,
@@ -306,24 +560,33 @@ const selectedItem = ref(null);
 
 const liquidateForm = ref({
     quantity: 0,
-    note: '',
-    attachments: []
+    note: "",
+    attachments: [],
 });
 
 const disposeForm = ref({
     quantity: 0,
-    note: '',
-    attachments: []
+    note: "",
+    attachments: [],
 });
 
 const handleFileChange = (formType, e) => {
     const files = Array.from(e.target.files || []);
-    if (formType === 'liquidate') {
+    if (formType === "liquidate") {
         liquidateForm.value.attachments = files;
     } else {
         disposeForm.value.attachments = files;
     }
 };
+
+
+function removeFile(formType, index) {
+    if (formType === "liquidate") {
+        liquidateForm.value.attachments.splice(index, 1);
+    } else {
+        disposeForm.value.attachments.splice(index, 1);
+    }
+}
 
 // backorder actions
 
@@ -335,83 +598,129 @@ const handleAction = async (action, item) => {
         //     await receiveItems(item);
         //     break;
 
-        case 'Liquidate':
+        case "Liquidate":
             liquidateForm.value = {
                 quantity: item.quantity,
-                note: '',
-                attachments: []
+                note: "",
+                attachments: [],
             };
             showLiquidateModal.value = true;
             break;
 
-        // case 'Dispose':
-        //     disposeForm.value = {
-        //         quantity: item.quantity,
-        //         note: '',
-        //         attachments: []
-        //     };
-        //     showDisposeModal.value = true;
+        case "Dispose":
+            disposeForm.value = {
+                quantity: item.quantity,
+                note: "",
+                attachments: [],
+            };
+            showDisposeModal.value = true;
             break;
     }
 };
 
-
 // liquidation
 const submitLiquidation = async () => {
     isSubmitting.value = true;
-    console.log(selectedItem.value)
+    console.log(selectedItem.value);
     const formData = new FormData();
     console.log(selectedItem.value);
-    formData.append('id', selectedItem.value.id);
-    formData.append('product_id', selectedItem.value.product.id);
-    formData.append('quantity', liquidateForm.value.quantity);
-    formData.append('status', selectedItem.value.status);
-    formData.append('note', liquidateForm.value.note);
+    formData.append("id", selectedItem.value.id);
+    formData.append("product_id", selectedItem.value.product.id);
+    formData.append("quantity", liquidateForm.value.quantity);
+    formData.append("status", selectedItem.value.status);
+    formData.append("note", liquidateForm.value.note);
 
     // Append each attachment
     for (let i = 0; i < liquidateForm.value.attachments.length; i++) {
-        formData.append('attachments[]', liquidateForm.value.attachments[i]);
+        formData.append("attachments[]", liquidateForm.value.attachments[i]);
     }
 
-    await axios.post(route('backorders.liquidate'), formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
-    })
+    await axios
+        .post(route("backorders.liquidate"), formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        })
         .then((response) => {
-            isSubmitting.value = false
-            console.log(response)
+            isSubmitting.value = false;
+            console.log(response);
             showLiquidateModal.value = false;
             Swal.fire({
-                icon: 'success',
+                icon: "success",
                 title: response.data,
                 showConfirmButton: true,
-                timer: 1500
+                timer: 1500,
             }).then(() => {
                 liquidateForm.value = {
                     quantity: 0,
-                    note: '',
-                    attachments: []
+                    note: "",
+                    attachments: [],
                 };
                 reloadBackOrder();
             });
         })
         .catch((error) => {
-            isSubmitting.value = false
-            console.error('Failed to liquidate items:', error);
+            isSubmitting.value = false;
+            console.error("Failed to liquidate items:", error);
             Swal.fire({
-                icon: 'error',
+                icon: "error",
                 title: error.response.data,
                 showConfirmButton: false,
-                timer: 1500
+                timer: 1500,
             });
         });
 };
 
-function dispose(item) {
-    console.log("Disposing item:", item);
-    // Call API or handle logic here
-}
+const submitDisposal = async () => {
+    isSubmitting.value = true;
+    console.log(selectedItem.value);
+    const formData = new FormData();
+    console.log(selectedItem.value);
+    formData.append("id", selectedItem.value.id);
+    formData.append("product_id", selectedItem.value.product.id);
+    formData.append("quantity", disposeForm.value.quantity);
+    formData.append("status", selectedItem.value.status);
+    formData.append("note", disposeForm.value.note);
+
+    // Append each attachment
+    for (let i = 0; i < disposeForm.value.attachments.length; i++) {
+        formData.append("attachments[]", disposeForm.value.attachments[i]);
+    }
+
+    await axios
+        .post(route("backorders.dispose"), formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        })
+        .then((response) => {
+            isSubmitting.value = false;
+            showDisposeModal.value = false;
+            Swal.fire({
+                icon: "success",
+                title: response.data,
+                showConfirmButton: false,
+                timer: 1500,
+            }).then(() => {
+                disposeForm.value = {
+                    quantity: 0,
+                    note: "",
+                    attachments: [],
+                };
+                reloadBackOrder();
+            });
+        })
+        .catch((error) => {
+            isSubmitting.value = false;
+            console.error("Failed to dispose items:", error);
+            Swal.fire({
+                icon: "error",
+                title: error.response.data,
+                showConfirmButton: false,
+                timer: 1500,
+            });
+        });
+};
 
 function receive(item) {
     console.log("Receiving item:", item);

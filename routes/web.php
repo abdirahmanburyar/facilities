@@ -132,6 +132,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/', 'index')->name('backorders.index');
             // backorders.liquidate
             Route::post('/liquidate', 'liquidate')->name('backorders.liquidate');
+            // backorders.dispose
+            Route::post('/dispose', 'dispose')->name('backorders.dispose');
+            
             // Route::get('/{id}/show', 'show')->name('backorders.show');
             // Route::post('/store', 'store')->name('backorders.store');
             // Route::get('/create', 'create')->name('backorders.create');
