@@ -210,4 +210,63 @@ class BackOrderController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
+
+    // received
+    public function received(Request $request) {
+        try {
+            return DB::transaction(function () use ($request) {
+                $request->validate([
+                    'id' => 'required|exists:facility_backorders,id',
+                    'quantity' => 'required|integer|min:1',
+                ]);
+                
+                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type')->find($request->id);
+                
+                if ($item) {
+                    $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id)
+                        ->where('facility_id', $item->facility_id)
+                        ->where('batch_number', $item->inventoryAllocation->batch_number)
+                        ->first();
+
+                    if($inventory){
+                        $inventory->increment('quantity', $request->quantity);
+                        $item->orderItem->increment('received_quantity', $request->quantity);
+                    }else{
+                        FacilityInventory::create([
+                            'product_id' => $item->inventoryAllocation->product_id,
+                            'facility_id' => $item->facility_id,
+                            'batch_number' => $item->inventoryAllocation->batch_number,
+                            'quantity' => $request->quantity,
+                            'uom' => $item->inventoryAllocation->uom,
+                            'barcode' => $item->inventoryAllocation->barcode,
+                            'expiry_date' => $item->inventoryAllocation->expiry_date
+                        ]);
+                    }
+                    // Create a record in BackOrderHistory before deleting
+                    BackOrderHistory::create([
+                        'order_id' => $item->orderItem->order_id,
+                        'product_id' => $item->inventoryAllocation->product_id,
+                        'quantity' => $request->quantity,
+                        'status' => 'Received',
+                        'note' => "From the backorder",
+                        'performed_by' => auth()->id()
+                    ]);
+                    
+                    // Delete the record
+                    $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                    $item->decrement('quantity', $request->quantity);
+                    $item->refresh();
+                    
+                    if ($item->quantity == 0) {
+                        $item->delete();
+                    }
+                }
+            });
+            
+            return response()->json("Received Succesfully.", 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json($th->getMessage(), 500);
+        }
+    }
 }

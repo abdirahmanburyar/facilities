@@ -723,9 +723,55 @@ const submitDisposal = async () => {
 };
 
 function receive(item) {
-    console.log("Receiving item:", item);
-    // Call API or handle logic here
+    Swal.fire({
+        title: 'Enter Quantity',
+        input: 'number',
+        inputAttributes: {
+            min: 1,
+            max: item.quantity,
+            step: 1
+        },
+        inputLabel: `Max: ${item.quantity}`,
+        inputPlaceholder: `Enter a quantity (1 - ${item.quantity})`,
+        showCancelButton: true,
+        confirmButtonText: 'Submit',
+        preConfirm: (value) => {
+            const qty = Number(value);
+            if (!value || qty < 1 || qty > item.quantity) {
+                Swal.showValidationMessage(`Please enter a value between 1 and ${item.quantity}`);
+            }
+            return qty;
+        }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const enteredQuantity = result.value;
+            console.log(`Received quantity: ${enteredQuantity}`);
+            await axios.post(route('backorders.received'), {
+                id: item.id,
+                quantity: enteredQuantity
+            })
+            .then((response) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: response.data,
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    reloadBackOrder();
+                });
+            })
+            .catch((error) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: error.response.data,
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            });
+        }
+    });
 }
+
 
 function formatDate(date) {
     return new Date(date).toLocaleDateString();

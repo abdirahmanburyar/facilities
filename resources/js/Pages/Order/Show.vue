@@ -1009,6 +1009,7 @@
                                             <select
                                                 v-model="row.type"
                                                 class="text-sm w-full border-gray-300 rounded-md shadow-sm"
+                                                :disabled="props.order.status == 'received'"
                                             >
                                                 <option
                                                     v-for="type in [
@@ -1027,6 +1028,7 @@
                                         </td>
                                         <td class="px-2 py-1">
                                             <input
+                                             :disabled="props.order.status == 'received'"
                                                 type="number"
                                                 v-model="row.quantity"
                                                 @input="
@@ -1044,6 +1046,7 @@
                                         </td>
                                         <td class="px-2 py-1">
                                             <input
+                                             :disabled="props.order.status == 'received'"
                                                 type="text"
                                                 v-model="row.notes"
                                                 placeholder="Optional notes"
@@ -1052,13 +1055,13 @@
                                         </td>
                                         <td class="px-2 py-1 text-center">
                                             <button
+                                             :disabled="props.order.status == 'received'"
                                                 @click="
                                                     removeBatchBackOrder(
                                                         row,
                                                         rowIndex
                                                     )
                                                 "
-                                                :disabled="row.finalized"
                                                 class="text-red-600 hover:text-red-800"
                                             >
                                                 <svg
