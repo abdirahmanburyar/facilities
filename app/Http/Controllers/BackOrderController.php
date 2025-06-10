@@ -224,32 +224,34 @@ class BackOrderController extends Controller
                     'quantity' => 'required|integer|min:1',
                 ]);
                 
-                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type,facility_id')->find($request->id);
+                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type,facility_id','transferItem.transfer:id,from_facility_id,to_facility_id')->find($request->id);
                 
                 if ($item) {
-                    $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id)
-                        ->where('facility_id', $item->orderItem->order->facility_id)
-                        ->where('batch_number', $item->inventoryAllocation->batch_number)
+                    $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id ?? $item->transferItem->product_id)
+                        ->where('facility_id', $item->orderItem->order->facility_id ?? $item->transferItem->to_facility_id)
+                        ->where('batch_number', $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number)
                         ->first();
 
                     if($inventory){
                         $inventory->increment('quantity', $request->quantity);
+
                         $item->orderItem->increment('received_quantity', $request->quantity);
                     }else{
                         FacilityInventory::create([
-                            'product_id' => $item->inventoryAllocation->product_id,
-                            'facility_id' => $item->orderItem->order->facility_id,
-                            'batch_number' => $item->inventoryAllocation->batch_number,
+                            'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
+                            'facility_id' => $item->orderItem->order->facility_id ?? $item->transferItem->to_facility_id,
+                            'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number,
                             'quantity' => $request->quantity,
-                            'uom' => $item->inventoryAllocation->uom,
-                            'barcode' => $item->inventoryAllocation->barcode,
-                            'expiry_date' => $item->inventoryAllocation->expiry_date
+                            'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom,
+                            'barcode' => $item->inventoryAllocation->barcode ?? $item->transferItem->barcode,
+                            'expiry_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date
                         ]);
                     }
                     // Create a record in BackOrderHistory before deleting
                     BackOrderHistory::create([
-                        'order_id' => $item->orderItem->order_id,
-                        'product_id' => $item->inventoryAllocation->product_id,
+                        'order_id' => $item->orderItem->order_id ?? null,
+                        'transfer_id' => $item->transferItem->id ?? null,
+                        'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
                         'quantity' => $request->quantity,
                         'status' => 'Received',
                         'note' => "From the backorder",
@@ -257,7 +259,11 @@ class BackOrderController extends Controller
                     ]);
                     
                     // Delete the record
-                    $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                    if($item->transferItem) {
+                        $item->transferItem->decrement('quantity', $request->quantity);
+                    } else {
+                        $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                    }
                     $item->decrement('quantity', $request->quantity);
                     $item->refresh();
                     
