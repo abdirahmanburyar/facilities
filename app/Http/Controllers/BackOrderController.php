@@ -234,11 +234,6 @@ class BackOrderController extends Controller
 
                     if($inventory){
                         $inventory->increment('quantity', $request->quantity);
-                        if($item->transferItem){
-                            $item->transferItem->increment('quantity', $request->quantity);
-                        }else{
-                            $item->orderItem->increment('received_quantity', $request->quantity);
-                        }
                     }else{
                         FacilityInventory::create([
                             'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
@@ -262,11 +257,11 @@ class BackOrderController extends Controller
                     ]);
                     
                     // Delete the record
-                    // if($item->transferItem) {
-                    //     $item->transferItem->decrement('quantity', $request->quantity);
-                    // } else {
-                    //     $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-                    // }
+                    if($item->transferItem) {
+                        $item->transferItem->increment('quantity', $request->quantity);
+                    } else {
+                        $item->orderItem->increment('received_quantity', $request->quantity);
+                    }
                     $item->decrement('quantity', $request->quantity);
                     $item->refresh();
                     
