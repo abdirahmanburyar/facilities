@@ -1,6 +1,6 @@
 <template>
-   <AuthenticatedLayout title="Optimize Your Transfers" description="Moving Supplies, Bridging needs"
-   img="/assets/images/transfer.png">    <!-- Transfer Header -->
+  <AuthenticatedLayout title="Optimize Your Transfers" description="Moving Supplies, Bridging needs"
+    img="/assets/images/transfer.png"> <!-- Transfer Header -->
     <div v-if="props.error">
       {{ props.error }}
     </div>
@@ -56,7 +56,7 @@
         <!-- From Location Information -->
         <div class="bg-gray-50 rounded-lg p-4 space-y-3">
           <h2 class="text-lg font-medium text-gray-900">From Location Details</h2>
-          
+
           <!-- From Warehouse Details -->
           <div v-if="props.transfer.from_warehouse" class="space-y-2">
             <div class="flex items-center">
@@ -64,15 +64,21 @@
               <span class="text-sm font-medium text-gray-800">Warehouse: {{ props.transfer.from_warehouse.name }}</span>
             </div>
             <div class="ml-7 space-y-1">
-              <div v-if="props.transfer.from_warehouse.code" class="text-sm text-gray-600">Code: {{ props.transfer.from_warehouse.code }}</div>
-              <div v-if="props.transfer.from_warehouse.address" class="text-sm text-gray-600">Address: {{ props.transfer.from_warehouse.address }}</div>
-              <div v-if="props.transfer.from_warehouse.district" class="text-sm text-gray-600">District: {{ props.transfer.from_warehouse.district }}</div>
-              <div v-if="props.transfer.from_warehouse.city" class="text-sm text-gray-600">City: {{ props.transfer.from_warehouse.city }}</div>
-              <div v-if="props.transfer.from_warehouse.manager_name" class="text-sm text-gray-600">Manager: {{ props.transfer.from_warehouse.manager_name }}</div>
-              <div v-if="props.transfer.from_warehouse.manager_phone" class="text-sm text-gray-600">Phone: {{ props.transfer.from_warehouse.manager_phone }}</div>
+              <div v-if="props.transfer.from_warehouse.code" class="text-sm text-gray-600">Code: {{
+                props.transfer.from_warehouse.code }}</div>
+              <div v-if="props.transfer.from_warehouse.address" class="text-sm text-gray-600">Address: {{
+                props.transfer.from_warehouse.address }}</div>
+              <div v-if="props.transfer.from_warehouse.district" class="text-sm text-gray-600">District: {{
+                props.transfer.from_warehouse.district }}</div>
+              <div v-if="props.transfer.from_warehouse.city" class="text-sm text-gray-600">City: {{
+                props.transfer.from_warehouse.city }}</div>
+              <div v-if="props.transfer.from_warehouse.manager_name" class="text-sm text-gray-600">Manager: {{
+                props.transfer.from_warehouse.manager_name }}</div>
+              <div v-if="props.transfer.from_warehouse.manager_phone" class="text-sm text-gray-600">Phone: {{
+                props.transfer.from_warehouse.manager_phone }}</div>
             </div>
           </div>
-          
+
           <!-- From Facility Details -->
           <div v-if="props.transfer.from_facility" class="space-y-2">
             <div class="flex items-center">
@@ -80,19 +86,25 @@
               <span class="text-sm font-medium text-gray-800">Facility: {{ props.transfer.from_facility.name }}</span>
             </div>
             <div class="ml-7 space-y-1">
-              <div v-if="props.transfer.from_facility.facility_type" class="text-sm text-gray-600">Type: {{ props.transfer.from_facility.facility_type }}</div>
-              <div v-if="props.transfer.from_facility.address" class="text-sm text-gray-600">Address: {{ props.transfer.from_facility.address }}</div>
-              <div v-if="props.transfer.from_facility.district" class="text-sm text-gray-600">District: {{ props.transfer.from_facility.district }}</div>
-              <div v-if="props.transfer.from_facility.phone" class="text-sm text-gray-600">Phone: {{ props.transfer.from_facility.phone }}</div>
-              <div v-if="props.transfer.from_facility.email" class="text-sm text-gray-600">Email: {{ props.transfer.from_facility.email }}</div>
+              <div v-if="props.transfer.from_facility.facility_type" class="text-sm text-gray-600">Type: {{
+                props.transfer.from_facility.facility_type }}</div>
+              <div v-if="props.transfer.from_facility.address" class="text-sm text-gray-600">Address: {{
+                props.transfer.from_facility.address }}</div>
+              <div v-if="props.transfer.from_facility.district" class="text-sm text-gray-600">District: {{
+                props.transfer.from_facility.district }}</div>
+              <div v-if="props.transfer.from_facility.phone" class="text-sm text-gray-600">Phone: {{
+                props.transfer.from_facility.phone }}</div>
+              <div v-if="props.transfer.from_facility.email" class="text-sm text-gray-600">Email: {{
+                props.transfer.from_facility.email }}</div>
               <div v-if="props.transfer.from_facility.has_cold_storage !== undefined" class="text-sm text-gray-600">
-                Cold Storage: <span :class="props.transfer.from_facility.has_cold_storage ? 'text-green-600' : 'text-red-600'">
+                Cold Storage: <span
+                  :class="props.transfer.from_facility.has_cold_storage ? 'text-green-600' : 'text-red-600'">
                   {{ props.transfer.from_facility.has_cold_storage ? 'Yes' : 'No' }}
                 </span>
               </div>
             </div>
           </div>
-          
+
           <div v-if="!props.transfer.from_warehouse && !props.transfer.from_facility"
             class="text-sm text-gray-500 italic">
             No source location information available
@@ -102,7 +114,7 @@
         <!-- To Location Information -->
         <div class="bg-gray-50 rounded-lg p-4 space-y-3">
           <h2 class="text-lg font-medium text-gray-900">To Location Details</h2>
-          
+
           <!-- To Warehouse Details -->
           <div v-if="props.transfer.to_warehouse" class="space-y-2">
             <div class="flex items-center">
@@ -110,15 +122,21 @@
               <span class="text-sm font-medium text-gray-800">Warehouse: {{ props.transfer.to_warehouse.name }}</span>
             </div>
             <div class="ml-7 space-y-1">
-              <div v-if="props.transfer.to_warehouse.code" class="text-sm text-gray-600">Code: {{ props.transfer.to_warehouse.code }}</div>
-              <div v-if="props.transfer.to_warehouse.address" class="text-sm text-gray-600">Address: {{ props.transfer.to_warehouse.address }}</div>
-              <div v-if="props.transfer.to_warehouse.district" class="text-sm text-gray-600">District: {{ props.transfer.to_warehouse.district }}</div>
-              <div v-if="props.transfer.to_warehouse.city" class="text-sm text-gray-600">City: {{ props.transfer.to_warehouse.city }}</div>
-              <div v-if="props.transfer.to_warehouse.manager_name" class="text-sm text-gray-600">Manager: {{ props.transfer.to_warehouse.manager_name }}</div>
-              <div v-if="props.transfer.to_warehouse.manager_phone" class="text-sm text-gray-600">Phone: {{ props.transfer.to_warehouse.manager_phone }}</div>
+              <div v-if="props.transfer.to_warehouse.code" class="text-sm text-gray-600">Code: {{
+                props.transfer.to_warehouse.code }}</div>
+              <div v-if="props.transfer.to_warehouse.address" class="text-sm text-gray-600">Address: {{
+                props.transfer.to_warehouse.address }}</div>
+              <div v-if="props.transfer.to_warehouse.district" class="text-sm text-gray-600">District: {{
+                props.transfer.to_warehouse.district }}</div>
+              <div v-if="props.transfer.to_warehouse.city" class="text-sm text-gray-600">City: {{
+                props.transfer.to_warehouse.city }}</div>
+              <div v-if="props.transfer.to_warehouse.manager_name" class="text-sm text-gray-600">Manager: {{
+                props.transfer.to_warehouse.manager_name }}</div>
+              <div v-if="props.transfer.to_warehouse.manager_phone" class="text-sm text-gray-600">Phone: {{
+                props.transfer.to_warehouse.manager_phone }}</div>
             </div>
           </div>
-          
+
           <!-- To Facility Details -->
           <div v-if="props.transfer.to_facility" class="space-y-2">
             <div class="flex items-center">
@@ -126,19 +144,25 @@
               <span class="text-sm font-medium text-gray-800">Facility: {{ props.transfer.to_facility.name }}</span>
             </div>
             <div class="ml-7 space-y-1">
-              <div v-if="props.transfer.to_facility.facility_type" class="text-sm text-gray-600">Type: {{ props.transfer.to_facility.facility_type }}</div>
-              <div v-if="props.transfer.to_facility.address" class="text-sm text-gray-600">Address: {{ props.transfer.to_facility.address }}</div>
-              <div v-if="props.transfer.to_facility.district" class="text-sm text-gray-600">District: {{ props.transfer.to_facility.district }}</div>
-              <div v-if="props.transfer.to_facility.phone" class="text-sm text-gray-600">Phone: {{ props.transfer.to_facility.phone }}</div>
-              <div v-if="props.transfer.to_facility.email" class="text-sm text-gray-600">Email: {{ props.transfer.to_facility.email }}</div>
+              <div v-if="props.transfer.to_facility.facility_type" class="text-sm text-gray-600">Type: {{
+                props.transfer.to_facility.facility_type }}</div>
+              <div v-if="props.transfer.to_facility.address" class="text-sm text-gray-600">Address: {{
+                props.transfer.to_facility.address }}</div>
+              <div v-if="props.transfer.to_facility.district" class="text-sm text-gray-600">District: {{
+                props.transfer.to_facility.district }}</div>
+              <div v-if="props.transfer.to_facility.phone" class="text-sm text-gray-600">Phone: {{
+                props.transfer.to_facility.phone }}</div>
+              <div v-if="props.transfer.to_facility.email" class="text-sm text-gray-600">Email: {{
+                props.transfer.to_facility.email }}</div>
               <div v-if="props.transfer.to_facility.has_cold_storage !== undefined" class="text-sm text-gray-600">
-                Cold Storage: <span :class="props.transfer.to_facility.has_cold_storage ? 'text-green-600' : 'text-red-600'">
+                Cold Storage: <span
+                  :class="props.transfer.to_facility.has_cold_storage ? 'text-green-600' : 'text-red-600'">
                   {{ props.transfer.to_facility.has_cold_storage ? 'Yes' : 'No' }}
                 </span>
               </div>
             </div>
           </div>
-          
+
           <div v-if="!props.transfer.to_warehouse && !props.transfer.to_facility" class="text-sm text-gray-500 italic">
             No destination location information available
           </div>
@@ -276,41 +300,31 @@
             </td>
             <td class="px-6 py-4 text-sm border border-black">
               <input type="number" v-model="item.quantity" min="1"
-              :disabled="props.transfer.from_facility_id != currentUserFacility.id"
-              @keyup.enter="updateTransferItemQuantity(item)"
-               required class="w-full rounded-3xl"/>
-               <p v-if="isItemUpdating[item.id]" class="text-xs text-gray-500">Updating...</p>
+                :disabled="props.transfer.from_facility_id != currentUserFacility.id"
+                @keyup.enter="updateTransferItemQuantity(item)" required class="w-full rounded-3xl" />
+              <p v-if="isItemUpdating[item.id]" class="text-xs text-gray-500">Updating...</p>
               <label>Quantity received</label>
-              <input 
-                type="number" 
-                v-model="item.received_quantity" 
-                v-if="currentUserFacility.id == props.transfer.to_facility_id"
-                min="0" 
-                :max="item.quantity" 
-                @input="validateReceivedQuantity(item)" 
-                :readonly="props.transfer.status == 'received'"
-                required 
-                class="w-full rounded-3xl"
-              />
-              <button 
-                v-if="currentUserFacility.id == props.transfer.to_facility_id && (props.transfer.status === 'dispatched' || props.transfer.status === 'received') && 
-                      (item.quantity > (item.received_quantity || 0) || (item.backorders && item.backorders.length > 0))" 
-                @click="openBackOrderModal(item)" 
-                class="mt-2 p-3 bg-yellow-500 text-black rounded-3xl hover:bg-yellow-600 text-sm w-full"
-              >
+              <input type="number" v-model="item.received_quantity"
+                v-if="currentUserFacility.id == props.transfer.to_facility_id" min="0" :max="item.quantity"
+                @input="validateReceivedQuantity(item)" :readonly="props.transfer.status == 'received'" required
+                class="w-full rounded-3xl" />
+              <button
+                v-if="currentUserFacility.id == props.transfer.to_facility_id && (props.transfer.status === 'dispatched' || props.transfer.status === 'received') &&
+                  (item.quantity > (item.received_quantity || 0) || (item.backorders && item.backorders.length > 0))"
+                @click="openBackOrderModal(item)"
+                class="mt-2 p-3 bg-yellow-500 text-black rounded-3xl hover:bg-yellow-600 text-sm w-full">
                 {{ item.backorders && item.backorders.length > 0 ? 'View/Edit Back Order' : 'Back Order' }}
               </button>
               <span v-if="error?.[item.id]" class="text-red-500 text-xs mt-2">{{ error?.[item.id] }}</span>
             </td>
             <td class="px-6 py-4 text-sm border border-black">
-             <span v-if="isDeleting[item.id]" class="text-red-500 text-xs mt-2">Deleting...</span>
-             <button v-else @click="confirmDelete(item.id)" class="text-red-600 hover:text-red-900">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                      viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+              <span v-if="isDeleting[item.id]" class="text-red-500 text-xs mt-2">Deleting...</span>
+              <button v-else @click="confirmDelete(item.id)" class="text-red-600 hover:text-red-900">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </td>
           </tr>
@@ -329,88 +343,101 @@
       <div class="flex flex-wrap gap-4">
         <!-- Pending status indicator -->
         <div class="relative">
-          <button 
-            :class="[
-              props.transfer.status === 'pending' ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 
+          <button :class="[
+            props.transfer.status === 'pending' ? 'bg-[#f59e0b] hover:bg-[#d97706]' :
               statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"  class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+          ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
+            disabled>
             <img src="/assets/images/pending.png" class="w-8 h-8 mr-2" alt="Pending" />
             <span class="text-sm font-bold text-white">Pending</span>
           </button>
-          <div v-if="props.transfer.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer.status === 'pending'"
+            class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Approve button -->
         <div class="relative">
-          <button
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+          <button :class="[
+            statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+          ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
+            disabled>
             <img src="/assets/images/approved.png" class="w-8 h-8 mr-2" alt="Approve" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('pending') ? 'Approved' : 'Waiting to be Approved' }}</span>
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) >
+              statusOrder.indexOf('pending') ? 'Approved' : 'Waiting to be Approved' }}</span>
           </button>
-          <div v-if="props.transfer.status === 'pending'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer.status === 'pending'"
+            class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Process button -->
         <div class="relative">
-          <button @click="changeStatus(props.transfer.id, 'in_process')" v-if="props.transfer.status === 'approved' && currentUserFacility.id == props.transfer?.from_facility_id" 
+          <button @click="changeStatus(props.transfer.id, 'in_process')"
+            v-if="props.transfer.status === 'approved' && currentUserFacility.id == props.transfer?.from_facility_id"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
             <img src="/assets/images/inprocess.png" class="w-8 h-8 mr-2" alt="Process" />
             <span class="text-sm font-bold text-white">Process</span>
           </button>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+          <button v-else :class="[
+            statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+          ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
+            disabled>
             <img src="/assets/images/inprocess.png" class="w-8 h-8 mr-2" alt="Process" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('approved') ? 'Processed' : 'Process' }}</span>
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) >
+              statusOrder.indexOf('approved') ? 'Processed' : 'Process' }}</span>
           </button>
-          <div v-if="props.transfer.status === 'approved'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer.status === 'approved'"
+            class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Dispatch button -->
         <div class="relative">
-          <button @click="changeStatus(props.transfer.id, 'dispatched')" v-if="props.transfer.status === 'in_process' && currentUserFacility.id == props.transfer?.from_facility_id" 
+          <button @click="changeStatus(props.transfer.id, 'dispatched')"
+            v-if="props.transfer.status === 'in_process' && currentUserFacility.id == props.transfer?.from_facility_id"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
             <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
             <span class="text-sm font-bold text-white">Dispatch</span>
           </button>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+          <button v-else :class="[
+            statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+          ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
+            disabled>
             <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
-            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('in_process') ? 'Dispatched' : 'Dispatch' }}</span>
+            <span class="text-sm font-bold text-white">{{ statusOrder.indexOf(props.transfer.status) >
+              statusOrder.indexOf('in_process') ? 'Dispatched' : 'Dispatch' }}</span>
           </button>
-          <div v-if="props.transfer.status === 'in_process'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer.status === 'in_process'"
+            class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <div class="relative">
-          <button @click="receiveTransfer(props.transfer.id)" v-if="props.transfer.status === 'dispatched' && props.transfer.to_facility_id === currentUserFacility.id" 
+          <button @click="receiveTransfer(props.transfer.id)"
+            v-if="props.transfer.status === 'dispatched' && props.transfer.to_facility_id === currentUserFacility.id"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-[#f59e0b] hover:bg-[#d97706] min-w-[160px]">
             <img src="/assets/images/dispatch.png" class="w-8 h-8 mr-2" alt="Dispatch" />
             <span class="text-sm font-bold text-white">Received</span>
           </button>
-          <button v-else
-            :class="[
-              statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
-            ]"
-            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]" disabled>
+          <button v-else :class="[
+            statusOrder.indexOf(props.transfer.status) > statusOrder.indexOf('dispatched') ? 'bg-[#55c5ff]' : 'bg-gray-300 cursor-not-allowed'
+          ]"
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
+            disabled>
             <img src="/assets/images/received.png" class="w-8 h-8 mr-2" alt="Dispatch" />
             <span class="text-sm font-bold text-white">
-              {{props.transfer.to_facility_id != currentUserFacility.id && props.transfer.status === 'dispatched' ? 'Waiting to be Received' : 'Received'}}
+              {{ props.transfer.to_facility_id != currentUserFacility.id && props.transfer.status === 'dispatched' ?
+                'Waiting to be Received' : 'Received'}}
             </span>
           </button>
-          <div v-if="props.transfer.status === 'dispatched'" class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div v-if="props.transfer.status === 'dispatched'"
+            class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
         </div>
 
         <!-- Reject button (only available for pending status) -->
         <div class="relative" v-if="props.transfer.status === 'pending'">
-          <button @click="changeStatus(props.transfer.id, 'rejected')" 
+          <button @click="changeStatus(props.transfer.id, 'rejected')"
             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-red-600 hover:bg-red-700 min-w-[160px]">
             <svg class="w-5 h-5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -420,7 +447,8 @@
         </div>
 
         <!-- Status indicator for rejected status -->
-        <div v-if="props.transfer.status === 'rejected'" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
+        <div v-if="props.transfer.status === 'rejected'"
+          class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -429,315 +457,228 @@
 
       </div>
     </div>
-  </AuthenticatedLayout>
 
-  <!-- Back Order Modal -->
-  <Modal
-    :show="showBackOrderModal"
-    @close="attemptCloseModal"
-    maxWidth="2xl"
-  >
-    <div v-if="showIncompleteBackOrderModal" class="mb-6">
-      <div class="flex items-center mb-4">
-        <div class="rounded-full bg-yellow-100 p-3 mr-3">
-          <svg
-            class="w-6 h-6 text-yellow-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        </div>
-        <h2 class="text-lg font-medium text-gray-900">
-          Incomplete Back Orders
-        </h2>
-      </div>
-
-      <div class="mb-4 p-4 bg-yellow-50 rounded-md">
-        <p class="text-sm text-yellow-700 mb-2">
-          You have started creating back orders but have not allocated all
-          missing quantities.
-        </p>
-        <p class="text-sm text-yellow-700">
-          Do you want to discard these incomplete back orders and close the
-          dialog?
-        </p>
-      </div>
-
-      <div class="flex justify-end space-x-3">
-        <button
-          @click="showIncompleteBackOrderModal = false"
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-        >
-          Continue Editing
-        </button>
-        <button
-          @click="discardAndClose"
-          class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-        >
-          Discard & Close
-        </button>
-      </div>
-    </div>
-
-    <div v-else class="p-6">
-      <div class="mb-4">
-        <div class="flex justify-between items-center">
+    <!-- Back Order Modal -->
+    <Modal :show="showBackOrderModal" @close="attemptCloseModal" maxWidth="2xl">
+      <div v-if="showIncompleteBackOrderModal" class="mb-6">
+        <div class="flex items-center mb-4">
+          <div class="rounded-full bg-yellow-100 p-3 mr-3">
+            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
           <h2 class="text-lg font-medium text-gray-900">
-            Back Order for {{ selectedItem?.product?.name }}
+            Incomplete Back Orders
           </h2>
         </div>
+
+        <div class="mb-4 p-4 bg-yellow-50 rounded-md">
+          <p class="text-sm text-yellow-700 mb-2">
+            You have started creating back orders but have not allocated all
+            missing quantities.
+          </p>
+          <p class="text-sm text-yellow-700">
+            Do you want to discard these incomplete back orders and close the
+            dialog?
+          </p>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <button @click="showIncompleteBackOrderModal = false"
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+            Continue Editing
+          </button>
+          <button @click="discardAndClose" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+            Discard & Close
+          </button>
+        </div>
       </div>
 
-      <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
+      <div v-else class="p-6">
         <div class="mb-4">
           <div class="flex justify-between items-center">
-            <p class="text-sm font-medium text-gray-700">
-              Missing Quantity (Back Order):
-            </p>
-            <p
-              class="text-lg font-bold"
-              :class="
-                missingQuantity > 0
+            <h2 class="text-lg font-medium text-gray-900">
+              Back Order for {{ selectedItem?.product?.name }}
+            </h2>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
+          <div class="mb-4">
+            <div class="flex justify-between items-center">
+              <p class="text-sm font-medium text-gray-700">
+                Missing Quantity (Back Order):
+              </p>
+              <p class="text-lg font-bold" :class="missingQuantity > 0
                   ? 'text-red-600'
                   : 'text-green-600'
-              "
-            >
-              {{ missingQuantity }}
+                ">
+                {{ missingQuantity }}
+              </p>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              This is the difference between quantity to ship and received quantity
             </p>
           </div>
-          <p class="text-xs text-gray-500 mt-1">
-            This is the difference between quantity to ship and received quantity
-          </p>
-        </div>
 
-        <div class="mt-3">
-          <div class="flex justify-between items-center">
-            <p class="text-sm font-medium text-gray-600">
-              Existing Back Orders:
-            </p>
-            <p class="text-sm font-bold text-gray-800">
-              {{ totalExistingDifferences }}
-            </p>
-          </div>
-          <div class="flex justify-between items-center mt-1">
-            <p class="text-sm font-medium text-yellow-800">
-              Remaining to Allocate:
-            </p>
-            <p
-              class="text-sm font-bold"
-              :class="
-                remainingToAllocate > 0
+          <div class="mt-3">
+            <div class="flex justify-between items-center">
+              <p class="text-sm font-medium text-gray-600">
+                Existing Back Orders:
+              </p>
+              <p class="text-sm font-bold text-gray-800">
+                {{ totalExistingDifferences }}
+              </p>
+            </div>
+            <div class="flex justify-between items-center mt-1">
+              <p class="text-sm font-medium text-yellow-800">
+                Remaining to Allocate:
+              </p>
+              <p class="text-sm font-bold" :class="remainingToAllocate > 0
                   ? 'text-red-600'
                   : 'text-green-600'
-              "
-            >
-              {{ remainingToAllocate }}
+                ">
+                {{ remainingToAllocate }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Batch-specific back orders -->
+        <div class="mb-4">
+          <h3 class="text-md font-medium text-gray-700 mb-2">
+            Batch Information
+          </h3>
+          <div class="bg-gray-50 p-3 rounded mb-4">
+            <p class="text-sm text-gray-500 mb-2">
+              Please allocate the missing quantity ({{ missingQuantity }}) and specify the problem type.
+            </p>
+            <p class="text-sm text-gray-500">
+              Back orders represent the difference between quantity to ship and received quantity.
             </p>
           </div>
-        </div>
-      </div>
 
-      <!-- Batch-specific back orders -->
-      <div class="mb-4">
-        <h3 class="text-md font-medium text-gray-700 mb-2">
-          Batch Information
-        </h3>
-        <div class="bg-gray-50 p-3 rounded mb-4">
-          <p class="text-sm text-gray-500 mb-2">
-            Please allocate the missing quantity ({{ missingQuantity }}) and specify the problem type.
-          </p>
-          <p class="text-sm text-gray-500">
-            Back orders represent the difference between quantity to ship and received quantity.
-          </p>
-        </div>
-
-        <!-- Back order form -->
-        <div class="border rounded-md p-3 mb-3">
-          <div class="flex items-center justify-between mb-2">
-            <div class="font-medium text-gray-700">
-              {{ selectedItem?.product?.name }}
-              <span class="ml-2 text-sm text-gray-500">({{ selectedItem?.quantity }} units)</span>
+          <!-- Back order form -->
+          <div class="border rounded-md p-3 mb-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="font-medium text-gray-700">
+                {{ selectedItem?.product?.name }}
+                <span class="ml-2 text-sm text-gray-500">({{ selectedItem?.quantity }} units)</span>
+              </div>
+              <div>
+                <button @click="addBackOrder" class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                  :disabled="!canAddMoreBackOrders || isSaving || props.transfer.status === 'received'">
+                  Add Issue
+                </button>
+              </div>
             </div>
-            <div>
-              <button
-                @click="addBackOrder"
-                class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-                :disabled="!canAddMoreBackOrders || isSaving || props.transfer.status === 'received'"
-              >
-                Add Issue
-              </button>
-            </div>
-          </div>
 
-          <!-- Back order rows -->
-          <span v-if="message" class="text-sm text-red-600">{{ message }}</span>
-          <div v-if="backOrders.length > 0" class="mt-3">
-            <table class="min-w-full divide-y divide-gray-200 border">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                    Issue Type
-                  </th>
-                  <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                    Quantity
-                  </th>
-                  <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                    Notes
-                  </th>
-                  <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr
-                  v-for="(row, rowIndex) in backOrders"
-                  :key="rowIndex"
-                  class="hover:bg-gray-50"
-                >
-                  <td class="px-2 py-1">
-                    <select
-                      v-model="row.type"
-                      class="text-sm w-full border-gray-300 rounded-md shadow-sm"
-                      :disabled="props.transfer.status === 'received'"
-                    >
-                      <option
-                        v-for="type in [
+            <!-- Back order rows -->
+            <span v-if="message" class="text-sm text-red-600">{{ message }}</span>
+            <div v-if="backOrders.length > 0" class="mt-3">
+              <table class="min-w-full divide-y divide-gray-200 border">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                      Issue Type
+                    </th>
+                    <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                      Quantity
+                    </th>
+                    <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                      Notes
+                    </th>
+                    <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="(row, rowIndex) in backOrders" :key="rowIndex" class="hover:bg-gray-50">
+                    <td class="px-2 py-1">
+                      <select v-model="row.type" class="text-sm w-full border-gray-300 rounded-md shadow-sm"
+                        :disabled="props.transfer.status === 'received'">
+                        <option v-for="type in [
                           'Missing',
                           'Damaged',
                           'Expired',
                           'Lost',
-                        ]"
-                        :key="type"
-                        :value="type"
-                      >
-                        {{ type }}
-                      </option>
-                    </select>
-                  </td>
-                  <td class="px-2 py-1">
-                    <input
-                      type="number"
-                      v-model="row.quantity"
-                      class="text-sm w-full border-gray-300 rounded-md shadow-sm"
-                      min="1"
-                      :max="missingQuantity"
-                      @input="validateBackOrderQuantities"
-                      :disabled="props.transfer.status === 'received'"
-                    />
-                  </td>
-                  <td class="px-2 py-1">
-                    <input
-                      type="text"
-                      v-model="row.notes"
-                      class="text-sm w-full border-gray-300 rounded-md shadow-sm"
-                      placeholder="Optional notes"
-                      :disabled="props.transfer.status === 'received'"
-                    />
-                  </td>
-                  <td class="px-2 py-1 text-center">
-                    <button
-                      @click="removeBackOrder(rowIndex)"
-                      class="text-red-500 hover:text-red-700"
-                      :disabled="isSaving || props.transfer.status === 'received'"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                        ]" :key="type" :value="type">
+                          {{ type }}
+                        </option>
+                      </select>
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="number" v-model="row.quantity"
+                        class="text-sm w-full border-gray-300 rounded-md shadow-sm" min="1" :max="missingQuantity"
+                        @input="validateBackOrderQuantities" :disabled="props.transfer.status === 'received'" />
+                        <span class="text-red-500 text-xs">{{row.finalized }}</span>
+                    </td>
+                    <td class="px-2 py-1">
+                      <input type="text" v-model="row.notes" class="text-sm w-full border-gray-300 rounded-md shadow-sm"
+                        placeholder="Optional notes" :disabled="props.transfer.status === 'received'" />
+                    </td>
+                    <td class="px-2 py-1 text-center">
+                      <button @click="removeBackOrder(rowIndex)" class="text-red-500 hover:text-red-700"
+                        :disabled="isSaving || props.transfer.status === 'received'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-            <div class="mt-2">
-              <div
-                v-if="
+              <div class="mt-2">
+                <div v-if="
                   missingQuantity > 0 &&
                   totalBackOrderQuantity < missingQuantity
-                "
-                class="text-xs text-yellow-600 mt-1"
-              >
-                {{ missingQuantity - totalBackOrderQuantity }}
-                more items need to be allocated
-              </div>
-              <div
-                v-else-if="
+                " class="text-xs text-yellow-600 mt-1">
+                  {{ missingQuantity - totalBackOrderQuantity }}
+                  more items need to be allocated
+                </div>
+                <div v-else-if="
                   missingQuantity > 0 &&
                   totalBackOrderQuantity > missingQuantity
-                "
-                class="text-xs text-red-600 mt-1"
-              >
-                Over-allocated by
-                {{ totalBackOrderQuantity - missingQuantity }}
-                items
+                " class="text-xs text-red-600 mt-1">
+                  Over-allocated by
+                  {{ totalBackOrderQuantity - missingQuantity }}
+                  items
+                </div>
               </div>
             </div>
-          </div>
-          <div v-else class="text-sm text-gray-500 text-center py-3">
-            No back orders added yet. Click "Add Issue" to create one.
+            <div v-else class="text-sm text-gray-500 text-center py-3">
+              No back orders added yet. Click "Add Issue" to create one.
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="flex justify-end space-x-3 mt-4">
-        <button
-          @click="attemptCloseModal"
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-        >
-          Exit
-        </button>
-        <button
-          @click="saveBackOrders"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          :disabled="!isValidForSave || isSaving || props.transfer.status === 'received'"
-        >
-          <span v-if="isSaving" class="flex items-center">
-            <svg
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-           Saving...
-          </span>
-          <span v-else>Save Back Orders</span>
-        </button>
+        <div class="flex justify-end space-x-3 mt-4">
+          <button @click="attemptCloseModal" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+            Exit
+          </button>
+          <button @click="saveBackOrders" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            :disabled="!isValidForSave || isSaving || props.transfer.status === 'received'">
+            <span v-if="isSaving" class="flex items-center">
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              Saving...
+            </span>
+            <span v-else>Save Back Orders</span>
+          </button>
+        </div>
       </div>
-    </div>
-  </Modal>
+    </Modal>
+  </AuthenticatedLayout>
 </template>
 
 <script setup>
@@ -792,6 +733,8 @@ const openBackOrderModal = (item) => {
         quantity: bo.quantity,
         type: bo.type,
         notes: bo.notes,
+        finalized: bo.finalized,
+
       });
     });
   }
@@ -820,9 +763,9 @@ const addBackOrder = () => {
 // Update transfer item quantity
 
 const isItemUpdating = ref([]);
-async function updateTransferItemQuantity(item){
+async function updateTransferItemQuantity(item) {
 
-  if(item.quantity < 1){
+  if (item.quantity < 1) {
     item.quantity = 1;
     return;
   }
@@ -833,33 +776,33 @@ async function updateTransferItemQuantity(item){
     id: item.id,
     quantity: item.quantity,
   })
-  .then((response) => {
-    isItemUpdating.value[item.id] = false;
-    console.log(response.data);
-    toast.success(response.data);
-  })
-  .catch((error) => {
-    isItemUpdating.value[item.id] = false;
-    console.error(error.response?.data);
-    
-    // Check if the response has a structured error with quantity
-    if (error.response?.data && typeof error.response.data === 'object' && error.response.data.quantity) {
-      // Reset the item quantity to the original value returned from the server
-      item.quantity = error.response.data.quantity;
-      // Show the error message
-      toast.error(error.response.data.message || "Failed to update transfer item");
-    } else {
-      // Handle the old response format or other errors
-      toast.error(error.response?.data || "Failed to update transfer item");
-    }
-  })
+    .then((response) => {
+      isItemUpdating.value[item.id] = false;
+      console.log(response.data);
+      toast.success(response.data);
+    })
+    .catch((error) => {
+      isItemUpdating.value[item.id] = false;
+      console.error(error.response?.data);
+
+      // Check if the response has a structured error with quantity
+      if (error.response?.data && typeof error.response.data === 'object' && error.response.data.quantity) {
+        // Reset the item quantity to the original value returned from the server
+        item.quantity = error.response.data.quantity;
+        // Show the error message
+        toast.error(error.response.data.message || "Failed to update transfer item");
+      } else {
+        // Handle the old response format or other errors
+        toast.error(error.response?.data || "Failed to update transfer item");
+      }
+    })
 }
 
 // Remove a back order row
 const removeBackOrder = async (index) => {
   const row = backOrders.value[index];
   message.value = "";
-  
+
   // If the back order has an ID, it exists in the database and needs to be deleted
   if (row.id) {
     try {
@@ -877,7 +820,7 @@ const removeBackOrder = async (index) => {
     // If it doesn't have an ID, it's only in the local array
     backOrders.value.splice(index, 1);
   }
-  
+
   // Clear message after a delay
   setTimeout(() => {
     message.value = "";
@@ -983,7 +926,7 @@ const saveBackOrders = async () => {
 };
 
 const isDeleting = ref([]);
-function confirmDelete(id){
+function confirmDelete(id) {
   Swal.fire({
     title: "Confirm Delete",
     text: "Are you sure you want to delete this transfer item? This action cannot be undone.",
@@ -995,31 +938,31 @@ function confirmDelete(id){
   }).then(async (result) => {
     if (result.isConfirmed) {
       isDeleting.value[id] = true;
-        // Call the delete endpoint
-        await axios.get(route("transfers.items.destroy", id))
-          .then((response) => {
-            isDeleting.value[id] = false;
-            console.log(response.data);
-            Swal.fire({
-              title: "Success!",
-              text: "Transfer item deleted successfully!",
-              icon: "success",
-              confirmButtonText: "OK",
-            }).then(() => {
-              // Reload the page to show updated status and inventory
-              window.location.reload();
-            });
-          })
-          .catch((error) => {
-            isDeleting.value[id] = false;
-            console.error(error);
-            Swal.fire({
-              title: "Error!",
-              text: error.response?.data || "Failed to delete transfer item",
-              icon: "error",
-              confirmButtonText: "OK",
-            });
-          });    
+      // Call the delete endpoint
+      await axios.get(route("transfers.items.destroy", id))
+        .then((response) => {
+          isDeleting.value[id] = false;
+          console.log(response.data);
+          Swal.fire({
+            title: "Success!",
+            text: "Transfer item deleted successfully!",
+            icon: "success",
+            confirmButtonText: "OK",
+          }).then(() => {
+            // Reload the page to show updated status and inventory
+            window.location.reload();
+          });
+        })
+        .catch((error) => {
+          isDeleting.value[id] = false;
+          console.error(error);
+          Swal.fire({
+            title: "Error!",
+            text: error.response?.data || "Failed to delete transfer item",
+            icon: "error",
+            confirmButtonText: "OK",
+          });
+        });
     }
   });
 }
@@ -1073,7 +1016,7 @@ const error = ref([]);
 const receiveTransfer = (transferId) => {
   // Clear previous errors
   error.value = [];
-  
+
   Swal.fire({
     title: "Confirm Receipt",
     text: "Are you sure you want to receive this transfer? This will update inventory quantities.",
@@ -1086,7 +1029,7 @@ const receiveTransfer = (transferId) => {
     if (result.isConfirmed) {
       // Set loading state
       isLoading.value = true;
-      
+
       try {
         // Call the receiveTransfer endpoint
         const response = await axios.post(route("transfers.receiveTransfer"), {
@@ -1094,10 +1037,10 @@ const receiveTransfer = (transferId) => {
           status: "received",
           items: props.transfer.items
         });
-        
+
         console.log(response.data);
         isLoading.value = false;
-        
+
         // Show success message with details
         Swal.fire({
           title: "Success!",
@@ -1110,14 +1053,14 @@ const receiveTransfer = (transferId) => {
         });
       } catch (err) {
         isLoading.value = false;
-        
+
         // Handle item-specific errors
         if (err.response?.data?.id) {
           // Create a new object to ensure reactivity
-          const newErrors = {...error.value};
+          const newErrors = { ...error.value };
           newErrors[err.response.data.id] = err.response.data.message;
           error.value = newErrors;
-          
+
           Swal.fire({
             title: "Validation Error",
             text: err.response.data.message,
@@ -1140,60 +1083,60 @@ const receiveTransfer = (transferId) => {
 
 // Function to change transfer status
 const changeStatus = (transferId, newStatus) => {
-    Swal.fire({
-        title: "Are you sure?",
-        text: `Do you want to change the transfer status to ${newStatus}?`,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, change it!",
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            // Set loading state
-            isLoading.value = true;
+  Swal.fire({
+    title: "Are you sure?",
+    text: `Do you want to change the transfer status to ${newStatus}?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Yes, change it!",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      // Set loading state
+      isLoading.value = true;
 
-            await axios
-                .post(route("transfers.changeItemStatus"), {
-                    transfer_id: transferId,
-                    status: newStatus,
-                })
-                .then((response) => {
-                    // Reset loading state
-                    isLoading.value = false;
-                    console.log(response.data);
-                    // Swal.fire({
-                    //     title: "Updated!",
-                    //     text: response.data?.message || "Transfer status updated successfully",
-                    //     icon: "success",
-                    //     toast: true,
-                    //     position: "top-end",
-                    //     showConfirmButton: false,
-                    //     timer: 3000,
-                    // }).then(() => {
-                    //     // Reload the page to show the updated status
-                    //     router.reload();
-                    // });
-                })
-                .catch((error) => {
-                    console.log(error.response);
-                    // Reset loading state
-                    isLoading.value = false;
+      await axios
+        .post(route("transfers.changeItemStatus"), {
+          transfer_id: transferId,
+          status: newStatus,
+        })
+        .then((response) => {
+          // Reset loading state
+          isLoading.value = false;
+          console.log(response.data);
+          // Swal.fire({
+          //     title: "Updated!",
+          //     text: response.data?.message || "Transfer status updated successfully",
+          //     icon: "success",
+          //     toast: true,
+          //     position: "top-end",
+          //     showConfirmButton: false,
+          //     timer: 3000,
+          // }).then(() => {
+          //     // Reload the page to show the updated status
+          //     router.reload();
+          // });
+        })
+        .catch((error) => {
+          console.log(error.response);
+          // Reset loading state
+          isLoading.value = false;
 
-                    Swal.fire({
-                        title: "Error!",
-                        text:
-                            error.response?.data?.error ||
-                            "Failed to update transfer status",
-                        icon: "error",
-                        toast: true,
-                        position: "top-end",
-                        showConfirmButton: false,
-                        timer: 3000,
-                    });
-                });
-        }
-    });
+          Swal.fire({
+            title: "Error!",
+            text:
+              error.response?.data?.error ||
+              "Failed to update transfer status",
+            icon: "error",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+          });
+        });
+    }
+  });
 };
 
 const props = defineProps({
@@ -1216,7 +1159,7 @@ const validateReceivedQuantity = (item) => {
   if (Number(item.received_quantity) > Number(item.quantity)) {
     item.received_quantity = item.quantity;
   }
-  
+
   // Ensure received quantity is not negative
   if (Number(item.received_quantity) < 0) {
     item.received_quantity = 0;
