@@ -15,6 +15,9 @@ class Kernel extends ConsoleKernel
         // Send low stock notification emails twice a day (9 AM and 3 PM)
         $schedule->command('inventory:notify-low-stock')->twiceDaily(9, 15);
         $schedule->command('inventory:check-low-stock')->everyFiveMinutes();
+        
+        // Generate monthly inventory reports on the 1st of each month at 2 AM (run synchronously for cron)
+        $schedule->command('inventory:generate-monthly-report --sync')->monthlyOn(1, '02:00');
     }
 
     /**

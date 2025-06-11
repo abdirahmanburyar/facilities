@@ -327,6 +327,15 @@ class TransferController extends Controller
                 
                 // Update inventory quantity
                 $inventory->decrement('quantity', $item['quantity']);
+                
+                // Record facility_issued movement for the transfer out
+                app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                    $transfer,
+                    $inventory->product_id,
+                    $item['quantity'],
+                    $inventory->batch_number,
+                    $inventory->expiry_date
+                );
             }
             
             DB::commit();
@@ -846,9 +855,27 @@ class TransferController extends Controller
                     if ($differences > 0) {
                         // Increasing transfer quantity means decreasing facility inventory
                         $inventory->quantity = $inventory->quantity - $differences;
+                        
+                        // Record additional facility_issued movement for the increase
+                        app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                            $transferItem->transfer,
+                            $transferItem->product_id,
+                            $differences,
+                            $transferItem->batch_number,
+                            $transferItem->expire_date
+                        );
                     } else {
                         // Decreasing transfer quantity means increasing facility inventory
                         $inventory->quantity = $inventory->quantity + abs($differences);
+                        
+                        // Record negative facility_issued movement (like a return) for the decrease
+                        app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                            $transferItem->transfer,
+                            $transferItem->product_id,
+                            $differences, // This will be negative, representing a return
+                            $transferItem->batch_number,
+                            $transferItem->expire_date
+                        );
                     }
                     
                     // Mark as inactive if quantity is zero
@@ -867,6 +894,15 @@ class TransferController extends Controller
                         'expiry_date' => $transferItem->expire_date,
                         'is_active' => true
                     ]);
+                    
+                    // Record negative facility_issued movement for the return
+                    app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                        $transferItem->transfer,
+                        $transferItem->product_id,
+                        $differences, // This will be negative, representing a return
+                        $transferItem->batch_number,
+                        $transferItem->expire_date
+                    );
                 }
             }
             

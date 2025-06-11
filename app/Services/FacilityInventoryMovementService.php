@@ -41,6 +41,33 @@ class FacilityInventoryMovementService
     }
 
     /**
+     * Record facility issued movement when transfer is sent out
+     */
+    public static function recordTransferIssued(Transfer $transfer, $productId, $issuedQuantity, $batchNumber = null, $expiryDate = null, $barcode = null, $uom = null)
+    {
+        // Only record if transfer is from a facility
+        if (!$transfer->from_facility_id) {
+            return null;
+        }
+
+        return FacilityInventoryMovement::recordFacilityIssued([
+            'facility_id' => $transfer->from_facility_id,
+            'product_id' => $productId,
+            'source_type' => 'transfer',
+            'source_id' => $transfer->id,
+            'source_item_id' => null, // Will be updated when TransferItem is created
+            'facility_issued_quantity' => $issuedQuantity,
+            'batch_number' => $batchNumber,
+            'expiry_date' => $expiryDate,
+            'barcode' => $barcode,
+            'uom' => $uom,
+            'movement_date' => Carbon::now(),
+            'reference_number' => $transfer->transferID,
+            'notes' => "Facility issued via transfer: {$transfer->transferID}",
+        ]);
+    }
+
+    /**
      * Record facility received movement from order
      */
     public static function recordOrderReceived(Order $order, OrderItem $orderItem, $receivedQuantity, $batchNumber = null, $expiryDate = null, $barcode = null)

@@ -13,6 +13,7 @@ use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\FacilityInventoryMovementController;
+use App\Http\Controllers\MonthlyInventoryReportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -225,6 +226,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/export', 'export')->name('facility-inventory-movements.export');
             Route::get('/product-balance', 'productBalance')->name('facility-inventory-movements.product-balance');
             Route::get('/facility/{facility}/movements', 'facilityMovements')->name('facility-inventory-movements.facility');
+        });
+
+    // Monthly Inventory Report Routes
+    Route::controller(MonthlyInventoryReportController::class)
+        ->prefix('monthly-reports')
+        ->group(function () {
+            Route::get('/', 'index')->name('monthly-reports.index');
+            Route::get('/create', 'create')->name('monthly-reports.create');
+            Route::post('/store', 'store')->name('monthly-reports.store');
+            Route::get('/summary', 'summary')->name('monthly-reports.summary');
+            Route::get('/export', 'export')->name('monthly-reports.export');
+            Route::post('/submit', 'submit')->name('monthly-reports.submit');
+            Route::post('/generate', 'generateReport')->name('monthly-reports.generate');
         });
 });
 
