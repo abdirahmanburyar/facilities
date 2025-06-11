@@ -258,10 +258,11 @@ class BackOrderController extends Controller
                     
                     // Delete the record
                     if($item->transferItem) {
-                        $item->transferItem->increment('quantity', $request->quantity);
+                        $item->transferItem->increment('received_quantity', $request->quantity);
                     } else {
                         $item->orderItem->increment('received_quantity', $request->quantity);
                     }
+
                     $item->decrement('quantity', $request->quantity);
                     $item->refresh();
                     

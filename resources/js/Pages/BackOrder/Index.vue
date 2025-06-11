@@ -269,6 +269,7 @@
                         type="number"
                         id="quantity"
                         v-model="liquidateForm.quantity"
+                        readonly
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                         :min="1"
                         :max="selectedItem?.quantity"
@@ -416,6 +417,7 @@
                         type="number"
                         id="quantity"
                         v-model="disposeForm.quantity"
+                        readonly
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                         :min="1"
                         :max="selectedItem?.quantity"
