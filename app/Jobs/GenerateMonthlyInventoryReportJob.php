@@ -127,7 +127,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue
 
         Log::info("Date range: {$startDate} to {$endDate}");
 
-        // Get aggregated movement data for this facility and period
+        // Get all aggregated movement data first (since GROUP BY conflicts with chunk)
         $movementData = FacilityInventoryMovement::select([
                 'product_id',
                 DB::raw('SUM(COALESCE(facility_received_quantity, 0)) as total_received'),
@@ -141,58 +141,75 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue
 
         Log::info("Found {$movementData->count()} products with movements for facility {$facility->id}");
 
+        // Process in chunks to manage memory usage
+        $chunkSize = 100;
+        $totalProcessed = 0;
         $itemsCreated = 0;
 
-        foreach ($movementData as $movement) {
-            try {
-                // Get product information
-                $product = Product::find($movement->product_id);
-                if (!$product) {
-                    Log::warning("Product {$movement->product_id} not found, skipping");
-                    continue;
+        // Use Laravel collection chunking instead of database chunking
+        $movementData->chunk($chunkSize)->each(function ($movementChunk, $chunkIndex) use ($facility, $report, &$totalProcessed, &$itemsCreated) {
+            Log::info("Processing chunk " . ($chunkIndex + 1) . " with {$movementChunk->count()} products for facility {$facility->id}");
+
+            foreach ($movementChunk as $movement) {
+                try {
+                    // Get product information (use select to minimize memory usage)
+                    $product = Product::select(['id', 'name'])->find($movement->product_id);
+                    if (!$product) {
+                        Log::warning("Product {$movement->product_id} not found, skipping");
+                        continue;
+                    }
+
+                    // Calculate opening balance (closing balance from previous month or current inventory)
+                    $openingBalance = $this->calculateOpeningBalance($facility, $product);
+
+                    // Get the aggregated quantities
+                    $stockReceived = (float) $movement->total_received;
+                    $stockIssued = (float) $movement->total_issued;
+
+                    // Set default adjustments (can be manually updated later)
+                    $positiveAdjustments = 0.0;
+                    $negativeAdjustments = 0.0;
+
+                    // Calculate closing balance
+                    $closingBalance = $openingBalance + $stockReceived - $stockIssued + $positiveAdjustments - $negativeAdjustments;
+
+                    // Calculate stockout days (simplified)
+                    $stockoutDays = $this->calculateStockoutDays($facility, $product);
+
+                    // Create the report item
+                    FacilityMonthlyReportItem::create([
+                        'parent_id' => $report->id,
+                        'product_id' => $product->id,
+                        'opening_balance' => $openingBalance,
+                        'stock_received' => $stockReceived,
+                        'stock_issued' => $stockIssued,
+                        'positive_adjustments' => $positiveAdjustments,
+                        'negative_adjustments' => $negativeAdjustments,
+                        'closing_balance' => $closingBalance,
+                        'stockout_days' => $stockoutDays,
+                    ]);
+
+                    $itemsCreated++;
+                    $totalProcessed++;
+
+                    // Log progress every 50 items to avoid log spam
+                    if ($itemsCreated % 50 == 0) {
+                        Log::info("Created {$itemsCreated} report items for facility {$facility->id}");
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error("Error processing movement for product {$movement->product_id} in facility {$facility->id}: " . $e->getMessage());
+                    throw $e;
                 }
-
-                // Calculate opening balance (closing balance from previous month or current inventory)
-                $openingBalance = $this->calculateOpeningBalance($facility, $product);
-
-                // Get the aggregated quantities
-                $stockReceived = (float) $movement->total_received;
-                $stockIssued = (float) $movement->total_issued;
-
-                // Set default adjustments (can be manually updated later)
-                $positiveAdjustments = 0.0;
-                $negativeAdjustments = 0.0;
-
-                // Calculate closing balance
-                $closingBalance = $openingBalance + $stockReceived - $stockIssued + $positiveAdjustments - $negativeAdjustments;
-
-                // Calculate stockout days (simplified)
-                $stockoutDays = $this->calculateStockoutDays($facility, $product);
-
-                // Create the report item
-                FacilityMonthlyReportItem::create([
-                    'parent_id' => $report->id,
-                    'product_id' => $product->id,
-                    'opening_balance' => $openingBalance,
-                    'stock_received' => $stockReceived,
-                    'stock_issued' => $stockIssued,
-                    'positive_adjustments' => $positiveAdjustments,
-                    'negative_adjustments' => $negativeAdjustments,
-                    'closing_balance' => $closingBalance,
-                    'stockout_days' => $stockoutDays,
-                ]);
-
-                $itemsCreated++;
-
-                if ($itemsCreated % 50 == 0) {
-                    Log::info("Created {$itemsCreated} report items for facility {$facility->id}");
-                }
-
-            } catch (\Exception $e) {
-                Log::error("Error processing movement for product {$movement->product_id} in facility {$facility->id}: " . $e->getMessage());
-                throw $e;
             }
-        }
+
+            // Force garbage collection after each chunk to manage memory
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
+            }
+
+            Log::info("Completed chunk " . ($chunkIndex + 1) . ": processed {$movementChunk->count()} products, created {$itemsCreated} items total");
+        });
 
         Log::info("Completed facility {$facility->id}: Created {$itemsCreated} items from movement data");
     }
