@@ -14,6 +14,7 @@ use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\FacilityInventoryMovementController;
 use App\Http\Controllers\MonthlyInventoryReportController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -229,17 +230,42 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         });
 
     // Monthly Inventory Report Routes
-    Route::controller(MonthlyInventoryReportController::class)
-        ->prefix('monthly-reports')
+    Route::controller(ReportController::class)
+        ->prefix('reports')
+        ->name('reports.')
         ->group(function () {
-            Route::get('/', 'index')->name('monthly-reports.index');
-            Route::get('/create', 'create')->name('monthly-reports.create');
-            Route::post('/store', 'store')->name('monthly-reports.store');
-            Route::get('/summary', 'summary')->name('monthly-reports.summary');
-            Route::get('/export', 'export')->name('monthly-reports.export');
-            Route::post('/submit', 'submit')->name('monthly-reports.submit');
-            Route::post('/generate', 'generateReport')->name('monthly-reports.generate');
+            // Reports Dashboard
+            Route::get('/', 'index')->name('index');
+            
+            // Monthly Inventory Report Interface
+            Route::get('/monthly-inventory', 'monthlyInventory')->name('monthly-inventory');
+            
+            // Generate Monthly Inventory Report
+            Route::post('/monthly-inventory/generate', 'generateMonthlyReport')->name('monthly-inventory.generate');
+            
+            // View Monthly Inventory Report
+            Route::get('/monthly-inventory/view', 'viewMonthlyReport')->name('monthly-inventory.view');
+            
+            // Check Report Status
+            Route::get('/monthly-inventory/status', 'getReportStatus')->name('monthly-inventory.status');
+            
+            // Export Reports
+            Route::get('/monthly-inventory/export/excel', 'exportMonthlyReportExcel')->name('monthly-inventory.export.excel');
+            Route::get('/monthly-inventory/export/pdf', 'exportMonthlyReportPdf')->name('monthly-inventory.export.pdf');
         });
+
+    // Report Routes
+    // Route::controller(ReportController::class)
+    //     ->prefix('reports')
+    //     ->group(function () {
+    //         Route::get('/', 'index')->name('reports.index');
+    //         Route::get('/create', 'create')->name('reports.create');
+    //         Route::post('/store', 'store')->name('reports.store');
+    //         Route::get('/{report}/show', 'show')->name('reports.show');
+    //         Route::get('/{report}/edit', 'edit')->name('reports.edit');
+    //         Route::put('/{report}', 'update')->name('reports.update');
+    //         Route::delete('/{report}', 'destroy')->name('reports.destroy');
+    //     });
 });
 
 require __DIR__.'/auth.php';

@@ -120,6 +120,19 @@
                 </div>
                 </Link>
 
+                <!-- Reports Menu -->
+                <Link :href="route('reports.index')" class="menu-item"
+                    :class="{ active: route().current('reports.*') }" @click="setCurrentPage('reports')">
+                <div class="menu-content">
+                    <div class="menu-icon">
+                        <img v-if="route().current('reports.*')" src="/assets/images/report-b.png"
+                            class="report-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/report-w.png" class="report-icon" style="height: 24px" />
+                    </div>
+                    <span class="menu-text">Reports</span>
+                </div>
+                </Link>
+
                 <!-- <Link :href="route('assets.index')" class="menu-item" :class="{ active: route().current('assets.*') }"
                     @click="setCurrentPage('assets')">
                 <div class="menu-content">
