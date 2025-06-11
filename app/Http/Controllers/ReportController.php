@@ -31,7 +31,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return redirect()->back()->with('error', 'No facility assigned to your account.');
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         return Inertia::render('Reports/MonthlyInventory', [
@@ -61,10 +62,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         $facilityId = $currentFacility->id;
@@ -105,10 +104,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         $facilityId = $currentFacility->id;
@@ -182,10 +179,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         $facilityId = $currentFacility->id;
@@ -199,10 +194,8 @@ class ReportController extends Controller
         $reports = $query->get();
 
         if ($reports->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No reports found for the specified period.'
-            ], 404);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No reports found for the specified period.');
         }
 
         // Prepare Excel data
@@ -280,10 +273,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         $facilityId = $currentFacility->id;
@@ -325,10 +316,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         // Find the report item and verify it belongs to user's facility
@@ -387,10 +376,8 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No facility assigned to your account.'
-            ], 400);
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No facility assigned to your account.');
         }
 
         $facilityId = $currentFacility->id;
