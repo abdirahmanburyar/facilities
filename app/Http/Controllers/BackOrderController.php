@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 
 use App\Models\Disposal;
 use Illuminate\Support\Facades\DB;
+use App\Services\FacilityInventoryMovementService;
 
 class BackOrderController extends Controller
 {
@@ -186,7 +187,7 @@ class BackOrderController extends Controller
                 'status' => 'pending', // Default status is pending
                 'note' => $note,
                 'barcode' => $item->inventoryAllocation->barcode ?? $item->transferItem->barcode ?? 'N/A',
-                'expire_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expire_date ?? 'N/A',
+                'expire_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date ?? 'N/A',
                 'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number ?? 'N/A',
                 'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom ?? 'N/A',
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
@@ -233,32 +234,65 @@ class BackOrderController extends Controller
                     'quantity' => 'required|integer|min:1',
                 ]);
                 
+                $facilityInventoryMovementService = new FacilityInventoryMovementService();
+                
                 $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type,facility_id','transferItem.transfer:id,from_facility_id,to_facility_id')->find($request->id);
                 
                 if ($item) {
-                    $inventory = FacilityInventory::where('product_id', $item->inventoryAllocation->product_id ?? $item->transferItem->product_id)
-                        ->where('facility_id', $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id)
-                        ->where('batch_number', $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number)
+                    $facilityId = $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id;
+                    $productId = $item->inventoryAllocation->product_id ?? $item->transferItem->product_id;
+                    $batchNumber = $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number;
+                    $expiryDate = $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date;
+                    $barcode = $item->inventoryAllocation->barcode ?? $item->transferItem->barcode;
+                    $uom = $item->inventoryAllocation->uom ?? $item->transferItem->uom;
+                    
+                    $inventory = FacilityInventory::where('product_id', $productId)
+                        ->where('facility_id', $facilityId)
+                        ->where('batch_number', $batchNumber)
                         ->first();
 
                     if($inventory){
                         $inventory->increment('quantity', $request->quantity);
                     }else{
-                        FacilityInventory::create([
-                            'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
-                            'facility_id' => $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id,
-                            'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number,
+                        $inventory = FacilityInventory::create([
+                            'product_id' => $productId,
+                            'facility_id' => $facilityId,
+                            'batch_number' => $batchNumber,
                             'quantity' => $request->quantity,
-                            'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom,
-                            'barcode' => $item->inventoryAllocation->barcode ?? $item->transferItem->barcode,
-                            'expiry_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date
+                            'uom' => $uom,
+                            'barcode' => $barcode,
+                            'expiry_date' => $expiryDate
                         ]);
                     }
+                    
+                    // Record facility inventory movement for backorder received
+                    if ($item->transferItem) {
+                        // This is a transfer backorder
+                        $facilityInventoryMovementService->recordTransferReceived(
+                            $item->transferItem->transfer,
+                            $item->transferItem,
+                            $facilityId,
+                            $request->quantity
+                        );
+                    } elseif ($item->orderItem) {
+                        // This is an order backorder
+                        $facilityInventoryMovementService->recordOrderReceived(
+                            $item->orderItem->order,
+                            $item->orderItem,
+                            $facilityId,
+                            $request->quantity,
+                            $batchNumber,
+                            $expiryDate,
+                            $barcode,
+                            $uom
+                        );
+                    }
+                    
                     // Create a record in BackOrderHistory before deleting
                     BackOrderHistory::create([
                         'order_id' => $item->orderItem->order_id ?? null,
                         'transfer_id' => $item->transferItem->id ?? null,
-                        'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
+                        'product_id' => $productId,
                         'quantity' => $request->quantity,
                         'status' => 'Received',
                         'note' => "From the backorder",

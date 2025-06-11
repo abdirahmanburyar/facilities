@@ -29,13 +29,6 @@ class FacilityInventoryMovement extends Model
         'updated_by',
     ];
 
-    protected $casts = [
-        'movement_date' => 'datetime',
-        'expiry_date' => 'date',
-        'facility_received_quantity' => 'decimal:2',
-        'facility_issued_quantity' => 'decimal:2',
-    ];
-
     // Relationships
     public function facility()
     {

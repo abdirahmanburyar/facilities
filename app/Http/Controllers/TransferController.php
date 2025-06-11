@@ -401,15 +401,41 @@ class TransferController extends Controller
     {
         $facilityInventoryMovementService = new FacilityInventoryMovementService();
         
+        // Debug log: Log the transfer and items being processed
+        logger()->info('Processing inventory changes for transfer', [
+            'transfer_id' => $transfer->id,
+            'to_facility_id' => $transfer->to_facility_id,
+            'items_count' => count($items),
+            'items' => $items
+        ]);
+        
         foreach ($items as $item) {
+            // Debug log: Log each item being processed
+            logger()->info('Processing item', [
+                'product_id' => $item['product_id'],
+                'batch_number' => $item['batch_number'],
+                'received_quantity' => $item['received_quantity']
+            ]);
+            
             $inventory = FacilityInventory::where([
                 'facility_id' => $transfer['to_facility_id'],
                 'product_id' => $item['product_id'],
                 'batch_number' => $item['batch_number'],
             ])->first();
 
+            $oldQuantity = $inventory ? $inventory->quantity : 0;
+            
             if ($inventory) {
                 $inventory->increment('quantity', $item['received_quantity']);
+                $newQuantity = $inventory->fresh()->quantity;
+                
+                // Debug log: Log inventory update
+                logger()->info('Updated existing inventory', [
+                    'inventory_id' => $inventory->id,
+                    'old_quantity' => $oldQuantity,
+                    'added_quantity' => $item['received_quantity'],
+                    'new_quantity' => $newQuantity
+                ]);
             } else {
                 $inventory = FacilityInventory::create([
                     'facility_id' => $transfer['to_facility_id'],
@@ -418,6 +444,12 @@ class TransferController extends Controller
                     'quantity' => $item['received_quantity'],
                     'expiry_date' => $item['expire_date'],
                     'barcode' => $item['barcode'],
+                ]);
+                
+                // Debug log: Log new inventory creation
+                logger()->info('Created new inventory', [
+                    'inventory_id' => $inventory->id,
+                    'quantity' => $item['received_quantity']
                 ]);
             }
             
@@ -435,8 +467,18 @@ class TransferController extends Controller
                     $transfer['to_facility_id'],
                     $item['received_quantity']
                 );
+                
+                // Debug log: Log movement recording
+                logger()->info('Recorded inventory movement', [
+                    'transfer_item_id' => $transferItem->id,
+                    'movement_quantity' => $item['received_quantity']
+                ]);
             }
         }
+        
+        logger()->info('Completed processing inventory changes for transfer', [
+            'transfer_id' => $transfer->id
+        ]);
     }
     
 
@@ -658,6 +700,8 @@ class TransferController extends Controller
     public function receiveTransfer(Request $request)
     {
         try {
+            DB::beginTransaction();
+            
             $request->validate([
                 'transfer_id' => 'required|exists:transfers,id',
                 'status' => 'required|in:received',
@@ -690,8 +734,10 @@ class TransferController extends Controller
             $transfer->status = 'received';
             $transfer->save();
 
+            DB::commit();
             return response()->json(['message' => 'Transfer received successfully'], 200);
         } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json($th->getMessage(), 500);
         }
     }
