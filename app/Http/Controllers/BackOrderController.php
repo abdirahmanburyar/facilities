@@ -181,7 +181,7 @@ class BackOrderController extends Controller
                 'status' => 'pending', // Default status is pending
                 'note' => $note,
                 'barcode' => $item->inventoryAllocation->barcode ?? $item->transferItem->barcode ?? 'N/A',
-                'expire_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date ?? 'N/A',
+                'expire_date' => $item->inventoryAllocation->expiry_date ?? $item->transferItem->expire_date ?? 'N/A',
                 'batch_number' => $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number ?? 'N/A',
                 'uom' => $item->inventoryAllocation->uom ?? $item->transferItem->uom ?? 'N/A',
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
