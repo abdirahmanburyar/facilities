@@ -329,7 +329,7 @@ class TransferController extends Controller
                 $inventory->decrement('quantity', $item['quantity']);
                 
                 // Record facility_issued movement for the transfer out
-                app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                app(FacilityInventoryMovementService::class)->recordTransferIssued(
                     $transfer,
                     $inventory->product_id,
                     $item['quantity'],
@@ -899,7 +899,7 @@ class TransferController extends Controller
                 } else {
                     // If no existing movement found, create one with the current quantity
                     // This handles cases where the movement wasn't recorded initially
-                    app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
+                    app(FacilityInventoryMovementService::class)->recordTransferIssued(
                         $transferItem->transfer,
                         $transferItem->product_id,
                         $request->quantity,
