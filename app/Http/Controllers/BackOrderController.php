@@ -186,7 +186,7 @@ class BackOrderController extends Controller
             if ($item) {
                 // Create a record in BackOrderHistory before deleting
                 BackOrderHistory::create([
-                    'order_id' => $item->order_id ?? null,
+                    'order_id' => $item->orderItem->order_id ?? null,
                     'transfer_id' => $item->transferItem->id ?? null,
                     'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
                     'quantity' => $request->quantity,
