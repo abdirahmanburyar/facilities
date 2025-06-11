@@ -10,6 +10,7 @@ use App\Models\FacilityInventoryMovement;
 use App\Models\FacilityInventory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -17,12 +18,49 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class GenerateMonthlyInventoryReportJob implements ShouldQueue
+class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1800; // 30 minutes timeout
+    /**
+     * The number of seconds the job can run before timing out.
+     * Set to 2 hours for large facilities with many products
+     */
+    public $timeout = 7200;
+
+    /**
+     * The maximum number of unhandled exceptions to allow before failing.
+     */
+    public $maxExceptions = 3;
+
+    /**
+     * The number of times the job may be attempted.
+     */
     public $tries = 3;
+
+    /**
+     * The number of seconds to wait before retrying the job.
+     */
+    public $backoff = [60, 300, 900]; // 1 min, 5 min, 15 min
+
+    /**
+     * Indicate if the job should be marked as failed on timeout.
+     */
+    public $failOnTimeout = true;
+
+    /**
+     * The unique ID of the job.
+     * This prevents multiple reports for the same facility/period from running simultaneously
+     */
+    public function uniqueId(): string
+    {
+        return "monthly-report-{$this->facilityId}-{$this->year}-{$this->month}";
+    }
+
+    /**
+     * The number of seconds after which the job's unique lock will be released.
+     */
+    public $uniqueFor = 7200; // 2 hours
 
     protected $facilityId;
     protected $year;
@@ -47,71 +85,94 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info("Starting monthly inventory report generation job", [
+        // Set memory limit for large datasets
+        ini_set('memory_limit', '1024M');
+        
+        // Log job start with memory usage
+        Log::info("Starting monthly inventory report generation", [
             'facility_id' => $this->facilityId,
-            'report_period' => $this->reportPeriod,
-            'force' => $this->force
+            'year' => $this->year,
+            'month' => $this->month,
+            'memory_usage' => memory_get_usage(true),
+            'job_id' => $this->job->getJobId() ?? 'sync'
         ]);
 
         try {
             DB::transaction(function () {
-                $facilities = $this->facilityId 
-                    ? Facility::where('id', $this->facilityId)->get()
-                    : Facility::all();
+                $facilities = $this->facilityId ? 
+                    Facility::where('id', $this->facilityId)->get() : 
+                    Facility::where('is_active', true)->get();
 
-                $totalReports = 0;
-                $createdReports = 0;
-                $updatedReports = 0;
+                Log::info("Processing {$facilities->count()} facilities for report generation");
 
                 foreach ($facilities as $facility) {
-                    Log::info("Processing facility: {$facility->name} (ID: {$facility->id})");
+                    $this->generateReportForFacility($facility);
                     
-                    // Check if report already exists for this facility and period
-                    $existingReport = FacilityMonthlyReport::where([
-                        'facility_id' => $facility->id,
-                        'report_period' => $this->reportPeriod,
-                    ])->first();
-
-                    if ($existingReport && !$this->force) {
-                        Log::info("Report already exists for facility {$facility->id}, skipping");
-                        continue;
+                    // Force garbage collection after each facility to manage memory
+                    if (function_exists('gc_collect_cycles')) {
+                        gc_collect_cycles();
                     }
-
-                    // Create or get the report header
-                    if ($existingReport) {
-                        $report = $existingReport;
-                        Log::info("Deleting existing items for facility {$facility->id}");
-                        $report->items()->delete();
-                        $updatedReports++;
-                    } else {
-                        Log::info("Creating new report for facility {$facility->id}");
-                        $report = FacilityMonthlyReport::create([
-                            'facility_id' => $facility->id,
-                            'report_period' => $this->reportPeriod,
-                            'status' => 'draft',
-                        ]);
-                        $createdReports++;
-                    }
-
-                    // Generate report items from movement data
-                    $this->generateReportItems($facility, $report);
-                    $totalReports++;
+                    
+                    // Log memory usage after each facility
+                    Log::info("Completed facility {$facility->id}, memory usage: " . memory_get_usage(true));
                 }
-
-                Log::info("Monthly inventory report generation completed successfully", [
-                    'total_processed' => $totalReports,
-                    'created' => $createdReports,
-                    'updated' => $updatedReports,
-                    'facilities_count' => $facilities->count()
-                ]);
             });
-        } catch (\Exception $e) {
-            Log::error("Error generating monthly inventory reports", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            
+            Log::info("Monthly inventory report generation completed successfully", [
+                'facility_id' => $this->facilityId,
+                'year' => $this->year,
+                'month' => $this->month,
+                'peak_memory' => memory_get_peak_usage(true)
             ]);
+            
+        } catch (\Exception $e) {
+            Log::error("Monthly inventory report generation failed", [
+                'facility_id' => $this->facilityId,
+                'year' => $this->year,
+                'month' => $this->month,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'memory_usage' => memory_get_usage(true)
+            ]);
+            
             throw $e;
         }
+    }
+
+    /**
+     * Generate report for a facility
+     */
+    private function generateReportForFacility(Facility $facility): void
+    {
+        Log::info("Processing facility: {$facility->name} (ID: {$facility->id})");
+        
+        // Check if report already exists for this facility and period
+        $existingReport = FacilityMonthlyReport::where([
+            'facility_id' => $facility->id,
+            'report_period' => $this->reportPeriod,
+        ])->first();
+
+        if ($existingReport && !$this->force) {
+            Log::info("Report already exists for facility {$facility->id}, skipping");
+            return;
+        }
+
+        // Create or get the report header
+        if ($existingReport) {
+            $report = $existingReport;
+            Log::info("Deleting existing items for facility {$facility->id}");
+            $report->items()->delete();
+        } else {
+            Log::info("Creating new report for facility {$facility->id}");
+            $report = FacilityMonthlyReport::create([
+                'facility_id' => $facility->id,
+                'report_period' => $this->reportPeriod,
+                'status' => 'draft',
+            ]);
+        }
+
+        // Generate report items from movement data
+        $this->generateReportItems($facility, $report);
     }
 
     /**
@@ -270,11 +331,61 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("Monthly inventory report generation job failed", [
+        Log::error("Monthly inventory report job failed permanently", [
             'facility_id' => $this->facilityId,
-            'report_period' => $this->reportPeriod,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
+            'year' => $this->year,
+            'month' => $this->month,
+            'exception' => $exception->getMessage(),
+            'attempts' => $this->attempts(),
+            'memory_usage' => memory_get_usage(true)
         ]);
+        
+        // Clean up any partially created reports
+        $this->cleanupPartialReports();
+    }
+
+    /**
+     * Clean up any partially created reports on failure
+     */
+    private function cleanupPartialReports(): void
+    {
+        try {
+            $facilities = $this->facilityId ? 
+                collect([Facility::find($this->facilityId)])->filter() : 
+                Facility::where('is_active', true)->get();
+
+            foreach ($facilities as $facility) {
+                // Find and delete incomplete reports (reports without items)
+                $incompleteReports = FacilityMonthlyReport::where([
+                    'facility_id' => $facility->id,
+                    'year' => $this->year,
+                    'month' => $this->month
+                ])->whereDoesntHave('items')->get();
+
+                foreach ($incompleteReports as $report) {
+                    Log::info("Cleaning up incomplete report {$report->id} for facility {$facility->id}");
+                    $report->delete();
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Error during cleanup: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculate the number of seconds to wait before retrying the job.
+     */
+    public function backoff(): array
+    {
+        return $this->backoff;
+    }
+
+    /**
+     * Determine if the job should be retried based on the exception.
+     */
+    public function retryUntil(): \DateTime
+    {
+        // Don't retry after 4 hours total
+        return now()->addHours(4);
     }
 }
