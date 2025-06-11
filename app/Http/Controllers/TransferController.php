@@ -855,27 +855,9 @@ class TransferController extends Controller
                     if ($differences > 0) {
                         // Increasing transfer quantity means decreasing facility inventory
                         $inventory->quantity = $inventory->quantity - $differences;
-                        
-                        // Record additional facility_issued movement for the increase
-                        app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
-                            $transferItem->transfer,
-                            $transferItem->product_id,
-                            $differences,
-                            $transferItem->batch_number,
-                            $transferItem->expire_date
-                        );
                     } else {
                         // Decreasing transfer quantity means increasing facility inventory
                         $inventory->quantity = $inventory->quantity + abs($differences);
-                        
-                        // Record negative facility_issued movement (like a return) for the decrease
-                        app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
-                            $transferItem->transfer,
-                            $transferItem->product_id,
-                            $differences, // This will be negative, representing a return
-                            $transferItem->batch_number,
-                            $transferItem->expire_date
-                        );
                     }
                     
                     // Mark as inactive if quantity is zero
@@ -894,15 +876,38 @@ class TransferController extends Controller
                         'expiry_date' => $transferItem->expire_date,
                         'is_active' => true
                     ]);
+                }
+                
+                // Update the existing movement record instead of creating new ones
+                $existingMovement = FacilityInventoryMovement::where([
+                    'facility_id' => $transferItem->transfer->from_facility_id,
+                    'product_id' => $transferItem->product_id,
+                    'source_type' => 'transfer',
+                    'source_id' => $transferItem->transfer->id,
+                    'movement_type' => 'facility_issued'
+                ])
+                ->where('batch_number', $transferItem->batch_number)
+                ->first();
+                
+                if ($existingMovement) {
+                    // Update the existing movement with the new total quantity
+                    $existingMovement->facility_issued_quantity = $request->quantity;
+                    $existingMovement->notes = "Facility issued via transfer: {$transferItem->transfer->transferID} (Updated)";
+                    $existingMovement->save();
                     
-                    // Record negative facility_issued movement for the return
+                    logger()->info("Updated existing movement record for transfer {$transferItem->transfer->transferID}, new quantity: {$request->quantity}");
+                } else {
+                    // If no existing movement found, create one with the current quantity
+                    // This handles cases where the movement wasn't recorded initially
                     app(App\Services\FacilityInventoryMovementService::class)->recordTransferIssued(
                         $transferItem->transfer,
                         $transferItem->product_id,
-                        $differences, // This will be negative, representing a return
+                        $request->quantity,
                         $transferItem->batch_number,
                         $transferItem->expire_date
                     );
+                    
+                    logger()->info("Created new movement record for transfer {$transferItem->transfer->transferID}, quantity: {$request->quantity}");
                 }
             }
             
