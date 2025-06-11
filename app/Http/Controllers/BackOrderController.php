@@ -149,7 +149,11 @@ class BackOrderController extends Controller
             $item = FacilityBackorder::with('inventoryAllocation','transferItem.transfer','orderItem.order:id,order_number,order_type')->find($request->id);
             
             // Generate note based on condition and source
-            $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->type .' - '. $request->note : 'Unknown';
+            if($item->transferItem){
+                $note = $item->transferItem->transfer->transfer_number .' - '. $item->type .' - '. $request->note;
+            }else{
+                $note = $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->type .' - '. $request->note;
+            }
             
             // Handle file attachments if any
             $attachments = [];
