@@ -59,6 +59,18 @@
                 </div>
                 </Link>
 
+                <Link :href="route('facility-inventory-movements.index')" class="menu-item" v-if="$page.props.auth.can.inventory_view"
+                    :class="{ active: route().current('facility-inventory-movements.*') }" @click="setCurrentPage('inventory-movements')">
+                <div class="menu-content">
+                    <div class="menu-icon">
+                        <img v-if="route().current('facility-inventory-movements.*')" src="/assets/images/movement-b.png"
+                            class="movement-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/movement-w.png" class="movement-icon" style="height: 24px" />
+                    </div>
+                    <span class="menu-text">Movements</span>
+                </div>
+                </Link>
+
                 <Link :href="route('dispence.index')" class="menu-item" v-if="$page.props.auth.can.dispence_view"
                     :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
                 <div class="menu-content">

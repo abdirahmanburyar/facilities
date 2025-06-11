@@ -18,55 +18,46 @@ class FacilityInventoryMovementController extends Controller
     {
         $query = FacilityInventoryMovement::with([
             'facility:id,name',
-            'product:id,name,generic_name',
+            'product:id,name',
             'createdBy:id,name'
-        ]);
+        ])->where('facility_id', auth()->user()->facility_id);
 
-        // Apply filters
-        if ($request->facility_id) {
-            $query->byFacility($request->facility_id);
+        // Apply filters (removed facility_id filter since it's now single facility)
+        if ($request->filled('product_id') && is_array($request->product_id)) {
+            $query->whereIn('product_id', $request->product_id);
         }
 
-        if ($request->product_id) {
-            $query->byProduct($request->product_id);
+        if ($request->filled('movement_type') && is_array($request->movement_type)) {
+            $query->whereIn('movement_type', $request->movement_type);
         }
 
-        if ($request->movement_type) {
-            $query->where('movement_type', $request->movement_type);
+        if ($request->filled('source_type') && is_array($request->source_type)) {
+            $query->whereIn('source_type', $request->source_type);
         }
 
-        if ($request->source_type) {
-            $query->where('source_type', $request->source_type);
+        if ($request->filled('start_date')) {
+            $query->whereDate('movement_date', '>=', $request->start_date);
         }
 
-        if ($request->start_date && $request->end_date) {
-            $query->byDateRange($request->start_date, $request->end_date);
+        if ($request->filled('end_date')) {
+            $query->whereDate('movement_date', '<=', $request->end_date);
         }
 
-        // Default to last 30 days if no date filter
-        if (!$request->start_date && !$request->end_date) {
-            $query->byDateRange(
-                Carbon::now()->subDays(30)->startOfDay(),
-                Carbon::now()->endOfDay()
-            );
-        }
+        // Order by movement date descending
+        $query->orderBy('movement_date', 'desc');
 
-        $movements = $query->orderBy('movement_date', 'desc')
-            ->paginate(20)
-            ->withQueryString();
+        // Get per page value, default to 25
+        $perPage = $request->get('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 25;
 
-        // Get facilities and products for filters
-        $facilities = Facility::select('id', 'name')->orderBy('name')->get();
-        $products = Product::select('id', 'name', 'generic_name')->orderBy('name')->get();
+        $movements = $query->paginate($perPage)->withQueryString();
+
+        // Only get products since facility is now fixed to user's facility
+        $products = Product::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('FacilityInventoryMovement/Index', [
             'movements' => $movements,
-            'facilities' => $facilities,
             'products' => $products,
-            'filters' => $request->only([
-                'facility_id', 'product_id', 'movement_type', 
-                'source_type', 'start_date', 'end_date'
-            ])
         ]);
     }
 
@@ -75,47 +66,38 @@ class FacilityInventoryMovementController extends Controller
      */
     public function summary(Request $request)
     {
-        $facilityId = $request->facility_id;
-        $startDate = $request->start_date ?? Carbon::now()->subDays(30)->startOfDay();
-        $endDate = $request->end_date ?? Carbon::now()->endOfDay();
-
-        $query = FacilityInventoryMovement::query();
+        $query = FacilityInventoryMovement::where('facility_id', auth()->user()->facility_id);
         
-        if ($facilityId) {
-            $query->byFacility($facilityId);
+        // Apply filters if provided (removed facility_id filter since it's now single facility)
+        if ($request->filled('product_id') && is_array($request->product_id)) {
+            $query->whereIn('product_id', $request->product_id);
         }
 
-        $query->byDateRange($startDate, $endDate);
+        if ($request->filled('movement_type') && is_array($request->movement_type)) {
+            $query->whereIn('movement_type', $request->movement_type);
+        }
+
+        if ($request->filled('source_type') && is_array($request->source_type)) {
+            $query->whereIn('source_type', $request->source_type);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('movement_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('movement_date', '<=', $request->end_date);
+        }
 
         // Get summary data
         $summary = [
-            'total_facility_received' => $query->clone()->sum('facility_received_quantity'),
-            'total_facility_issued' => $query->clone()->sum('facility_issued_quantity'),
-            'facility_received_count' => $query->clone()->facilityReceived()->count(),
-            'facility_issued_count' => $query->clone()->facilityIssued()->count(),
+            'total_facility_received' => $query->clone()->sum('facility_received_quantity') ?: 0,
+            'total_facility_issued' => $query->clone()->sum('facility_issued_quantity') ?: 0,
+            'facility_received_count' => $query->clone()->where('movement_type', 'facility_received')->count(),
+            'facility_issued_count' => $query->clone()->where('movement_type', 'facility_issued')->count(),
         ];
 
-        // Get movements by source type
-        $bySourceType = $query->clone()
-            ->selectRaw('source_type, 
-                SUM(facility_received_quantity) as total_facility_received,
-                SUM(facility_issued_quantity) as total_facility_issued,
-                COUNT(*) as movement_count')
-            ->groupBy('source_type')
-            ->get();
-
-        // Get recent movements
-        $recentMovements = $query->clone()
-            ->with(['facility:id,name', 'product:id,name'])
-            ->orderBy('movement_date', 'desc')
-            ->limit(10)
-            ->get();
-
-        return response()->json([
-            'summary' => $summary,
-            'by_source_type' => $bySourceType,
-            'recent_movements' => $recentMovements
-        ]);
+        return response()->json($summary);
     }
 
     /**
@@ -189,64 +171,72 @@ class FacilityInventoryMovementController extends Controller
     {
         $query = FacilityInventoryMovement::with([
             'facility:id,name',
-            'product:id,name,generic_name',
+            'product:id,name',
             'createdBy:id,name'
-        ]);
+        ])->where('facility_id', auth()->user()->facility_id);
 
-        // Apply same filters as index
-        if ($request->facility_id) {
-            $query->byFacility($request->facility_id);
+        // Apply the same filters as index method (removed facility_id filter)
+        if ($request->filled('product_id') && is_array($request->product_id)) {
+            $query->whereIn('product_id', $request->product_id);
         }
 
-        if ($request->product_id) {
-            $query->byProduct($request->product_id);
+        if ($request->filled('movement_type') && is_array($request->movement_type)) {
+            $query->whereIn('movement_type', $request->movement_type);
         }
 
-        if ($request->movement_type) {
-            $query->where('movement_type', $request->movement_type);
+        if ($request->filled('source_type') && is_array($request->source_type)) {
+            $query->whereIn('source_type', $request->source_type);
         }
 
-        if ($request->source_type) {
-            $query->where('source_type', $request->source_type);
+        if ($request->filled('start_date')) {
+            $query->whereDate('movement_date', '>=', $request->start_date);
         }
 
-        if ($request->start_date && $request->end_date) {
-            $query->byDateRange($request->start_date, $request->end_date);
+        if ($request->filled('end_date')) {
+            $query->whereDate('movement_date', '<=', $request->end_date);
         }
 
         $movements = $query->orderBy('movement_date', 'desc')->get();
 
-        $filename = 'facility_inventory_movements_' . date('Y-m-d_H-i-s') . '.csv';
-        
+        $filename = 'facility_inventory_movements_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
 
         $callback = function() use ($movements) {
             $file = fopen('php://output', 'w');
             
-            // CSV headers
+            // Add CSV headers
             fputcsv($file, [
-                'Date', 'Facility', 'Product', 'Movement Type', 'Source Type',
-                'Facility Received Qty', 'Facility Issued Qty', 'Batch Number',
-                'Expiry Date', 'Reference Number', 'Created By'
+                'Date',
+                'Item',
+                'Movement Type',
+                'Source Type',
+                'Received Quantity',
+                'Issued Quantity',
+                'Batch Number',
+                'Expiry Date',
+                'Reference Number',
+                'Created By',
+                'Created At'
             ]);
 
-            // CSV data
+            // Add data rows
             foreach ($movements as $movement) {
                 fputcsv($file, [
-                    $movement->movement_date->format('Y-m-d H:i:s'),
-                    $movement->facility->name ?? '',
+                    $movement->movement_date,
                     $movement->product->name ?? '',
-                    ucfirst(str_replace('_', ' ', $movement->movement_type)),
-                    ucfirst($movement->source_type),
-                    $movement->facility_received_quantity,
-                    $movement->facility_issued_quantity,
-                    $movement->batch_number ?? '',
-                    $movement->expiry_date ? $movement->expiry_date->format('Y-m-d') : '',
-                    $movement->reference_number ?? '',
-                    $movement->createdBy->name ?? ''
+                    $movement->movement_type == 'facility_received' ? 'Received Quantity' : 'Issued Quantity',
+                    $movement->source_type,
+                    $movement->facility_received_quantity ?: '',
+                    $movement->facility_issued_quantity ?: '',
+                    $movement->batch_number ?: '',
+                    $movement->expiry_date ?: '',
+                    $movement->reference_number ?: '',
+                    $movement->createdBy->name ?? '',
+                    $movement->created_at
                 ]);
             }
 
