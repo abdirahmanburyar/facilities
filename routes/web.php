@@ -249,6 +249,12 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             // Check Report Status
             Route::get('/monthly-inventory/status', 'getReportStatus')->name('monthly-inventory.status');
             
+            // Update Report Item
+            Route::post('/monthly-inventory/update-item', 'updateReportItem')->name('monthly-inventory.update-item');
+            
+            // Save Report
+            Route::post('/monthly-inventory/save', 'saveReport')->name('monthly-inventory.save');
+            
             // Export Reports
             Route::get('/monthly-inventory/export/excel', 'exportMonthlyReportExcel')->name('monthly-inventory.export.excel');
             Route::get('/monthly-inventory/export/pdf', 'exportMonthlyReportPdf')->name('monthly-inventory.export.pdf');
