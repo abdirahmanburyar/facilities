@@ -687,4 +687,12 @@ thead th {
 tbody tr:last-child td {
     border-bottom: 1px solid #e5e7eb;
 }
+
+@media print {
+    nav, button, .shadow-sm { display: none !important; }
+    @page { margin: 0.75in; size: A4 landscape; }
+    body { font-family: Arial !important; color: black !important; }
+    table { font-size: 8px !important; }
+    th, td { border: 1px solid black !important; padding: 3px !important; }
+}
 </style>
