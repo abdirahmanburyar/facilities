@@ -315,7 +315,7 @@ class TransferController extends Controller
                 }
                 
                 // Create transfer item record
-                TransferItem::create([
+                $transferItem = TransferItem::create([
                     'transfer_id' => $transfer->id,
                     'product_id' => $item['product_id'],
                     'barcode' => $item['barcode'] ?? '',
@@ -334,7 +334,10 @@ class TransferController extends Controller
                     $inventory->product_id,
                     $item['quantity'],
                     $inventory->batch_number,
-                    $inventory->expiry_date
+                    $inventory->expiry_date,
+                    $item['barcode'] ?? null,
+                    $item['uom'] ?? null,
+                    $transferItem->id // Pass the TransferItem ID
                 );
             }
             
@@ -772,7 +775,7 @@ class TransferController extends Controller
                         'facility_id' => $transferItem->transfer->from_facility_id,
                         'quantity' => $transferItem->quantity,
                         'batch_number' => $transferItem->batch_number,
-                        'expiry_date' => $transferItem->expiry_date,
+                        'expiry_date' => $transferItem->expire_date,
                         'barcode' => $transferItem->barcode,
                         'uom' => $transferItem->uom,
                     ]);
@@ -904,7 +907,10 @@ class TransferController extends Controller
                         $transferItem->product_id,
                         $request->quantity,
                         $transferItem->batch_number,
-                        $transferItem->expire_date
+                        $transferItem->expire_date,
+                        null, // barcode
+                        null, // uom
+                        $transferItem->id // source_item_id
                     );
                     
                     logger()->info("Created new movement record for transfer {$transferItem->transfer->transferID}, quantity: {$request->quantity}");

@@ -43,7 +43,7 @@ class FacilityInventoryMovementService
     /**
      * Record facility issued movement when transfer is sent out
      */
-    public static function recordTransferIssued(Transfer $transfer, $productId, $issuedQuantity, $batchNumber = null, $expiryDate = null, $barcode = null, $uom = null)
+    public static function recordTransferIssued(Transfer $transfer, $productId, $issuedQuantity, $batchNumber = null, $expiryDate = null, $barcode = null, $uom = null, $sourceItemId = null)
     {
         // Only record if transfer is from a facility
         if (!$transfer->from_facility_id) {
@@ -55,7 +55,7 @@ class FacilityInventoryMovementService
             'product_id' => $productId,
             'source_type' => 'transfer',
             'source_id' => $transfer->id,
-            'source_item_id' => null, // Will be updated when TransferItem is created
+            'source_item_id' => $sourceItemId,
             'facility_issued_quantity' => $issuedQuantity,
             'batch_number' => $batchNumber,
             'expiry_date' => $expiryDate,
