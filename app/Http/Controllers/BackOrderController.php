@@ -172,7 +172,7 @@ class BackOrderController extends Controller
             }
 
             $dispose = Disposal::create([
-                'product_id' => $item->inventoryAllocation->product_id,
+                'product_id' => $item->inventoryAllocation->product_id ?? $item->transferItem->product_id,
                 'disposal_by' => auth()->id(),
                 'disposed_at' => Carbon::now(),
                 'order_item_id' => $item->orderItem->id ?? null,
