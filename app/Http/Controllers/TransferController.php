@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use App\Services\FacilityInventoryMovementService;
 
 class TransferController extends Controller
 {
@@ -398,6 +399,8 @@ class TransferController extends Controller
      */
     private function processInventoryChanges(Transfer $transfer, $items)
     {
+        $facilityInventoryMovementService = new FacilityInventoryMovementService();
+        
         foreach ($items as $item) {
             $inventory = FacilityInventory::where([
                 'facility_id' => $transfer['to_facility_id'],
@@ -408,7 +411,7 @@ class TransferController extends Controller
             if ($inventory) {
                 $inventory->increment('quantity', $item['received_quantity']);
             } else {
-                FacilityInventory::create([
+                $inventory = FacilityInventory::create([
                     'facility_id' => $transfer['to_facility_id'],
                     'product_id' => $item['product_id'],
                     'batch_number' => $item['batch_number'],
@@ -416,6 +419,22 @@ class TransferController extends Controller
                     'expiry_date' => $item['expire_date'],
                     'barcode' => $item['barcode'],
                 ]);
+            }
+            
+            // Find the corresponding transfer item for this product and batch
+            $transferItem = $transfer->items()
+                ->where('product_id', $item['product_id'])
+                ->where('batch_number', $item['batch_number'])
+                ->first();
+            
+            if ($transferItem) {
+                // Record facility inventory movement for received quantity
+                $facilityInventoryMovementService->recordTransferReceived(
+                    $transfer,
+                    $transferItem,
+                    $transfer['to_facility_id'],
+                    $item['received_quantity']
+                );
             }
         }
     }

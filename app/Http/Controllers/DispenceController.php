@@ -8,6 +8,7 @@ use App\Models\Dispence;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\DispenceResource;
+use App\Services\FacilityInventoryMovementService;
 
 class DispenceController extends Controller
 {
@@ -87,40 +88,54 @@ class DispenceController extends Controller
                 'dispenced_by' => auth()->user()->id,
                 'facility_id' => auth()->user()->facility_id,
             ]);
+
+            $facilityInventoryMovementService = new FacilityInventoryMovementService();
+
             foreach($validated['items'] as $item){
-                $totalQuantity = 0;
-                foreach($validated['items'] as $item){
-                    $remainingQuantity = $item['quantity'] - $totalQuantity;
-                    $inventories = FacilityInventory::where('facility_id', auth()->user()->facility_id)
-                        ->where('product_id', $item['product_id'])
-                        ->where('quantity', '>', 0)
-                        ->orderBy('expiry_date', 'asc')
-                        ->get();
-                    foreach($inventories as $inventory){
-                        $quantityToDeduct = min($remainingQuantity, $inventory->quantity);
-                        $dispence->items()->create([
-                            'product_id' => $item['product_id'],
-                            'dose' => $item['dose'],
-                            'batch_number' => $inventory->batch_number,
-                            'expiry_date' => $inventory->expiry_date,
-                            'barcode' => $inventory->barcode,
-                            'uom' => $inventory->uom ?? 'N/A',
-                            'frequency' => $item['frequency'],
-                            'start_date' => $item['start_date'],
-                            'duration' => $item['duration'],
-                            'quantity' => $quantityToDeduct,
-                        ]);
-                        $inventory->decrement('quantity', $quantityToDeduct);
-                        $totalQuantity += $quantityToDeduct;
-                        $remainingQuantity -= $quantityToDeduct;
-                        if($remainingQuantity <= 0){
-                            break 2;
-                        }
-                    }
+                $remainingQuantity = $item['quantity'];
+                $inventories = FacilityInventory::where('facility_id', auth()->user()->facility_id)
+                    ->where('product_id', $item['product_id'])
+                    ->where('quantity', '>', 0)
+                    ->orderBy('expiry_date', 'asc')
+                    ->get();
+                    
+                foreach($inventories as $inventory){
+                    if($remainingQuantity <= 0) break;
+                    
+                    $quantityToDeduct = min($remainingQuantity, $inventory->quantity);
+                    
+                    $dispenceItem = $dispence->items()->create([
+                        'product_id' => $item['product_id'],
+                        'dose' => $item['dose'],
+                        'batch_number' => $inventory->batch_number,
+                        'expiry_date' => $inventory->expiry_date,
+                        'barcode' => $inventory->barcode,
+                        'uom' => $inventory->uom ?? 'N/A',
+                        'frequency' => $item['frequency'],
+                        'start_date' => $item['start_date'],
+                        'duration' => $item['duration'],
+                        'quantity' => $quantityToDeduct,
+                    ]);
+                    
+                    $inventory->decrement('quantity', $quantityToDeduct);
+                    $remainingQuantity -= $quantityToDeduct;
+                    
+                    // Record facility inventory movement for this dispense item
+                    $facilityInventoryMovementService->recordDispenseIssued(
+                        $dispence,
+                        $dispenceItem,
+                        auth()->user()->facility_id
+                    );
+                }
+                
+                // Check if we couldn't dispense the full quantity
+                if($remainingQuantity > 0){
+                    throw new \Exception("Insufficient inventory for product ID {$item['product_id']}. Remaining quantity: {$remainingQuantity}");
                 }
             }
+            
             DB::commit();
-           return response()->json("Dispence created successfully", 200);
+            return response()->json("Dispence created successfully", 200);
 
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -139,6 +154,4 @@ class DispenceController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
-
-
 }

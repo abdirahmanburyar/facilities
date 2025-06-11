@@ -12,6 +12,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
+use App\Http\Controllers\FacilityInventoryMovementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -214,6 +215,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         // update transfer item quantity
         Route::post('/update-item', [TransferController::class, 'updateItem'])->name('transfers.update-item');
     });
+
+    // Facility Inventory Movement Routes
+    Route::controller(FacilityInventoryMovementController::class)
+        ->prefix('facility-inventory-movements')
+        ->group(function () {
+            Route::get('/', 'index')->name('facility-inventory-movements.index');
+            Route::get('/summary', 'summary')->name('facility-inventory-movements.summary');
+            Route::get('/export', 'export')->name('facility-inventory-movements.export');
+            Route::get('/product-balance', 'productBalance')->name('facility-inventory-movements.product-balance');
+            Route::get('/facility/{facility}/movements', 'facilityMovements')->name('facility-inventory-movements.facility');
+        });
 });
 
 require __DIR__.'/auth.php';
