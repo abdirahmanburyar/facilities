@@ -17,7 +17,9 @@ class BackOrderController extends Controller
 {
     public function index(Request $request){
         try {
-            $backorders = FacilityBackorder::whereNull('finalized');
+            $backorders = FacilityBackorder::whereNull('finalized')->whereHas('transferItem.transfer', function($query) {
+                $query->where('to_facility_id', auth()->user()->facility_id);
+            });
             if($request->filled('search')){
                 $backorders->whereHas('product', function($query) use ($request) {
                     $query->where('name', 'like', '%'.$request->search.'%')
