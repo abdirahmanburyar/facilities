@@ -140,7 +140,7 @@ class ExpiredController extends Controller
     public function transfer(Request $request, $inventory)
     {
         if ($request->isMethod('get')) {
-            $inv = FacilityInventory::with('product','location','warehouse')->find($inventory);
+            $inv = FacilityInventory::with('product')->find($inventory);
             $facilities = Facility::get();
             $warehouses = Warehouse::get();
             if (!$inv) {

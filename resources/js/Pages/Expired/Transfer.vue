@@ -36,6 +36,15 @@ const destinations = computed(() => {
 const isSubmitting = ref(false);
 
 const handleSubmit = async () => {
+    console.log({
+                id: props.inventory.id,
+                product_id: props.inventory.product_id,
+                quantity: parseInt(quantityToTransfer.value),
+                batch_number: props.inventory.batch_number,
+                barcode: props.inventory.barcode || null,
+                expiry_date: props.inventory.expiry_date || null,
+                uom: props.inventory.uom || null
+            });
     if (!selectedDestination.value || !quantityToTransfer.value) {
         toast.error('Please fill in all required fields');
         return;
@@ -74,12 +83,12 @@ const handleSubmit = async () => {
             destination_type: transferType.value,
             destination_id: selectedDestination.value.id,
             items: [{
-                inventory_id: props.inventory.id,
+                id: props.inventory.id,
                 product_id: props.inventory.product_id,
                 quantity: parseInt(quantityToTransfer.value),
                 batch_number: props.inventory.batch_number,
                 barcode: props.inventory.barcode || null,
-                expire_date: props.inventory.expiry_date || null,
+                expiry_date: props.inventory.expiry_date || null,
                 uom: props.inventory.uom || null
             }],
             notes: `Transferred ${quantityToTransfer.value} items to ${selectedDestination.value.name}`

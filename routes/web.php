@@ -98,12 +98,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::middleware(PermissionMiddleware::class.':settings.view')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     });
-    // Expired Routes
-    Route::controller(ExpiredController::class)
-        ->prefix('/expired')->group(function () {
-            Route::get('/', 'index')->name('expired.index');
-            Route::post('/dispose', 'markAsDisposed')->name('expired.dispose');
-        });
     
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
