@@ -203,9 +203,21 @@
                                             {{ formatDateTime(movement.created_at) }}
                                         </td>
                                     </tr>
-                                    <tr v-if="!movements.data || movements.data.length === 0">
-                                        <td colspan="9" class="px-3 py-8 text-center text-sm text-gray-500">
-                                            No inventory movements found
+                                    <tr v-if="movements.data.length === 0">
+                                        <td colspan="9" class="text-center text-gray-500 py-8">
+                                            <div class="flex flex-col items-center justify-center">
+                                                <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                                </svg>
+                                                <div v-if="!hasActiveFilters">
+                                                    <p class="text-lg font-medium text-gray-900 mb-2">Apply filters to view inventory movements</p>
+                                                    <p class="text-sm text-gray-600">Select items, movement types, dates, or other filters above to load movement data</p>
+                                                </div>
+                                                <div v-else>
+                                                    <p class="text-lg font-medium text-gray-900 mb-2">No movements found</p>
+                                                    <p class="text-sm text-gray-600">Try adjusting your filters to see more results</p>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -264,6 +276,15 @@ export default {
                 { label: 'Dispense', value: 'dispense' }
             ],
             isExporting: false
+        }
+    },
+    computed: {
+        hasActiveFilters() {
+            return this.filters.product_id.length > 0 ||
+                   this.filters.movement_type.length > 0 ||
+                   this.filters.source_type.length > 0 ||
+                   this.filters.start_date ||
+                   this.filters.end_date;
         }
     },
     mounted() {

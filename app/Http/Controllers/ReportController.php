@@ -832,41 +832,63 @@ class ReportController extends Controller
      */
     public function inventoryMovements(Request $request)
     {
-        $query = FacilityInventoryMovement::with([
-            'facility:id,name',
-            'product:id,name',
-            'createdBy:id,name'
-        ])->where('facility_id', auth()->user()->facility_id);
+        // Check if any filters are applied
+        $hasFilters = $request->filled('product_id') || 
+                     $request->filled('movement_type') || 
+                     $request->filled('source_type') || 
+                     $request->filled('start_date') || 
+                     $request->filled('end_date');
 
-        // Apply filters
-        if ($request->filled('product_id') && is_array($request->product_id)) {
-            $query->whereIn('product_id', $request->product_id);
+        // Initialize empty paginated result
+        $movements = new \Illuminate\Pagination\LengthAwarePaginator(
+            [],
+            0,
+            $request->get('per_page', 25),
+            1,
+            [
+                'path' => request()->url(),
+                'pageName' => 'page',
+            ]
+        );
+
+        // Only fetch data if filters are applied
+        if ($hasFilters) {
+            $query = FacilityInventoryMovement::with([
+                'facility:id,name',
+                'product:id,name',
+                'createdBy:id,name'
+            ])->where('facility_id', auth()->user()->facility_id);
+
+            // Apply filters
+            if ($request->filled('product_id') && is_array($request->product_id)) {
+                $query->whereIn('product_id', $request->product_id);
+            }
+
+            if ($request->filled('movement_type') && is_array($request->movement_type)) {
+                $query->whereIn('movement_type', $request->movement_type);
+            }
+
+            if ($request->filled('source_type') && is_array($request->source_type)) {
+                $query->whereIn('source_type', $request->source_type);
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('movement_date', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('movement_date', '<=', $request->end_date);
+            }
+
+            // Order by movement date descending
+            $query->orderBy('movement_date', 'desc');
+
+            // Get per page value, default to 25
+            $perPage = $request->get('per_page', 25);
+            $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 25;
+
+            $movements = $query->paginate($perPage)->withQueryString();
         }
-
-        if ($request->filled('movement_type') && is_array($request->movement_type)) {
-            $query->whereIn('movement_type', $request->movement_type);
-        }
-
-        if ($request->filled('source_type') && is_array($request->source_type)) {
-            $query->whereIn('source_type', $request->source_type);
-        }
-
-        if ($request->filled('start_date')) {
-            $query->whereDate('movement_date', '>=', $request->start_date);
-        }
-
-        if ($request->filled('end_date')) {
-            $query->whereDate('movement_date', '<=', $request->end_date);
-        }
-
-        // Order by movement date descending
-        $query->orderBy('movement_date', 'desc');
-
-        // Get per page value, default to 25
-        $perPage = $request->get('per_page', 25);
-        $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 25;
-
-        $movements = $query->paginate($perPage)->withQueryString();
 
         // Get products for filter options
         $products = Product::select('id', 'name')->orderBy('name')->get();
