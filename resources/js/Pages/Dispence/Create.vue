@@ -234,7 +234,7 @@ const form = ref({
         frequency: '',
         start_date: '',
         duration: '',
-        quantity: 0,
+        quantity: 1,
         max_quantity: null
     }]
 });

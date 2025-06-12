@@ -121,11 +121,13 @@ class DispenceController extends Controller
                     
                     $inventory->decrement('quantity', $quantityToDeduct);
                     $remainingQuantity -= $quantityToDeduct;
+
+                    $dispence['quantity'] = $quantityToDeduct;
                     
                     // Record facility inventory movement for this dispense item
                     $facilityInventoryMovementService->recordDispenseIssued(
                         $dispence,
-                        $quantityToDeduct,
+                        $dispenceItem,
                         auth()->user()->facility_id
                     );
                 }
