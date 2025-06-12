@@ -17,7 +17,8 @@ class GenerateMonthlyInventoryReport extends Command
                             {--facility= : Generate report for specific facility ID}
                             {--year= : Year for the report (default: current year)}
                             {--month= : Month for the report (default: current month)}
-                            {--force : Force regeneration of existing reports}';
+                            {--force : Force regeneration of existing reports}
+                            {--sync : Run synchronously instead of queuing}';
 
     /**
      * The console command description.
@@ -35,15 +36,23 @@ class GenerateMonthlyInventoryReport extends Command
         $year = (int) ($this->option('year') ?? now()->year);
         $month = (int) ($this->option('month') ?? now()->month);
         $force = $this->option('force');
+        $sync = $this->option('sync');
 
         try {
             // Create report period in YYYY-MM format
             $reportPeriod = sprintf('%04d-%02d', $year, $month);
             
-            // Dispatch job
-            GenerateMonthlyInventoryReportJob::dispatch($facilityId, $reportPeriod, $force);
-            logger()->info("✅ Job dispatched successfully for period: {$reportPeriod}");
-            $this->info("✅ Job dispatched successfully for period: {$reportPeriod}");
+            if ($sync) {
+                // Run synchronously for debugging
+                $job = new GenerateMonthlyInventoryReportJob($facilityId, $reportPeriod, $force);
+                $job->handle();
+                $this->info("✅ Job executed synchronously for period: {$reportPeriod}");
+            } else {
+                // Dispatch job
+                GenerateMonthlyInventoryReportJob::dispatch($facilityId, $reportPeriod, $force);
+                logger()->info("✅ Job dispatched successfully for period: {$reportPeriod}");
+                $this->info("✅ Job dispatched successfully for period: {$reportPeriod}");
+            }
         } catch (\Exception $e) {
             $this->error('❌ Error: ' . $e->getMessage());
             $this->error('📝 File: ' . $e->getFile());

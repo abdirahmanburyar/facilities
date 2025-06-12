@@ -108,7 +108,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Generate report for a facility
+     * Generate report for a specific facility
      */
     private function generateReportForFacility(Facility $facility): void
     {
@@ -120,23 +120,25 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
         ])->first();
 
         if ($existingReport && !$this->force) {
+            echo "Report already exists for facility {$facility->id} and period {$this->reportPeriod}, skipping\n";
             return;
         }
 
-        // Delete existing report if force is true
         if ($existingReport && $this->force) {
+            echo "Force mode: Deleting existing report for facility {$facility->id} and period {$this->reportPeriod}\n";
             $existingReport->items()->delete();
             $existingReport->delete();
         }
 
-        // Create new report
+        // Create the main report record
         $report = FacilityMonthlyReport::create([
             'facility_id' => $facility->id,
             'report_period' => $this->reportPeriod,
             'status' => 'draft',
+            'created_by' => 1, // System user ID for automated reports
         ]);
 
-        Log::info("Created new report {$report->id} for facility {$facility->id}");
+        echo "Created main report record for facility {$facility->id}, report ID: {$report->id}\n";
 
         // Generate report items
         $this->generateReportItems($facility, $report);
@@ -151,9 +153,20 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
         $startDate = Carbon::createFromFormat('Y-m', $this->reportPeriod)->startOfMonth();
         $endDate = Carbon::createFromFormat('Y-m', $this->reportPeriod)->endOfMonth();
 
-        Log::info("Date range: {$startDate} to {$endDate}");
+        echo "Generating report for facility {$facility->id} for period {$this->reportPeriod}\n";
+        echo "Date range: {$startDate} to {$endDate}\n";
 
-        // Get all aggregated movement data first (since GROUP BY conflicts with chunk)
+        // First, get all products that have current inventory at this facility
+        $inventoryProducts = DB::table('facility_inventories')
+            ->select('product_id')
+            ->where('facility_id', $facility->id)
+            ->where('quantity', '>', 0)
+            ->groupBy('product_id')
+            ->pluck('product_id');
+
+        echo "Found {$inventoryProducts->count()} products with current inventory\n";
+
+        // Get movement data for the reporting period
         $movementData = FacilityInventoryMovement::select([
                 'product_id',
                 DB::raw('SUM(COALESCE(facility_received_quantity, 0)) as total_received'),
@@ -165,29 +178,42 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
             ->groupBy('product_id')
             ->get();
 
+        echo "Found {$movementData->count()} products with movements in period\n";
+
+        // Get all unique products (from both inventory and movements)
+        $allProductIds = $inventoryProducts->merge($movementData->pluck('product_id'))->unique();
+        
+        echo "Total unique products to process: {$allProductIds->count()}\n";
+
+        // Create a lookup array for movements
+        $movementLookup = $movementData->keyBy('product_id');
+
         // Process in chunks to manage memory usage
         $chunkSize = 100;
         $totalProcessed = 0;
         $itemsCreated = 0;
 
-        // Use Laravel collection chunking instead of database chunking
-        $movementData->chunk($chunkSize)->each(function ($movementChunk, $chunkIndex) use ($facility, $report, &$totalProcessed, &$itemsCreated) {
+        // Process all products in chunks
+        $allProductIds->chunk($chunkSize)->each(function ($productChunk, $chunkIndex) use ($facility, $report, $movementLookup, &$totalProcessed, &$itemsCreated) {
 
-            foreach ($movementChunk as $movement) {
+            foreach ($productChunk as $productId) {
                 try {
-                    // Get product information (use select to minimize memory usage)
-                    $product = Product::select(['id', 'name'])->find($movement->product_id);
+                    // Get product information
+                    $product = Product::select(['id', 'name'])->find($productId);
                     if (!$product) {
-                        Log::warning("Product {$movement->product_id} not found, skipping");
+                        echo "Product {$productId} not found, skipping\n";
                         continue;
                     }
 
-                    // Calculate opening balance (closing balance from previous month or current inventory)
+                    // Get movement data for this product (if any)
+                    $movement = $movementLookup->get($productId);
+
+                    // Calculate opening balance
                     $openingBalance = $this->calculateOpeningBalance($facility, $product);
 
-                    // Get the aggregated quantities
-                    $stockReceived = (float) $movement->total_received;
-                    $stockIssued = (float) $movement->total_issued;
+                    // Get the aggregated quantities (default to 0 if no movements)
+                    $stockReceived = $movement ? (float) $movement->total_received : 0.0;
+                    $stockIssued = $movement ? (float) $movement->total_issued : 0.0;
 
                     // Set default adjustments (can be manually updated later)
                     $positiveAdjustments = 0.0;
@@ -196,8 +222,10 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                     // Calculate closing balance
                     $closingBalance = $openingBalance + $stockReceived - $stockIssued + $positiveAdjustments - $negativeAdjustments;
 
-                    // Calculate stockout days (simplified)
+                    // Calculate stockout days
                     $stockoutDays = $this->calculateStockoutDays($facility, $product);
+
+                    echo "Processing product {$product->id} ({$product->name}): Opening={$openingBalance}, Received={$stockReceived}, Issued={$stockIssued}, Closing={$closingBalance}\n";
 
                     // Create the report item
                     FacilityMonthlyReportItem::create([
@@ -215,26 +243,16 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                     $itemsCreated++;
                     $totalProcessed++;
 
-                    // Log progress every 50 items to avoid log spam
-                    if ($itemsCreated % 50 == 0) {
-                        Log::info("Created {$itemsCreated} report items for facility {$facility->id}");
-                    }
+                    echo "Created report item {$itemsCreated} for product {$product->name}\n";
 
                 } catch (\Exception $e) {
-                    Log::error("Error processing movement for product {$movement->product_id} in facility {$facility->id}: " . $e->getMessage());
-                    throw $e;
+                    echo "Error creating report item for product {$productId}: " . $e->getMessage() . "\n";
+                    continue;
                 }
             }
-
-            // Force garbage collection after each chunk to manage memory
-            if (function_exists('gc_collect_cycles')) {
-                gc_collect_cycles();
-            }
-
-            Log::info("Completed chunk " . ($chunkIndex + 1) . ": processed {$movementChunk->count()} products, created {$itemsCreated} items total");
         });
 
-        Log::info("Completed facility {$facility->id}: Created {$itemsCreated} items from movement data");
+        echo "Completed generating {$itemsCreated} report items for facility {$facility->id}\n";
     }
 
     /**
