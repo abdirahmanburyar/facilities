@@ -8,8 +8,6 @@
 
         <div class="p-2 mb-[80px]">
             <div class="mx-auto max-w-full">
-                {{ props.reports }}
-                
                 <!-- Facility Information Card -->
                 <div class="mb-6 bg-white shadow-sm rounded-lg">
                     <div class="p-4 border-b border-gray-200">
@@ -25,11 +23,7 @@
                             </div>
                             <div>
                                 <dt class="text-xs font-medium text-gray-500">Facility Type</dt>
-                                <dd class="text-xs text-gray-900">{{ facility?.type || 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-xs font-medium text-gray-500">Region</dt>
-                                <dd class="text-xs text-gray-900">{{ facility?.region || 'N/A' }}</dd>
+                                <dd class="text-xs text-gray-900">{{ facility?.facility_type || 'N/A' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs font-medium text-gray-500">District</dt>
@@ -71,77 +65,29 @@
                         <div class="mt-4 border-t pt-4">
                             <h4 class="text-xs font-medium text-gray-700 mb-3">Workflow History</h4>
                             <div class="space-y-2">
-                                <!-- Submitted Info -->
-                                <div v-if="props.reports.submitted_at" class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                <!-- Workflow History (LIFO - Most Recent First) -->
+                                <div 
+                                    v-for="(event, index) in workflowHistory" 
+                                    :key="index"
+                                    class="flex items-center text-xs"
+                                    :class="event.textColor"
+                                >
+                                    <svg class="w-4 h-4 mr-2" :class="event.iconColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="event.iconPath"></path>
                                     </svg>
-                                    <span class="font-medium">Submitted:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.submitted_at) }}</span>
-                                    <span v-if="props.reports.submitted_by" class="ml-1 text-blue-600">
-                                        by {{ props.reports.submitted_by?.name || 'Unknown User' }}
-                                    </span>
-                                </div>
-
-                                <!-- Reviewed Info -->
-                                <div v-if="props.reports.reviewed_at" class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                    <span class="font-medium">Reviewed:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.reviewed_at) }}</span>
-                                    <span v-if="props.reports.reviewed_by" class="ml-1 text-gray-600">
-                                        by {{ props.reports.reviewed_by?.name || 'Unknown User' }}
-                                    </span>
-                                </div>
-
-                                <!-- Approved Info -->
-                                <div v-if="props.reports.approved_at" class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span class="font-medium">Approved:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.approved_at) }}</span>
-                                    <span v-if="props.reports.approved_by" class="ml-1 text-green-600">
-                                        by {{ props.reports.approved_by?.name || 'Unknown User' }}
-                                    </span>
-                                </div>
-
-                                <!-- Rejected Info -->
-                                <div v-if="props.reports.rejected_at" class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span class="font-medium">Rejected:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.rejected_at) }}</span>
-                                    <span v-if="props.reports.rejected_by" class="ml-1 text-red-600">
-                                        by {{ props.reports.rejected_by?.name || 'Unknown User' }}
-                                    </span>
-                                    <div v-if="props.reports.rejection_reason" class="ml-6 mt-1 text-xs text-red-600 italic">
-                                        Reason: {{ props.reports.rejection_reason }}
+                                    <div class="flex-1">
+                                        <span class="font-medium">{{ event.label }}:</span>
+                                        <span class="ml-1">{{ formatDateTime(event.timestamp) }}</span>
+                                        <span v-if="event.user" class="ml-1" :class="event.userColor">
+                                            by {{ event.user }}
+                                        </span>
+                                        <div v-if="event.reason" class="ml-6 mt-1 text-xs text-red-600 italic">
+                                            Reason: {{ event.reason }}
+                                        </div>
                                     </div>
-                                </div>
-
-                                <!-- Reopened Info -->
-                                <div v-if="props.reports.reopened_at" class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                    <span class="font-medium">Reopened:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.reopened_at) }}</span>
-                                    <span v-if="props.reports.reopened_by" class="ml-1 text-yellow-600">
-                                        by {{ props.reports.reopened_by?.name || 'Unknown User' }}
+                                    <span class="ml-2 px-2 py-1 text-xs rounded-full" :class="event.badgeClass">
+                                        {{ event.status }}
                                     </span>
-                                </div>
-
-                                <!-- Created Info (always present) -->
-                                <div class="flex items-center text-xs text-gray-600">
-                                    <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                    <span class="font-medium">Created:</span>
-                                    <span class="ml-1">{{ formatDateTime(props.reports.created_at) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -357,6 +303,7 @@ import 'jspdf-autotable'
 import Swal from 'sweetalert2'
 import { useToast } from 'vue-toastification'
 import { router } from '@inertiajs/vue3'
+import { computed } from 'vue'
 
 const toast = useToast()
 
@@ -678,53 +625,191 @@ const goBack = () => {
 }
 
 const exportToPDF = () => {
-    // Create PDF document
     const { jsPDF } = window.jspdf
-    const doc = new jsPDF()
+    const doc = new jsPDF('landscape', 'mm', 'a4')
     
-    // Add title
-    doc.setFontSize(16)
-    doc.text('Monthly Inventory Report', 20, 20)
+    // Set up document properties
+    doc.setProperties({
+        title: `LMIS Monthly Report - ${props.facility?.name || 'Facility'}`,
+        subject: `Monthly Inventory Report for ${props.monthName} ${props.reportPeriod}`,
+        author: 'LMIS System',
+        creator: 'LMIS Monthly Report Generator'
+    })
+
+    let yPos = 20
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 15
+
+    // Header Section
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Monthly Inventory Report', pageWidth / 2, yPos, { align: 'center' })
+    yPos += 15
+
+    // Facility and Report Information
     doc.setFontSize(12)
-    doc.text(`${props.facility?.name || 'Facility'} - ${props.monthName || 'Month'} ${props.reportPeriod?.split('-')[0] || 'Year'}`, 20, 30)
-    
-    // Prepare table data
-    const tableData = props.reports.items.map(item => [
-        item.product?.name || item.product_name || '',
-        (item.opening_balance || 0).toString(),
-        (item.stock_received || 0).toString(),
-        (item.stock_issued || 0).toString(),
-        (item.positive_adjustments || 0).toString(),
-        (item.negative_adjustments || 0).toString(),
-        calculateClosingBalance(item).toString(),
-        (item.stockout_days || 0).toString()
-    ])
-    
-    // Add table
-    doc.autoTable({
-        startY: 40,
-        head: [['Product Name', 'Opening Balance', 'Stock Received', 'Stock Issued', 'Positive Adj.', 'Negative Adj.', 'Closing Balance', 'Stockout Days']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185] }, // Blue header
-        styles: { fontSize: 8, cellPadding: 2 },
-        columnStyles: {
-            0: { halign: 'left' },   // Product name
-            1: { halign: 'right' },  // Opening balance
-            2: { halign: 'right' },  // Stock received
-            3: { halign: 'right' },  // Stock issued
-            4: { halign: 'right' },  // Positive adj
-            5: { halign: 'right' },  // Negative adj
-            6: { halign: 'right' },  // Closing balance
-            7: { halign: 'right' }   // Stockout days
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Facility: ${props.facility?.name || 'Unknown Facility'}`, margin, yPos)
+    yPos += 8
+    doc.text(`Report Period: ${props.monthName} ${props.reportPeriod}`, margin, yPos)
+    yPos += 8
+    doc.text(`Status: ${props.reports.status?.toUpperCase() || 'UNKNOWN'}`, margin, yPos)
+    yPos += 8
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, yPos)
+    yPos += 15
+
+    // Workflow History Section
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Workflow History (Most Recent First)', margin, yPos)
+    yPos += 10
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    workflowHistory.value.forEach(event => {
+        if (yPos > 180) { // Check if we need a new page
+            doc.addPage()
+            yPos = 20
+        }
+        
+        const eventText = `${event.label}: ${formatDateTime(event.timestamp)}`
+        const userText = event.user ? ` by ${event.user}` : ''
+        doc.text(`• ${eventText}${userText}`, margin + 5, yPos)
+        yPos += 6
+        
+        if (event.reason) {
+            doc.setFont('helvetica', 'italic')
+            doc.text(`  Reason: ${event.reason}`, margin + 10, yPos)
+            doc.setFont('helvetica', 'normal')
+            yPos += 6
         }
     })
+    yPos += 10
+
+    // Summary Statistics
+    const totalItems = props.reports.items?.length || 0
+    const totalReceived = props.reports.items?.reduce((sum, item) => sum + (item.stock_received || 0), 0) || 0
+    const totalIssued = props.reports.items?.reduce((sum, item) => sum + (item.stock_issued || 0), 0) || 0
+    const totalClosing = props.reports.items?.reduce((sum, item) => sum + calculateClosingBalance(item), 0) || 0
+
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Summary Statistics', margin, yPos)
+    yPos += 8
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Total Items: ${totalItems.toLocaleString()}`, margin + 5, yPos)
+    yPos += 6
+    doc.text(`Total Stock Received: ${totalReceived.toLocaleString()}`, margin + 5, yPos)
+    yPos += 6
+    doc.text(`Total Stock Issued: ${totalIssued.toLocaleString()}`, margin + 5, yPos)
+    yPos += 6
+    doc.text(`Total Closing Balance: ${totalClosing.toLocaleString()}`, margin + 5, yPos)
+    yPos += 15
+
+    // Check if we need a new page for the table
+    if (yPos > 150) {
+        doc.addPage()
+        yPos = 20
+    }
+
+    // Data Table
+    if (props.reports.items && props.reports.items.length > 0) {
+        const tableData = props.reports.items.map((item, index) => {
+            const closingBalance = calculateClosingBalance(item)
+            const status = closingBalance <= 0 ? 'STOCKOUT' : closingBalance < 10 ? 'LOW STOCK' : 'IN STOCK'
+            
+            return [
+                item.product?.name || item.product_name || `Item ${index + 1}`,
+                (item.opening_balance || 0).toLocaleString(),
+                (item.stock_received || 0).toLocaleString(),
+                (item.stock_issued || 0).toLocaleString(),
+                (item.positive_adjustments || 0).toLocaleString(),
+                (item.negative_adjustments || 0).toLocaleString(),
+                closingBalance.toLocaleString(),
+                (item.stockout_days || 0).toString(),
+                status
+            ]
+        })
+
+        doc.autoTable({
+            head: [[
+                'Item / Dose Strength / Dosage Form',
+                'Opening Balance',
+                'Stock Received',
+                'Stock Issued',
+                'Positive Adj.',
+                'Negative Adj.',
+                'Closing Balance',
+                'Stockout Days',
+                'Status'
+            ]],
+            body: tableData,
+            startY: yPos,
+            margin: { left: margin, right: margin },
+            styles: {
+                fontSize: 8,
+                cellPadding: 3,
+                overflow: 'linebreak',
+                halign: 'center'
+            },
+            headStyles: {
+                fillColor: [52, 73, 94],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 9
+            },
+            columnStyles: {
+                0: { halign: 'left', cellWidth: 50 }, // Item name
+                1: { halign: 'right', cellWidth: 20 }, // Opening Balance
+                2: { halign: 'right', cellWidth: 20 }, // Stock Received
+                3: { halign: 'right', cellWidth: 20 }, // Stock Issued
+                4: { halign: 'right', cellWidth: 20 }, // Positive Adj.
+                5: { halign: 'right', cellWidth: 20 }, // Negative Adj.
+                6: { halign: 'right', cellWidth: 20 }, // Closing Balance
+                7: { halign: 'center', cellWidth: 18 }, // Stockout Days
+                8: { halign: 'center', cellWidth: 18 } // Status
+            },
+            alternateRowStyles: {
+                fillColor: [245, 245, 245]
+            },
+            didDrawCell: function(data) {
+                // Highlight stockout and low stock rows
+                if (data.column.index === 8 && data.cell.raw === 'STOCKOUT') {
+                    doc.setFillColor(252, 220, 220)
+                } else if (data.column.index === 8 && data.cell.raw === 'LOW STOCK') {
+                    doc.setFillColor(255, 248, 220)
+                }
+            }
+        })
+    } else {
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'italic')
+        doc.text('No inventory data available for this report period.', pageWidth / 2, yPos, { align: 'center' })
+    }
+
+    // Footer with generation info
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        const footerY = doc.internal.pageSize.getHeight() - 10
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Generated on ${new Date().toLocaleString()} | Page ${i} of ${pageCount}`, 
+                 pageWidth / 2, footerY, { align: 'center' })
+    }
+
+    // Generate enhanced filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 16).replace(/[:-]/g, '')
+    const facilityName = (props.facility?.name || 'Facility').replace(/[^a-zA-Z0-9]/g, '_')
+    const filename = `LMIS_Monthly_Report_${facilityName}_${props.reportPeriod}_${timestamp}.pdf`
     
-    // Save PDF
-    const filename = `Monthly_Inventory_Report_${props.facility?.name || 'Report'}_${props.reportPeriod || 'Unknown'}.pdf`
+    // Save the PDF
     doc.save(filename)
     
-    toast.success('PDF exported successfully!')
+    // Show success message
+    toast.success('PDF report exported successfully!')
 }
 
 const exportExcel = () => {
@@ -855,6 +940,95 @@ const reopenReport = async () => {
         }
     })
 }
+
+const workflowHistory = computed(() => {
+    const events = []
+
+    // Always add Created first (oldest event)
+    events.push({
+        label: 'Created',
+        timestamp: props.reports.created_at,
+        iconPath: 'M12 6v6m0 0v6m0-6h6m-6 0H6',
+        iconColor: 'text-gray-500',
+        textColor: 'text-gray-700',
+        badgeClass: 'bg-gray-200 text-gray-800',
+        status: 'Created'
+    })
+
+    if (props.reports.submitted_at) {
+        events.push({
+            label: 'Submitted',
+            timestamp: props.reports.submitted_at,
+            user: props.reports.submitted_by?.name || 'Unknown User',
+            iconPath: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
+            iconColor: 'text-blue-600',
+            textColor: 'text-blue-700',
+            badgeClass: 'bg-blue-200 text-blue-900',
+            status: 'Submitted',
+            userColor: 'text-blue-700'
+        })
+    }
+
+    if (props.reports.reviewed_at) {
+        events.push({
+            label: 'Reviewed',
+            timestamp: props.reports.reviewed_at,
+            user: props.reports.reviewed_by?.name || 'Unknown User',
+            iconPath: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+            iconColor: 'text-indigo-600',
+            textColor: 'text-indigo-700',
+            badgeClass: 'bg-indigo-200 text-indigo-900',
+            status: 'Reviewed',
+            userColor: 'text-indigo-700'
+        })
+    }
+
+    if (props.reports.approved_at) {
+        events.push({
+            label: 'Approved',
+            timestamp: props.reports.approved_at,
+            user: props.reports.approved_by?.name || 'Unknown User',
+            iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+            iconColor: 'text-green-600',
+            textColor: 'text-green-700',
+            badgeClass: 'bg-green-200 text-green-900',
+            status: 'Approved',
+            userColor: 'text-green-700'
+        })
+    }
+
+    if (props.reports.rejected_at) {
+        events.push({
+            label: 'Rejected',
+            timestamp: props.reports.rejected_at,
+            user: props.reports.rejected_by?.name || 'Unknown User',
+            reason: props.reports.rejection_reason,
+            iconPath: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+            iconColor: 'text-red-600',
+            textColor: 'text-red-700',
+            badgeClass: 'bg-red-200 text-red-900',
+            status: 'Rejected',
+            userColor: 'text-red-700'
+        })
+    }
+
+    if (props.reports.reopened_at) {
+        events.push({
+            label: 'Reopened',
+            timestamp: props.reports.reopened_at,
+            user: props.reports.reopened_by?.name || 'Unknown User',
+            iconPath: 'M11 5H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+            iconColor: 'text-yellow-600',
+            textColor: 'text-yellow-700',
+            badgeClass: 'bg-yellow-200 text-yellow-900',
+            status: 'Reopened',
+            userColor: 'text-yellow-700'
+        })
+    }
+
+    // Return in chronological order (oldest first - FIFO)
+    return events
+})
 </script>
 
 <style scoped>
