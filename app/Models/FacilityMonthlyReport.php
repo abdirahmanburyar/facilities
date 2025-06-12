@@ -19,14 +19,20 @@ class FacilityMonthlyReport extends Model
         'status',
         'comments',
         'submitted_at',
-        'approved_at',
         'submitted_by',
+        'reviewed_at',
+        'reviewed_by',
+        'approved_at',
         'approved_by',
+        'rejected_at',
+        'rejected_by'
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'reviewed_at' => 'datetime',
         'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     /**
@@ -38,11 +44,27 @@ class FacilityMonthlyReport extends Model
     }
 
     /**
+     * Get all report items for this report
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(FacilityMonthlyReportItem::class, 'parent_id');
+    }
+
+    /**
      * Get the user who submitted the report
      */
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    /**
+     * Get the user who reviewed the report
+     */
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     /**
@@ -54,11 +76,11 @@ class FacilityMonthlyReport extends Model
     }
 
     /**
-     * Get all report items for this report
+     * Get the user who rejected the report
      */
-    public function items(): HasMany
+    public function rejectedBy(): BelongsTo
     {
-        return $this->hasMany(FacilityMonthlyReportItem::class, 'parent_id');
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     /**

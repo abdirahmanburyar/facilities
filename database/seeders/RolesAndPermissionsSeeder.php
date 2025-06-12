@@ -41,6 +41,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'settings.delete',
         ];
 
+        $suppliesPermissions = [
+            'supplies.view',
+            'supplies.create',
+            'supplies.edit',
+            'supplies.delete',
+        ];
+
         // Create permissions for users
         $userPermissions = [
             'user.view',
@@ -54,6 +61,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'report.view',
             'report.create',
             'report.export',
+            'lmis.submit',
+            'lmis.generate',
+            'lmis.approve'
         ];
 
         // Create permissions for approvals
@@ -98,7 +108,8 @@ class RolesAndPermissionsSeeder extends Seeder
             $dosagePermissions,
             $productPermissions,
             $inventoryPermissions,
-            $settingsPermissions
+            $settingsPermissions,
+            $suppliesPermissions
         );
 
         // Create permissions if they don't exist

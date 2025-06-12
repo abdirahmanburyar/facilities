@@ -73,12 +73,13 @@ class ReportController extends Controller
 
         try {
             // Dispatch the job to generate the report
-            GenerateMonthlyInventoryReportJob::dispatch($facilityId, $year, $month, $force);
+            $reportPeriod = sprintf('%04d-%02d', $year, $month);
+            GenerateMonthlyInventoryReportJob::dispatch($facilityId, $reportPeriod, $force);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Monthly inventory report generation started. You will be notified when it\'s complete.',
-                'report_period' => sprintf('%04d-%02d', $year, $month)
+                'report_period' => $reportPeriod
             ]);
 
         } catch (\Exception $e) {
@@ -112,57 +113,29 @@ class ReportController extends Controller
         $reportPeriod = $request->report_period;
 
         // Get the report data using report_period field
-        $query = FacilityMonthlyReport::with(['facility', 'items.product'])
+        $query = FacilityMonthlyReport::with(['facility', 'items.product','approvedBy','reviewedBy','submittedBy','rejectedBy'])
             ->where('report_period', $reportPeriod)
-            ->where('facility_id', $facilityId);
+            ->where('facility_id', $facilityId)
+            ->first();
 
-        $reports = $query->get();
-
-        $reportData = [];
-        $noReportsFound = $reports->isEmpty();
-
-        if (!$noReportsFound) {
-            // Format the data for display
-            $reportData = $reports->map(function ($report) {
-                return [
-                    'id' => $report->id,
-                    'facility' => [
-                        'id' => $report->facility->id,
-                        'name' => $report->facility->name,
-                        'facility_type' => $report->facility->facility_type,
-                    ],
-                    'report_period' => $report->report_period,
-                    'status' => $report->status,
-                    'created_at' => $report->created_at,
-                    'updated_at' => $report->updated_at,
-                    'items' => $report->items->map(function ($item) {
-                        return [
-                            'id' => $item->id,
-                            'product_name' => $item->product->name,
-                            'unit' => $item->product->unit ?? 'Units',
-                            'opening_balance' => (float) $item->opening_balance,
-                            'stock_received' => (float) $item->stock_received,
-                            'stock_issued' => (float) $item->stock_issued,
-                            'positive_adjustments' => (float) $item->positive_adjustments,
-                            'negative_adjustments' => (float) $item->negative_adjustments,
-                            'closing_balance' => (float) $item->closing_balance,
-                            'stockout_days' => (int) $item->stockout_days,
-                        ];
-                    })->groupBy(function($item) {
-                        return 'ESSENTIAL MEDICINES'; // Simple grouping for now
-                    })
-                ];
-            });
+        if(!$query){
+            return redirect()->route('reports.monthly-inventory')
+                ->with('error', 'No report found for the specified period.');
         }
 
+        // Get user permissions
+        $user = auth()->user();
+        $canApprove = $user->can('lmis.approve');
+
         return Inertia::render('Reports/ViewMonthlyInventory', [
-            'reports' => $reportData,
+            'reports' => $query,
             'facility' => $currentFacility,
             'reportPeriod' => $reportPeriod,
             'monthName' => Carbon::createFromFormat('Y-m', $reportPeriod)->format('F Y'),
-            'isApproved' => !$noReportsFound && $reports->first()->status === 'approved',
-            'noReportsFound' => $noReportsFound,
-            'message' => $noReportsFound ? 'No reports found for the specified criteria. Please generate the report first.' : null
+            'isApproved' => $query->status === 'approved',
+            'noReportsFound' => false,
+            'message' => null,
+            'canApprove' => $canApprove
         ]);
     }
 
@@ -273,31 +246,133 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return redirect()->route('reports.monthly-inventory')
-                ->with('error', 'No facility assigned to your account.');
+            return response()->json([
+                'success' => false,
+                'message' => 'No facility assigned to your account.'
+            ], 403);
         }
 
         $facilityId = $currentFacility->id;
         $reportPeriod = $request->report_period;
 
-        $query = FacilityMonthlyReport::where('report_period', $reportPeriod)
-            ->where('facility_id', $facilityId);
+        try {
+            // Get the report with all relationships
+            $report = FacilityMonthlyReport::where('report_period', $reportPeriod)
+                ->where('facility_id', $facilityId)
+                ->with([
+                    'facility', 
+                    'submittedBy', 
+                    'reviewedBy',
+                    'approvedBy',
+                    'rejectedBy'
+                ])
+                ->first();
 
-        $reports = $query->get();
+            if (!$report) {
+                return response()->json([
+                    'success' => false,
+                    'exists' => false,
+                    'message' => 'Report not found for this period.'
+                ], 404);
+            }
 
-        return response()->json([
-            'reports_found' => $reports->count(),
-            'reports' => $reports->map(function ($report) {
-                return [
+            // Calculate summary statistics using database aggregations
+            $summaryStats = FacilityMonthlyReportItem::where('parent_id', $report->id)
+                ->selectRaw('
+                    COUNT(*) as total_items,
+                    COUNT(DISTINCT product_id) as total_products,
+                    COALESCE(SUM(opening_balance), 0) as total_opening_balance,
+                    COALESCE(SUM(closing_balance), 0) as total_closing_balance,
+                    COALESCE(SUM(stock_received), 0) as total_received,
+                    COALESCE(SUM(stock_issued), 0) as total_issued
+                ')
+                ->first();
+
+            // Get user permissions
+            $user = auth()->user();
+            $permissions = [
+                'can_submit' => $user->can('lmis.submit'),
+                'can_review' => $user->can('lmis.review'),
+                'can_approve' => $user->can('lmis.approve'),
+                'can_edit' => $user->can('lmis.edit'),
+            ];
+
+            // Build audit trail using relationships
+            $auditTrail = collect();
+            
+            if ($report->submitted_at && $report->submittedBy) {
+                $auditTrail->push([
+                    'action' => 'submitted',
+                    'timestamp' => $report->submitted_at->format('Y-m-d H:i:s'),
+                    'user' => $report->submittedBy->name,
+                    'status' => 'Submitted for Review'
+                ]);
+            }
+
+            if ($report->reviewed_at && $report->reviewedBy) {
+                $auditTrail->push([
+                    'action' => 'reviewed',
+                    'timestamp' => $report->reviewed_at->format('Y-m-d H:i:s'),
+                    'user' => $report->reviewedBy->name,
+                    'status' => 'Reviewed'
+                ]);
+            }
+
+            if ($report->approved_at && $report->approvedBy) {
+                $auditTrail->push([
+                    'action' => 'approved',
+                    'timestamp' => $report->approved_at->format('Y-m-d H:i:s'),
+                    'user' => $report->approvedBy->name,
+                    'status' => 'Approved'
+                ]);
+            }
+
+            if ($report->rejected_at && $report->rejectedBy) {
+                $auditTrail->push([
+                    'action' => 'rejected',
+                    'timestamp' => $report->rejected_at->format('Y-m-d H:i:s'),
+                    'user' => $report->rejectedBy->name,
+                    'status' => 'Rejected',
+                    'comments' => $report->comments
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'exists' => true,
+                'report' => [
+                    'id' => $report->id,
                     'facility_id' => $report->facility_id,
-                    'facility_name' => $report->facility->name,
+                    'report_period' => $report->report_period,
                     'status' => $report->status,
-                    'items_count' => $report->items()->count(),
+                    'comments' => $report->comments,
                     'created_at' => $report->created_at,
                     'updated_at' => $report->updated_at,
-                ];
-            })
-        ]);
+                ],
+                'summary' => [
+                    'total_items' => (int) $summaryStats->total_items,
+                    'total_products' => (int) $summaryStats->total_products,
+                    'total_opening_balance' => (float) $summaryStats->total_opening_balance,
+                    'total_closing_balance' => (float) $summaryStats->total_closing_balance,
+                    'total_received' => (float) $summaryStats->total_received,
+                    'total_issued' => (float) $summaryStats->total_issued,
+                ],
+                'audit_trail' => $auditTrail->sortBy('timestamp')->values(),
+                'facility' => [
+                    'id' => $report->facility->id,
+                    'name' => $report->facility->name,
+                    'facility_type' => $report->facility->facility_type,
+                ],
+                'permissions' => $permissions
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting report status: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while retrieving report status.'
+            ], 500);
+        }
     }
 
     /**
@@ -316,8 +391,10 @@ class ReportController extends Controller
         $currentFacility = auth()->user()->facility;
         
         if (!$currentFacility) {
-            return redirect()->route('reports.monthly-inventory')
-                ->with('error', 'No facility assigned to your account.');
+            return response()->json([
+                'success' => false,
+                'message' => 'No facility assigned to your account.'
+            ], 403);
         }
 
         // Find the report item and verify it belongs to user's facility
@@ -403,5 +480,348 @@ class ReportController extends Controller
             'message' => 'Report saved successfully.',
             'report' => $report
         ]);
+    }
+
+    /**
+     * Submit monthly report for review
+     */
+    public function submitMonthlyReport(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id',
+        ]);
+
+        // Get current user's facility
+        $currentFacility = auth()->user()->facility;
+        
+        if (!$currentFacility) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No facility assigned to your account.'
+            ], 403);
+        }
+
+        // Find the report and verify ownership
+        $report = FacilityMonthlyReport::where('id', $request->report_id)
+            ->where('facility_id', $currentFacility->id)
+            ->first();
+
+        if (!$report) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Report not found or access denied.'
+            ], 404);
+        }
+
+        // Check if report can be submitted
+        if ($report->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only draft reports can be submitted for review.'
+            ], 400);
+        }
+
+        // Update report status
+        $report->update([
+            'status' => 'submitted',
+            'submitted_at' => now(),
+            'submitted_by' => auth()->id()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Report submitted for review successfully.',
+            'report' => $report
+        ]);
+    }
+
+    /**
+     * Approve monthly report
+     */
+    public function approveMonthlyReport(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id'
+        ]);
+
+        try {
+            $report = FacilityMonthlyReport::where('id', $request->report_id)
+                ->where('facility_id', auth()->user()->facility_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Report not found or you do not have permission to access it.'
+                ], 404);
+            }
+
+            // Only allow approval from reviewed status
+            if ($report->status !== 'reviewed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Report must be reviewed before it can be approved.'
+                ], 400);
+            }
+
+            // Check permission
+            if (!auth()->user()->can('lmis.approve')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to approve reports.'
+                ], 403);
+            }
+
+            $report->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report approved successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error approving report: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while approving the report.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject monthly report
+     */
+    public function rejectMonthlyReport(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id',
+            'comments' => 'nullable|string|max:1000'
+        ]);
+
+        try {
+            $report = FacilityMonthlyReport::where('id', $request->report_id)
+                ->where('facility_id', auth()->user()->facility_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Report not found or you do not have permission to access it.'
+                ], 404);
+            }
+
+            // Allow rejection from submitted or reviewed status
+            if (!in_array($report->status, ['submitted', 'reviewed'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only submitted or reviewed reports can be rejected.'
+                ], 400);
+            }
+
+            // Check permission
+            if (!auth()->user()->can('lmis.approve')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to reject reports.'
+                ], 403);
+            }
+
+            $report->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'rejected_by' => auth()->id(),
+                'comments' => $request->comments,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report rejected successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error rejecting report: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while rejecting the report.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Return a monthly report to draft status
+     */
+    public function returnMonthlyReportToDraft(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id'
+        ]);
+
+        try {
+            $report = FacilityMonthlyReport::where('id', $request->report_id)
+                ->where('facility_id', auth()->user()->facility_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Report not found or you do not have permission to access it.'
+                ], 404);
+            }
+
+            if ($report->status !== 'submitted') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only submitted reports can be returned to draft.'
+                ], 400);
+            }
+
+            $report->update([
+                'status' => 'draft',
+                'submitted_at' => null,
+                'submitted_by' => null,
+                'reviewed_at' => now(),
+                'reviewed_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report has been returned to draft successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error returning report to draft: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while returning the report to draft.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Reopen an approved monthly report for editing
+     */
+    public function reopenMonthlyReport(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id'
+        ]);
+
+        try {
+            $report = FacilityMonthlyReport::where('id', $request->report_id)
+                ->where('facility_id', auth()->user()->facility_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Report not found or you do not have permission to access it.'
+                ], 404);
+            }
+
+            if ($report->status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only approved reports can be reopened.'
+                ], 400);
+            }
+
+            $report->update([
+                'status' => 'draft',
+                'approved_at' => null,
+                'approved_by' => null,
+                'reopened_at' => now(),
+                'reopened_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report has been reopened for editing successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error reopening report: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while reopening the report.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Start review of a monthly inventory report
+     */
+    public function startMonthlyReportReview(Request $request)
+    {
+        $request->validate([
+            'report_id' => 'required|integer|exists:facility_monthly_reports,id',
+        ]);
+
+        // Get current user's facility
+        $currentFacility = auth()->user()->facility;
+        
+        if (!$currentFacility) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No facility assigned to your account.'
+            ], 403);
+        }
+
+        // Find the report and verify it belongs to user's facility
+        $report = FacilityMonthlyReport::where('id', $request->report_id)
+            ->where('facility_id', $currentFacility->id)
+            ->first();
+
+        if (!$report) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Report not found or access denied.'
+            ], 404);
+        }
+
+        // Check if report is in submitted status
+        if ($report->status !== 'submitted') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Report must be in submitted status to start review.'
+            ], 400);
+        }
+
+        // // Check if user has review permission
+        // if (!auth()->user()->can('lmis.review')) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'You do not have permission to review reports.'
+        //     ], 403);
+        // }
+
+        try {
+            // Update report status to reviewed
+            $report->update([
+                'status' => 'reviewed',
+                'reviewed_at' => now(),
+                'reviewed_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report has been reviewed successfully.',
+                'report' => [
+                    'id' => $report->id,
+                    'status' => $report->status,
+                    'reviewed_at' => $report->reviewed_at,
+                    'reviewed_by' => $report->reviewed_by,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

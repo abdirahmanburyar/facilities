@@ -54,7 +54,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return "monthly-report-{$this->facilityId}-{$this->year}-{$this->month}";
+        return "monthly-report-{$this->facilityId}-{$this->reportPeriod}";
     }
 
     /**
@@ -63,21 +63,17 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
     public $uniqueFor = 7200; // 2 hours
 
     protected $facilityId;
-    protected $year;
-    protected $month;
     protected $reportPeriod;
     protected $force;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($facilityId = null, $year = null, $month = null, $force = false)
+    public function __construct($facilityId = null, $reportPeriod = null, $force = false)
     {
         $this->facilityId = $facilityId;
-        $this->year = $year ?? now()->year;
-        $this->month = $month ?? now()->month;
+        $this->reportPeriod = $reportPeriod ?? now()->format('Y-m');
         $this->force = $force;
-        $this->reportPeriod = $this->year . '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -87,23 +83,12 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
     {
         // Set memory limit for large datasets
         ini_set('memory_limit', '1024M');
-        
-        // Log job start with memory usage
-        Log::info("Starting monthly inventory report generation", [
-            'facility_id' => $this->facilityId,
-            'year' => $this->year,
-            'month' => $this->month,
-            'memory_usage' => memory_get_usage(true),
-            'job_id' => $this->job->getJobId() ?? 'sync'
-        ]);
 
         try {
             DB::transaction(function () {
                 $facilities = $this->facilityId ? 
                     Facility::where('id', $this->facilityId)->get() : 
                     Facility::where('is_active', true)->get();
-
-                Log::info("Processing {$facilities->count()} facilities for report generation");
 
                 foreach ($facilities as $facility) {
                     $this->generateReportForFacility($facility);
@@ -113,27 +98,10 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                         gc_collect_cycles();
                     }
                     
-                    // Log memory usage after each facility
-                    Log::info("Completed facility {$facility->id}, memory usage: " . memory_get_usage(true));
                 }
             });
             
-            Log::info("Monthly inventory report generation completed successfully", [
-                'facility_id' => $this->facilityId,
-                'year' => $this->year,
-                'month' => $this->month,
-                'peak_memory' => memory_get_peak_usage(true)
-            ]);
-            
         } catch (\Exception $e) {
-            Log::error("Monthly inventory report generation failed", [
-                'facility_id' => $this->facilityId,
-                'year' => $this->year,
-                'month' => $this->month,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'memory_usage' => memory_get_usage(true)
-            ]);
             
             throw $e;
         }
@@ -144,34 +112,33 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
      */
     private function generateReportForFacility(Facility $facility): void
     {
-        Log::info("Processing facility: {$facility->name} (ID: {$facility->id})");
-        
-        // Check if report already exists for this facility and period
+
+        // Check if report already exists
         $existingReport = FacilityMonthlyReport::where([
             'facility_id' => $facility->id,
             'report_period' => $this->reportPeriod,
         ])->first();
 
         if ($existingReport && !$this->force) {
-            Log::info("Report already exists for facility {$facility->id}, skipping");
             return;
         }
 
-        // Create or get the report header
-        if ($existingReport) {
-            $report = $existingReport;
-            Log::info("Deleting existing items for facility {$facility->id}");
-            $report->items()->delete();
-        } else {
-            Log::info("Creating new report for facility {$facility->id}");
-            $report = FacilityMonthlyReport::create([
-                'facility_id' => $facility->id,
-                'report_period' => $this->reportPeriod,
-                'status' => 'draft',
-            ]);
+        // Delete existing report if force is true
+        if ($existingReport && $this->force) {
+            $existingReport->items()->delete();
+            $existingReport->delete();
         }
 
-        // Generate report items from movement data
+        // Create new report
+        $report = FacilityMonthlyReport::create([
+            'facility_id' => $facility->id,
+            'report_period' => $this->reportPeriod,
+            'status' => 'draft',
+        ]);
+
+        Log::info("Created new report {$report->id} for facility {$facility->id}");
+
+        // Generate report items
         $this->generateReportItems($facility, $report);
     }
 
@@ -180,8 +147,6 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
      */
     private function generateReportItems(Facility $facility, FacilityMonthlyReport $report): void
     {
-        Log::info("Generating report items from movements for facility {$facility->id}");
-
         // Define the date range for the report month
         $startDate = Carbon::createFromFormat('Y-m', $this->reportPeriod)->startOfMonth();
         $endDate = Carbon::createFromFormat('Y-m', $this->reportPeriod)->endOfMonth();
@@ -200,8 +165,6 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
             ->groupBy('product_id')
             ->get();
 
-        Log::info("Found {$movementData->count()} products with movements for facility {$facility->id}");
-
         // Process in chunks to manage memory usage
         $chunkSize = 100;
         $totalProcessed = 0;
@@ -209,7 +172,6 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
 
         // Use Laravel collection chunking instead of database chunking
         $movementData->chunk($chunkSize)->each(function ($movementChunk, $chunkIndex) use ($facility, $report, &$totalProcessed, &$itemsCreated) {
-            Log::info("Processing chunk " . ($chunkIndex + 1) . " with {$movementChunk->count()} products for facility {$facility->id}");
 
             foreach ($movementChunk as $movement) {
                 try {
@@ -333,8 +295,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
     {
         Log::error("Monthly inventory report job failed permanently", [
             'facility_id' => $this->facilityId,
-            'year' => $this->year,
-            'month' => $this->month,
+            'report_period' => $this->reportPeriod,
             'exception' => $exception->getMessage(),
             'attempts' => $this->attempts(),
             'memory_usage' => memory_get_usage(true)
@@ -358,8 +319,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                 // Find and delete incomplete reports (reports without items)
                 $incompleteReports = FacilityMonthlyReport::where([
                     'facility_id' => $facility->id,
-                    'year' => $this->year,
-                    'month' => $this->month
+                    'report_period' => $this->reportPeriod
                 ])->whereDoesntHave('items')->get();
 
                 foreach ($incompleteReports as $report) {

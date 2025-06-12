@@ -258,6 +258,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             // Export Reports
             Route::get('/monthly-inventory/export/excel', 'exportMonthlyReportExcel')->name('monthly-inventory.export.excel');
             Route::get('/monthly-inventory/export/pdf', 'exportMonthlyReportPdf')->name('monthly-inventory.export.pdf');
+            
+            // Report Workflow Routes
+            Route::post('/monthly-inventory/submit', [ReportController::class, 'submitMonthlyReport'])->name('monthly-inventory.submit');
+            Route::post('/monthly-inventory/start-review', [ReportController::class, 'startMonthlyReportReview'])->name('monthly-inventory.start-review');
+            Route::post('/monthly-inventory/approve', [ReportController::class, 'approveMonthlyReport'])->name('monthly-inventory.approve');
+            Route::post('/monthly-inventory/reject', [ReportController::class, 'rejectMonthlyReport'])->name('monthly-inventory.reject');
+            Route::post('/monthly-inventory/return-to-draft', [ReportController::class, 'returnMonthlyReportToDraft'])->name('monthly-inventory.return-to-draft');
+            Route::post('/monthly-inventory/reopen', [ReportController::class, 'reopenMonthlyReport'])->name('monthly-inventory.reopen');
         });
 
     // Report Routes

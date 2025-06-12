@@ -37,10 +37,13 @@ class GenerateMonthlyInventoryReport extends Command
         $force = $this->option('force');
 
         try {
+            // Create report period in YYYY-MM format
+            $reportPeriod = sprintf('%04d-%02d', $year, $month);
+            
             // Dispatch job
-            GenerateMonthlyInventoryReportJob::dispatch($facilityId, $year, $month, $force);
-            logger()->info("✅ Job dispatched successfully");
-            $this->info("✅ Job dispatched successfully");
+            GenerateMonthlyInventoryReportJob::dispatch($facilityId, $reportPeriod, $force);
+            logger()->info("✅ Job dispatched successfully for period: {$reportPeriod}");
+            $this->info("✅ Job dispatched successfully for period: {$reportPeriod}");
         } catch (\Exception $e) {
             $this->error('❌ Error: ' . $e->getMessage());
             $this->error('📝 File: ' . $e->getFile());

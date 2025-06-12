@@ -17,19 +17,23 @@ return new class extends Migration
             $table->string('report_period', 7); // Format: YYYY-MM (e.g., 2025-06)
             
             // Report metadata
-            $table->enum('status', ['draft', 'submitted', 'approved'])->default('draft');
+            $table->enum('status', ['draft', 'submitted', 'reviewed', 'approved', 'rejected'])->default('draft');
             $table->text('comments')->nullable();
+            
+            // Workflow timestamps and user tracking
             $table->timestamp('submitted_at')->nullable();
-            $table->timestamp('approved_at')->nullable();
             $table->unsignedBigInteger('submitted_by')->nullable();
+            
+            $table->timestamp('reviewed_at')->nullable();
+            $table->unsignedBigInteger('reviewed_by')->nullable();
+            
+            $table->timestamp('approved_at')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
             
-            $table->timestamps();
+            $table->timestamp('rejected_at')->nullable();
+            $table->unsignedBigInteger('rejected_by')->nullable();
             
-            // Foreign keys
-            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
-            $table->foreign('submitted_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
+            $table->timestamps();
             
             // Unique constraint to prevent duplicate reports
             $table->unique(['facility_id', 'report_period'], 'unique_facility_report');
