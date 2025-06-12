@@ -75,7 +75,7 @@
                             </div>
                             
                             <p class="text-gray-600 text-sm mb-4">
-                                Track all inventory movements including receipts, issues, transfers, and dispensing activities with detailed audit trail.
+                                Track all inventory movements including quantity received and issued, transfers, and dispensing activities with detailed audit trail.
                             </p>
                             
                             <div class="flex items-center justify-between">
@@ -94,45 +94,7 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Stock Status Report -->
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                        <div class="p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-900">Stock Status Report</h3>
-                                    <p class="text-sm text-gray-600">Current Stock Levels</p>
-                                </div>
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm mb-4">
-                                Real-time view of current stock levels, low stock alerts, and stockout situations across all facilities.
-                            </p>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center text-sm text-gray-500">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                    </svg>
-                                    <span>Real-time</span>
-                                </div>
-                                <button
-                                    class="px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
-                                    disabled
-                                >
-                                    Coming Soon
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
+                    
                     <!-- Consumption Report -->
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
                         <div class="p-6">
