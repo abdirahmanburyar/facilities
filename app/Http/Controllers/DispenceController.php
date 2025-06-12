@@ -125,7 +125,7 @@ class DispenceController extends Controller
                     // Record facility inventory movement for this dispense item
                     $facilityInventoryMovementService->recordDispenseIssued(
                         $dispence,
-                        $item['quantityToDeduct'],
+                        $quantityToDeduct,
                         auth()->user()->facility_id
                     );
                 }
