@@ -19,7 +19,9 @@ class DispenceController extends Controller
             ->where('facility_id', auth()->user()->facility_id)
             ->when($request->search, function ($query) use ($request) {
                 $query->where('patient_name', 'like', '%' . $request->search . '%')
-                    ->orWhere('patient_phone', 'like', '%' . $request->search . '%');
+                    ->orWhere('patient_phone', 'like', '%' . $request->search . '%')
+                    ->orWhere('diagnosis', 'like', '%' . $request->search . '%')
+                    ->orWhere('dispence_number', 'like', '%' . $request->search . '%');
             })
             ->withCount('items')
             ->with('dispenced_by:id,name')
