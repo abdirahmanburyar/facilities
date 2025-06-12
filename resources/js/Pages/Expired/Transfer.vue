@@ -36,15 +36,6 @@ const destinations = computed(() => {
 const isSubmitting = ref(false);
 
 const handleSubmit = async () => {
-    console.log({
-                id: props.inventory.id,
-                product_id: props.inventory.product_id,
-                quantity: parseInt(quantityToTransfer.value),
-                batch_number: props.inventory.batch_number,
-                barcode: props.inventory.barcode || null,
-                expiry_date: props.inventory.expiry_date || null,
-                uom: props.inventory.uom || null
-            });
     if (!selectedDestination.value || !quantityToTransfer.value) {
         toast.error('Please fill in all required fields');
         return;
