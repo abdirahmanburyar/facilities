@@ -17,6 +17,7 @@ use App\Models\Supplier;
 use App\Models\FacilityBackorder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\TransferResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -166,10 +167,20 @@ class TransferController extends Controller
 
     public function index(Request $request)
     {
+        logger($request->all());
         // Start building the query
-        $query = Transfer::where('to_facility_id', auth()->user()->facility_id)
-        ->orWhere('from_facility_id', auth()->user()->facility_id)
-        ->with('toWarehouse', 'toWarehouse', 'toFacility', 'fromFacility', 'items')->withCount('items');
+        $year = Carbon::now()->year;
+
+        $query = Transfer::query();
+        
+        // Filter transfers for current user's facility (both to and from)
+        $query->where(function($q) use ($year) {
+            $q->whereYear('transfer_date', $year)
+            ->where('to_facility_id', auth()->user()->facility_id)
+            ->orWhere('from_facility_id', auth()->user()->facility_id);
+        });
+        
+        $query->with('toWarehouse', 'fromWarehouse', 'toFacility', 'fromFacility', 'items')->withCount('items');
         
         // Apply filters
         // Filter by tab/status
@@ -191,11 +202,20 @@ class TransferController extends Controller
             });
         }
         
-        // Filter by facility (supports multiple selections)
-        if ($request->has('facility_id') && !empty($request->facility_id)) {
-            $facilityIds = explode(',', $request->facility_id);
-            $query->where(function($q) use ($facilityIds) {
-                $q->whereIn('to_facility_id', $facilityIds);
+        // Filter by facility
+        if ($request->has('facility') && !empty($request->facility)) {
+            $query->whereHas('toFacility', function($q) use ($request) {
+                $q->where('name', $request->facility);
+            });
+        }
+
+        // Filter by warehouse
+        if ($request->has('warehouse') && !empty($request->warehouse)) {
+            $query->whereHas('toWarehouse', function($q) use ($request) {
+                $q->where('name', $request->warehouse);
+            })
+            ->orWhereHas('fromWarehouse', function($q) use ($request) {
+                $q->where('name', $request->warehouse);
             });
         }
                 
@@ -208,11 +228,12 @@ class TransferController extends Controller
             $query->whereDate('transfer_date', '<=', $request->date_to);
         }
         
-        // Execute the query
-        $transfers = $query->get();
+        $transfers = $query->paginate($request->input('per_page', 25), ['*'], 'page', $request->input('page', 1))
+            ->withQueryString();
+        $transfers->setPath(url()->current()); // Force Laravel to use full URLs
         
         // Get all transfers for statistics (unfiltered)
-        $allTransfers = Transfer::all();
+        $allTransfers = Transfer::whereYear('transfer_date', $year)->get();
         $total = $allTransfers->count();
         $approvedCount = $allTransfers->whereIn('status', ['approved', 'in_process', 'dispatched', 'transferred'])->count();
         $inProcessCount = $allTransfers->whereIn('status', ['in_process', 'dispatched'])->count();
@@ -249,15 +270,15 @@ class TransferController extends Controller
         ];
         
         // Get data for filter dropdowns
-        $facilities = Facility::select('id', 'name')->orderBy('name')->get();
-        $warehouses = Warehouse::select('id', 'name')->orderBy('name')->get();
+        $facilities = Facility::select('name')->orderBy('name')->pluck('name')->toArray();
+        $warehouses = Warehouse::select('name')->orderBy('name')->pluck('name')->toArray();
 
         return inertia('Transfer/Index', [
-            'transfers' => $transfers,
+            'transfers' => TransferResource::collection($transfers),
             'statistics' => $statistics,
             'facilities' => $facilities,
             'warehouses' => $warehouses,
-            'filters' => $request->only(['search', 'facility_id', 'warehouse_id', 'date_from', 'date_to', 'tab'])
+            'filters' => $request->only(['search', 'facility', 'warehouse', 'date_from', 'date_to', 'tab'])
         ]);
     }
 
