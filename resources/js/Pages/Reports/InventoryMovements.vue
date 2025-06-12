@@ -185,10 +185,10 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                            {{ movement.movement_type === 'facility_received' ? formatNumber(movement.quantity) : '-' }}
+                                            {{ movement.movement_type === 'facility_received' ? formatNumber(movement.facility_received_quantity) : '-' }}
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                            {{ movement.movement_type === 'facility_issued' ? formatNumber(movement.quantity) : '-' }}
+                                            {{ movement.movement_type === 'facility_issued' ? formatNumber(movement.facility_issued_quantity) : '-' }}
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                                             {{ movement.batch_number || '-' }}
@@ -212,83 +212,9 @@
                             </table>
                         </div>
 
-                        <!-- Pagination -->
-                        <div v-if="movements.data && movements.data.length > 0" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                            <div class="flex items-center justify-between">
-                                <div class="flex-1 flex justify-between sm:hidden">
-                                    <Link 
-                                        v-if="movements.prev_page_url"
-                                        :href="movements.prev_page_url" 
-                                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Previous
-                                    </Link>
-                                    <Link 
-                                        v-if="movements.next_page_url"
-                                        :href="movements.next_page_url" 
-                                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Next
-                                    </Link>
-                                </div>
-                                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                    <div>
-                                        <p class="text-sm text-gray-700">
-                                            Showing
-                                            <span class="font-medium">{{ movements.from || 0 }}</span>
-                                            to
-                                            <span class="font-medium">{{ movements.to || 0 }}</span>
-                                            of
-                                            <span class="font-medium">{{ movements.total || 0 }}</span>
-                                            results
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                            <Link 
-                                                v-if="movements.prev_page_url"
-                                                :href="movements.prev_page_url"
-                                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span class="sr-only">Previous</span>
-                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </Link>
-                                            
-                                            <template v-for="link in movements.links" :key="link.label">
-                                                <Link 
-                                                    v-if="link.url && !link.label.includes('Previous') && !link.label.includes('Next')"
-                                                    :href="link.url"
-                                                    :class="[
-                                                        'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
-                                                        link.active 
-                                                            ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' 
-                                                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                                    ]"
-                                                    v-html="link.label"
-                                                />
-                                                <span 
-                                                    v-else-if="!link.url && !link.label.includes('Previous') && !link.label.includes('Next')"
-                                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700"
-                                                    v-html="link.label"
-                                                />
-                                            </template>
-                                            
-                                            <Link 
-                                                v-if="movements.next_page_url"
-                                                :href="movements.next_page_url"
-                                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span class="sr-only">Next</span>
-                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </Link>
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- Pagination Controls -->
+                        <div class="mt-3 flex justify-end items-center">
+                            <TailwindPagination :data="movements" @pagination-change-page="goToPage" :meta="movements.meta" :limit="2" :links="movements.links" />
                         </div>
                     </div>
                 </div>
@@ -303,13 +229,15 @@ import { router } from '@inertiajs/vue3'
 import Multiselect from 'vue-multiselect'
 import 'vue-multiselect/dist/vue-multiselect.css'
 import '@/Components/multiselect.css'
+import { TailwindPagination } from "laravel-vue-pagination"
 
 export default {
     components: {
         AuthenticatedLayout,
         Head,
         Link,
-        Multiselect
+        Multiselect,
+        TailwindPagination
     },
     props: {
         movements: Object,
@@ -431,6 +359,22 @@ export default {
                 dispense: 'bg-orange-100 text-orange-800'
             }
             return classes[type] || 'bg-gray-100 text-gray-800'
+        },
+        goToPage(page) {
+            const filterData = {
+                product_id: this.filters.product_id.map(p => p.id || p),
+                movement_type: this.filters.movement_type.map(m => m.value || m),
+                source_type: this.filters.source_type.map(s => s.value || s),
+                start_date: this.filters.start_date,
+                end_date: this.filters.end_date,
+                per_page: this.filters.per_page,
+                page: page
+            }
+            
+            router.get(route('reports.inventory-movements'), filterData, {
+                preserveState: true,
+                preserveScroll: true
+            })
         }
     }
 }
