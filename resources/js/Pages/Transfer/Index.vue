@@ -1,313 +1,397 @@
 <template>
     <AuthenticatedLayout title="Optimize Your Transfers" description="Moving Supplies, Bridging needs"
         img="/assets/images/transfer.png">
-        <div class="mb-[100px]">
 
-            <!-- Header Section -->
-            <div class="flex flex-col mb-6">
-                <!-- Buttons First -->
-                <div class="flex items-center space-x-4 justify-end">
-                    <!-- New Transfer -->
-                    <button @click="router.visit(route('transfers.create'))"
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        New Transfer
-                    </button>
-                </div>
+        <!-- Header Section -->
+        <div class="flex flex-col space-y-6">
+            <!-- Buttons First -->
+            <div class="flex items-center justify-end">
+                <!-- New Transfer -->
+                <Link :href="route('transfers.create')"
+                    class="inline-flex items-center rounded-2xl px-4 py-2 border border-transparent text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    New Transfer
+                </Link>
+            </div>
 
-                <!-- Filters Second -->
-                <div class="flex items-center justify-between w-full">
+            <!-- Filters Section -->
+            <div class="mb-4">
+                <!-- First Row: Search, Facility, Warehouse -->
+                <div class="grid grid-cols-3 gap-4 mb-3">
                     <!-- Search -->
-                    <div class="relative flex-grow max-w-xs">
+                    <div class="relative">
                         <input type="text" v-model="filters.search"
-                            class="pl-10 pr-4 py-2 border border-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-2xl w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Search a Transfer">
-                    </div>
-
-                    <!-- Facility Selector -->
-                    <div class="relative w-[16%]">
-                        <div class="flex items-center">
-                            <Multiselect v-model="filters.selected_facility" :options="props.facilities"
-                                :searchable="true" :allow-empty="true" :show-labels="false"
-                                placeholder="All Facilities" label="name" track-by="id"
-                                class="pl-10 w-full" @input="updateFacilityFilter">
-                                <template #singleLabel="{ option }">
-                                    <span class="multiselect__single">
-                                        {{ option ? option.name : 'All Facilities' }}
-                                    </span>
-                                </template>
-                            </Multiselect>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                         </div>
                     </div>
 
-                    <!-- Warehouse Selector -->
-                    <div class="relative w-[16%]">
-                        <Multiselect v-model="filters.selected_warehouses" :options="props.warehouses"
-                            :multiple="true" :close-on-select="false" :clear-on-select="false"
-                            :preserve-search="true" placeholder="All Warehouses" label="name" track-by="id"
-                            class="pl-10 w-full" :preselect-first="false" @input="updateWarehouseFilter">
-                            <template #selection="{ values, search, isOpen }">
-                                <span class="multiselect__single" v-if="values.length && !isOpen">
-                                    {{ values.length === 1 ? values[0].name : `${values.length} warehouses selected`
-                                    }}
+                    <!-- Facility Selector -->
+                    <div>
+                        <Multiselect v-model="filters.selected_facility" :options="props.facilities" :searchable="true"
+                            :allow-empty="true" :show-labels="false" placeholder="All Facilities" label="name"
+                            track-by="id" class="rounded-2xl" @input="updateFacilityFilter">
+                            <template #singleLabel="{ option }">
+                                <span class="multiselect__single">
+                                    {{ option ? option.name : 'All Facilities' }}
                                 </span>
                             </template>
                         </Multiselect>
                     </div>
 
-                    <!-- Location Selector -->
-                    <div class="relative w-[16%]">
-                        <Multiselect v-model="filters.selected_locations" :options="props.locations"
-                            :multiple="true" :close-on-select="false" :clear-on-select="false"
-                            :preserve-search="true" placeholder="All Locations" label="location" track-by="id"
-                            class="pl-10 w-full" :preselect-first="false" @input="updateLocationFilter">
+                    <!-- Warehouse Selector -->
+                    <div>
+                        <Multiselect v-model="filters.selected_warehouses" :options="props.warehouses" :multiple="true"
+                            :close-on-select="false" :clear-on-select="false" :preserve-search="true" 
+                            placeholder="All Warehouses" label="name" track-by="id" class="rounded-2xl" 
+                            :preselect-first="false" @input="updateWarehouseFilter">
                             <template #selection="{ values, search, isOpen }">
-                                    <span class="multiselect__single" v-if="values.length && !isOpen">
-                                        {{ values.length === 1 ? values[0].location : `${values.length} locations
-                                        selected` }}
-                                    </span>
-                                </template>
-                            </Multiselect>
-                    </div>
-
-                    <!-- Date Range Selector -->
-                    <div class="flex items-center space-x-2 w-[30%]">
-                        <div class="relative flex-1">
-                            <input type="date" v-model="filters.date_from"
-                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </div>
-                        <span class="text-gray-500 mx-1">to</span>
-                        <div class="relative flex-1">
-                            <input type="date" v-model="filters.date_to"
-                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </div>
+                                <span class="multiselect__single" v-if="values.length && !isOpen">
+                                    {{ values.length === 1 ? values[0].name : `${values.length} warehouses selected` }}
+                                </span>
+                            </template>
+                        </Multiselect>
                     </div>
                 </div>
 
-                <!-- Status Tabs -->
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8">
-                        <button v-for="tab in statusTabs" :key="tab.value" @click="currentTab = tab.value"
-                            class="whitespace-nowrap py-4 px-3 border-b-4 font-bold text-sm" :class="[
-                                currentTab === tab.value ?
-                                    'border-green-500 text-green-600' :
-                                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            ]">
-                            {{ tab.label }}
-                        </button>
-                    </nav>
+                <!-- Second Row: Date Filters and Per Page -->
+                <div class="flex items-center justify-between">
+                    <div class="flex space-x-4">
+                        <!-- From Date -->
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                            <input type="date" v-model="filters.date_from"
+                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="From Date">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style="top: 24px;">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                            <input type="date" v-model="filters.date_to"
+                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="To Date">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style="top: 24px;">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Per Page Selector -->
+                    <div style="width: 200px;">
+                        <select class="rounded-3xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-full" 
+                            v-model="filters.per_page">
+                            <option value="10">10 per page</option>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <!-- Main Content -->
-            <div class="grid grid-cols-12 gap-2">
-                <!-- Table Section (9 cols) -->
-                <div class="col-span-9">
-                    <div class="shadow overflow-auto max-w-full">
-                        <table class="min-w-full border border-black border-collapse">
-                            <thead class="bg-gray-50 border-b border-black">
-                                <tr>
-                                    <th scope="col"
-                                        class="text-left text-xs font-medium text-gray-500 uppercase border border-black p-2">
-                                        Transfer ID
-                                    </th>
-                                    <th scope="col"
-                                        class="text-left text-xs font-medium text-gray-500 uppercase border border-black p-2">
-                                        Transfer Date
-                                    </th>
-                                    <th scope="col"
-                                        class="text-left text-xs font-medium text-gray-500 uppercase border border-black p-2">
-                                        Transferred To
-                                    </th>
-                                    <th scope="col"
-                                        class="text-left text-xs font-medium text-gray-500 uppercase border border-black p-2">
-                                        Number of Items
-                                    </th>
-                                    <th scope="col"
-                                        class="min-w-[300px] text-left text-xs font-medium text-gray-500 uppercase border border-black p-2">
-                                        Current Status
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="border-b border-black">
-                                <tr v-if="filteredTransfers.length === 0">
-                                    <td colspan="7" class="text-center text-gray-500 border border-black p-2">
-                                        <div class="flex flex-col items-center justify-center">
-                                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                            </svg>
-                                            <p class="mt-2 text-lg font-medium">No transfer data available</p>
-                                            <p class="mt-1 text-sm">Create a new transfer or adjust your filters to see results</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr v-for="transfer in filteredTransfers" :key="transfer.id" class="hover:bg-gray-50 border-b border-black">
-                                    <td class="whitespace-nowrap text-sm font-medium text-gray-900 border border-black p-2">
-                                        <Link :href="route('transfers.show', transfer.id)">
-                                        {{ transfer.transferID }}
-                                        </Link>
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500 border border-black p-2">
-                                        {{ new Date(transfer.transfer_date).toLocaleDateString() }}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500 border border-black p-2">
-                                        {{ transfer.to_warehouse?.name || transfer.to_facility?.name }}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500 border border-black p-2">
-                                        {{ transfer.items_count }}
-                                    </td>
-                                    <td class="text-sm text-gray-500 text-left border border-black p-2">
+            <!-- Status Tabs -->
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button v-for="tab in statusTabs" :key="tab.value" @click="currentTab = tab.value"
+                        class="whitespace-nowrap py-4 px-3 border-b-4 font-bold text-xs" :class="[
+                            currentTab === tab.value ?
+                                'border-green-500 text-green-600' :
+                                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ]">
+                        {{ tab.label }}
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-12 gap-1 mb-[40px]">
+            <!-- Table Section (9 cols) -->
+            <div class="md:col-span-9 sm:col-span-12">
+                <div class="max-w-full overflow-auto">
+                    <table class="min-w-full rounded-3xl">
+                        <thead style="background-color: #EEF1F8;">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Transfer ID
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Date
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    To
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Items
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Status
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="">
+                            <tr v-if="filteredTransfers.length === 0">
+                                <td colspan="5" class="text-center text-gray-500 py-4">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                            </path>
+                                        </svg>
+                                        <p class="mt-2 text-xs font-medium">No transfer data available</p>
+                                        <p class="mt-1 text-xs">Create a new transfer or adjust your filters to see results</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-for="transfer in filteredTransfers" :key="transfer.id"
+                                class="hover:bg-gray-50 border-b border-gray-200">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                    <Link :href="route('transfers.show', transfer.id)" class="hover:underline">
+                                    {{ transfer.transferID }}
+                                    </Link>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                    {{ new Date(transfer.transfer_date).toLocaleDateString() }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                    {{ transfer.to_warehouse?.name || transfer.to_facility?.name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                    {{ transfer.items_count }}
+                                </td>
+                                <td class="px-6 py-4 text-xs text-gray-500">
+                                    <div class="flex items-center gap-2">
+                                        <!-- Status Progress Icons - Only show actions taken -->
                                         <div class="flex items-center gap-2">
-                                            <!-- Status Progress Icons - Only show actions taken -->
-                                            <div class="flex items-center gap-2">
-                                                <!-- Show status progression up to current status - icons with labels -->
-                                                <!-- Always show pending as it's the initial state -->
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending" title="Pending" />
-                                                </div>
-                                                
-                                                <!-- Show approved if status is approved or further -->
-                                                <template v-if="['approved', 'in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/approved.png" class="w-8 h-8" alt="Approved" title="Approved" />
-                                                    </div>
-                                                </template>
-                                                
-                                                <!-- Show processed if status is in_process or further -->
-                                                <template v-if="['in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/inprocess.png" class="w-8 h-8" alt="Processed" title="Processed" />
-                                                    </div>
-                                                </template>
-                                                
-                                                <!-- Show dispatched if status is dispatched or further -->
-                                                <template v-if="['dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/dispatch.png" class="w-8 h-8" alt="Dispatched" title="Dispatched" />
-                                                    </div>
-                                                </template>
-                                                
-                                                <!-- Transfer icon removed as requested -->
-                                                
-                                                <!-- Show received if status is received -->
-                                                <template v-if="['received'].includes(transfer.status?.toLowerCase())">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/received.png" class="w-8 h-8" alt="Received" title="Received" />
-                                                    </div>
-                                                </template>
-                                                
-                                                <!-- Show rejected if status is rejected (special case) -->
-                                                <template v-if="transfer.status?.toLowerCase() === 'rejected'">
-                                                    <div class="flex items-center gap-1">
-                                                        <img src="/assets/images/rejected.png" class="w-8 h-8" alt="Rejected" title="Rejected" />
-                                                    </div>
-                                                </template>
+                                            <!-- Show status progression up to current status - icons with labels -->
+                                            <!-- Always show pending as it's the initial state -->
+                                            <div class="flex items-center gap-1">
+                                                <img src="/assets/images/pending.png" class="w-6 h-6" alt="Pending"
+                                                    title="Pending" />
                                             </div>
+
+                                            <!-- Show approved if status is approved or further -->
+                                            <template
+                                                v-if="['approved', 'in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/approved.png" class="w-6 h-6"
+                                                        alt="Approved" title="Approved" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show processed if status is in_process or further -->
+                                            <template
+                                                v-if="['in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/inprocess.png" class="w-6 h-6"
+                                                        alt="Processed" title="Processed" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show dispatched if status is dispatched or further -->
+                                            <template
+                                                v-if="['dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/dispatch.png" class="w-6 h-6"
+                                                        alt="Dispatched" title="Dispatched" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show received if status is received -->
+                                            <template v-if="['received'].includes(transfer.status?.toLowerCase())">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/received.png" class="w-6 h-6"
+                                                        alt="Received" title="Received" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show rejected if status is rejected (special case) -->
+                                            <template v-if="transfer.status?.toLowerCase() === 'rejected'">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/rejected.png" class="w-6 h-6"
+                                                        alt="Rejected" title="Rejected" />
+                                                </div>
+                                            </template>
                                         </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Statistics Section (3 cols) -->
-                <div class="col-span-3 p-6">
-                    <div class="flex justify-between gap-2">
+                <!-- Pagination Controls -->
+                <div class="flex justify-between items-center px-6 py-3 bg-gray-50 border-t border-gray-200" v-if="filteredTransfers.length > 0">
+                    <div class="text-xs text-gray-700">
+                        Showing {{ (currentPage - 1) * filters.per_page + 1 }} to 
+                        {{ Math.min(currentPage * filters.per_page, filteredTransfers.length) }} 
+                        of {{ filteredTransfers.length }} results
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <!-- Previous Button -->
+                        <button v-if="currentPage > 1" @click="previousPage"
+                            class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700 rounded">
+                            Previous
+                        </button>
+                        
+                        <!-- Page Numbers -->
+                        <div class="flex space-x-1">
+                            <template v-for="page in visiblePages" :key="page">
+                                <button v-if="page !== '...'" @click="goToPage(page)"
+                                    :class="[
+                                        'px-3 py-2 text-sm font-medium border rounded',
+                                        page === currentPage 
+                                            ? 'bg-blue-600 text-white border-blue-600' 
+                                            : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+                                    ]">
+                                    {{ page }}
+                                </button>
+                                <span v-else class="px-3 py-2 text-sm text-gray-500">...</span>
+                            </template>
+                        </div>
+                        
+                        <!-- Next Button -->
+                        <button v-if="currentPage < totalPages" @click="nextPage"
+                            class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700 rounded">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Section (3 cols) -->
+            <div class="md:col-span-3 sm:col-span-12">
+                <div class="bg-white mb-4">
+                    <h3 class="text-xs text-black mb-4">Transfer Statistics</h3>
+                    <div class="flex justify-between gap-3">
                         <!-- Pending -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-14 bg-amber-50 rounded-2xl relative overflow-hidden px-2 shadow-md">
-                                <img src="/assets/images/pending_small.png" class="h-10 w-10 object-contain" alt="Pending" />
+                            <div class="h-[250px] w-8 bg-amber-50 rounded-2xl relative overflow-hidden shadow-md">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/pending_small.png" class="h-6 w-6 object-contain"
+                                        alt="Pending" />
+                                </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
-                                    :style="{ height: props.statistics.pending.percentage + '%' }">
+                                    :style="{ height: (props.statistics?.pending?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
-                                        {{ props.statistics.pending.percentage }}%
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ props.statistics?.pending?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Pending</span>
+                            <div class="mt-3 text-center">
+                                <span class="font-medium text-gray-900"
+                                    style="font-size: 10px; font-weight: bold">Pending</span>
+                            </div>
                         </div>
 
                         <!-- Approved -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-14 bg-blue-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
-                                <img src="/assets/images/approved_small.png" class="h-10 w-10 object-contain" alt="Approved" />
+                            <div class="h-[250px] w-8 bg-blue-50 rounded-2xl relative overflow-hidden shadow-md">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/approved_small.png" class="h-6 w-6 object-contain"
+                                        alt="Approved" />
+                                </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
-                                    :style="{ height: props.statistics.approved.percentage + '%' }">
+                                    :style="{ height: (props.statistics?.approved?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
-                                        {{ props.statistics.approved.percentage }}%
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ props.statistics?.approved?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Approved</span>
+                            <div class="mt-3 text-center">
+                                <span class="font-medium text-gray-900"
+                                    style="font-size: 10px; font-weight: bold">Approved</span>
+                            </div>
                         </div>
 
                         <!-- In Process -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-14 bg-slate-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
-                                <img src="/assets/images/inprocess.png" class="h-10 w-10 object-contain" alt="In Process" />
-                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-500 transition-all duration-500"
-                                    :style="{ height: props.statistics.in_process.percentage + '%' }">
+                            <div class="h-[250px] w-8 bg-slate-50 rounded-2xl relative overflow-hidden shadow-md">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/inprocess.png" class="h-6 w-6 object-contain"
+                                        alt="In Process" />
+                                </div>
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-400 transition-all duration-500"
+                                    :style="{ height: (props.statistics?.in_process?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
-                                        {{ props.statistics.in_process.percentage }}%
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ props.statistics?.in_process?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">In Process</span>
+                            <div class="mt-3 text-center">
+                                <span class="font-medium text-gray-900" style="font-size: 10px; font-weight: bold">In
+                                    Process</span>
+                            </div>
                         </div>
 
                         <!-- Dispatched -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-14 bg-purple-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
-                                <img src="/assets/images/dispatch.png" class="h-10 w-10 object-contain" alt="Dispatched" />
+                            <div class="h-[250px] w-8 bg-purple-50 rounded-2xl relative overflow-hidden shadow-md">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/dispatch.png" class="h-6 w-6 object-contain"
+                                        alt="Dispatched" />
+                                </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics.dispatched?.percentage || 0) + '%' }">
+                                    :style="{ height: (props.statistics?.transferred?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
-                                        {{ props.statistics.dispatched?.percentage || 0 }}%
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ props.statistics?.transferred?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Dispatched</span>
+                            <div class="mt-3 text-center">
+                                <span class="font-medium text-gray-900"
+                                    style="font-size: 10px; font-weight: bold">Dispatched</span>
+                            </div>
                         </div>
 
                         <!-- Received -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[350px] w-14 bg-emerald-100 rounded-2xl relative overflow-hidden px-2 shadow-md">
-                                <img src="/assets/images/received.png" class="h-10 w-10 object-contain" alt="Received" />
+                            <div class="h-[250px] w-8 bg-emerald-50 rounded-2xl relative overflow-hidden shadow-md">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/received.png" class="h-6 w-6 object-contain"
+                                        alt="Received" />
+                                </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics.received?.percentage || 0) + '%' }">
+                                    :style="{ height: (props.statistics?.received?.percentage || 0) + '%' }">
                                     <div
-                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-white font-bold text-sm tracking-wide">
-                                        {{ props.statistics.received?.percentage || 0 }}%
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ props.statistics?.received?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
-                            <span class="mt-2 text-xs font-medium text-gray-900">Received</span>
+                            <div class="mt-3 text-center">
+                                <span class="font-medium text-gray-900"
+                                    style="font-size: 10px; font-weight: bold">Received</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -340,6 +424,7 @@ const props = defineProps({
             pending: { count: 0, percentage: 0 },
             in_process: { count: 0, percentage: 0 },
             transferred: { count: 0, percentage: 0 },
+            received: { count: 0, percentage: 0 },
             rejected: { count: 0, percentage: 0 }
         })
     },
@@ -348,10 +433,6 @@ const props = defineProps({
         default: () => []
     },
     warehouses: {
-        type: Array,
-        default: () => []
-    },
-    locations: {
         type: Array,
         default: () => []
     }
@@ -366,7 +447,7 @@ const filters = ref({
     ...props.filters,
     selected_facility: null,
     selected_warehouses: [],
-    selected_locations: []
+    per_page: 10
 });
 
 // Initialize multiselect values if filters exist
@@ -385,11 +466,9 @@ onMounted(() => {
             warehouseIds.includes(warehouse.id.toString()));
     }
 
-    // Initialize location filter
-    if (props.filters && props.filters.location_id) {
-        const locationIds = props.filters.location_id.toString().split(',');
-        filters.value.selected_locations = props.locations.filter(location =>
-            locationIds.includes(location.id.toString()));
+    // Initialize per page filter
+    if (props.filters && props.filters.per_page) {
+        filters.value.per_page = props.filters.per_page;
     }
 });
 
@@ -410,9 +489,9 @@ const updateFacilityFilter = () => {
     if (filters.value.search) params.search = filters.value.search;
     if (filters.value.facility_id) params.facility_id = filters.value.facility_id;
     if (filters.value.warehouse_id) params.warehouse_id = filters.value.warehouse_id;
-    if (filters.value.location_id) params.location_id = filters.value.location_id;
     if (filters.value.date_from) params.date_from = filters.value.date_from;
     if (filters.value.date_to) params.date_to = filters.value.date_to;
+    if (filters.value.per_page) params.per_page = filters.value.per_page;
     
     // Include tab if not 'all'
     if (currentTab.value !== 'all') params.tab = currentTab.value;
@@ -438,14 +517,6 @@ const updateWarehouseFilter = () => {
     }
 };
 
-const updateLocationFilter = () => {
-    if (filters.value.selected_locations && filters.value.selected_locations.length > 0) {
-        filters.value.location_id = filters.value.selected_locations.map(l => l.id).join(',');
-    } else {
-        filters.value.location_id = '';
-    }
-};
-
 // Watch for filter changes and update URL
 watch(filters, (newFilters) => {
     // Create a params object with only non-empty values
@@ -455,9 +526,9 @@ watch(filters, (newFilters) => {
     if (newFilters.search) params.search = newFilters.search;
     if (newFilters.facility_id) params.facility_id = newFilters.facility_id;
     if (newFilters.warehouse_id) params.warehouse_id = newFilters.warehouse_id;
-    if (newFilters.location_id) params.location_id = newFilters.location_id;
     if (newFilters.date_from) params.date_from = newFilters.date_from;
     if (newFilters.date_to) params.date_to = newFilters.date_to;
+    if (newFilters.per_page) params.per_page = newFilters.per_page;
     
     // Only include the tab parameter if it's not 'all'
     if (currentTab.value !== 'all') params.tab = currentTab.value;
@@ -483,9 +554,9 @@ watch(currentTab, (newTab) => {
     if (filters.value.search) params.search = filters.value.search;
     if (filters.value.facility_id) params.facility_id = filters.value.facility_id;
     if (filters.value.warehouse_id) params.warehouse_id = filters.value.warehouse_id;
-    if (filters.value.location_id) params.location_id = filters.value.location_id;
     if (filters.value.date_from) params.date_from = filters.value.date_from;
     if (filters.value.date_to) params.date_to = filters.value.date_to;
+    if (filters.value.per_page) params.per_page = filters.value.per_page;
     
     // Only add tab if it's not 'all'
     if (newTab !== 'all') params.tab = newTab;
@@ -513,66 +584,89 @@ const statusTabs = [
     { value: 'rejected', label: 'Rejected', color: 'red' },
 ];
 
-const filteredTransfers = computed(() => {
-    // Start with all transfers - no facility-based filtering
-    let filtered = props.transfers;
+const currentPage = ref(1);
+
+const totalPages = computed(() => {
+    return Math.ceil(filteredTransfers.value.length / filters.value.per_page);
+});
+
+const visiblePages = computed(() => {
+    const total = totalPages.value;
+    const current = currentPage.value;
+    const pages = [];
     
-    // Only filter by tab if not 'all'
+    if (total <= 7) {
+        for (let i = 1; i <= total; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (current <= 4) {
+            for (let i = 1; i <= 5; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(total);
+        } else if (current >= total - 3) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = total - 4; i <= total; i++) {
+                pages.push(i);
+            }
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = current - 1; i <= current + 1; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(total);
+        }
+    }
+    
+    return pages;
+});
+
+// Watch for changes that should reset pagination
+watch([() => filters.value.search, () => filters.value.facility_id, () => filters.value.warehouse_id, 
+       () => filters.value.date_from, () => filters.value.date_to, () => currentTab.value], () => {
+    currentPage.value = 1;
+});
+
+const filteredTransfers = computed(() => {
+    let filtered = props.transfers;
+
     if (currentTab.value !== 'all') {
-        filtered = filtered.filter(transfer => {
-            const status = transfer.status?.toLowerCase() || '';
-            return status === currentTab.value;
-        });
+        filtered = filtered.filter(transfer => transfer.status?.toLowerCase() === currentTab.value);
     }
 
-    // Apply search filter
     if (filters.value.search) {
         const searchTerm = filters.value.search.toLowerCase();
-        filtered = filtered.filter(transfer => {
-            return (
-                transfer.transferID?.toLowerCase().includes(searchTerm) ||
-                transfer.fromFacility?.name?.toLowerCase().includes(searchTerm) ||
-                transfer.toFacility?.name?.toLowerCase().includes(searchTerm) ||
-                transfer.fromWarehouse?.name?.toLowerCase().includes(searchTerm) ||
-                transfer.toWarehouse?.name?.toLowerCase().includes(searchTerm)
-            );
-        });
+        filtered = filtered.filter(transfer => 
+            transfer.transferID?.toLowerCase().includes(searchTerm) ||
+            transfer.from_facility?.name?.toLowerCase().includes(searchTerm) ||
+            transfer.to_facility?.name?.toLowerCase().includes(searchTerm) ||
+            transfer.from_warehouse?.name?.toLowerCase().includes(searchTerm) ||
+            transfer.to_warehouse?.name?.toLowerCase().includes(searchTerm)
+        );
     }
 
-    // Apply facility filter (supports multiple selections)
     if (filters.value.facility_id) {
         const facilityIds = filters.value.facility_id.split(',').map(id => parseInt(id));
         filtered = filtered.filter(transfer => {
-            return (
-                facilityIds.includes(transfer.from_facility_id) ||
-                facilityIds.includes(transfer.to_facility_id)
-            );
+            return facilityIds.includes(transfer.to_facility_id);
         });
     }
 
-    // Apply warehouse filter (supports multiple selections)
     if (filters.value.warehouse_id) {
         const warehouseIds = filters.value.warehouse_id.split(',').map(id => parseInt(id));
         filtered = filtered.filter(transfer => {
             return (
-                warehouseIds.includes(transfer.from_warehouse_id) ||
-                warehouseIds.includes(transfer.to_warehouse_id)
+                warehouseIds.includes(transfer.to_warehouse_id) ||
+                warehouseIds.includes(transfer.from_warehouse_id)
             );
         });
     }
 
-    // Apply location filter (supports multiple selections)
-    if (filters.value.location_id) {
-        const locationIds = filters.value.location_id.split(',').map(id => parseInt(id));
-        filtered = filtered.filter(transfer => {
-            if (transfer.items && transfer.items.length > 0) {
-                return transfer.items.some(item => locationIds.includes(item.location_id));
-            }
-            return false;
-        });
-    }
-
-    // Apply date range filter
     if (filters.value.date_from) {
         const fromDate = new Date(filters.value.date_from);
         filtered = filtered.filter(transfer => {
@@ -583,7 +677,6 @@ const filteredTransfers = computed(() => {
 
     if (filters.value.date_to) {
         const toDate = new Date(filters.value.date_to);
-        // Set time to end of day
         toDate.setHours(23, 59, 59, 999);
         filtered = filtered.filter(transfer => {
             const transferDate = new Date(transfer.transfer_date);
@@ -591,7 +684,11 @@ const filteredTransfers = computed(() => {
         });
     }
 
-    return filtered;
+    // Apply pagination
+    const start = (currentPage.value - 1) * parseInt(filters.value.per_page);
+    const end = start + parseInt(filters.value.per_page);
+    
+    return filtered.slice(start, end);
 });
 
 const getTabCount = (tabName) => {
@@ -805,5 +902,22 @@ const markInProcess = (transferId) => {
     changeStatus(transferId, 'in_process');
 };
 
+// Pagination navigation methods
+const goToPage = (page) => {
+    if (page !== '...' && page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+    }
+};
 
+const previousPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+    }
+};
+
+const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+    }
+};
 </script>

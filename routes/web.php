@@ -12,7 +12,6 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
-use App\Http\Controllers\FacilityInventoryMovementController;
 use App\Http\Controllers\MonthlyInventoryReportController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -212,18 +211,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::post('/update-item', [TransferController::class, 'updateItem'])->name('transfers.update-item');
     });
 
-    // Facility Inventory Movement Routes
-    Route::controller(FacilityInventoryMovementController::class)
-        ->prefix('facility-inventory-movements')
-        ->group(function () {
-            Route::get('/', 'index')->name('facility-inventory-movements.index');
-            Route::get('/summary', 'summary')->name('facility-inventory-movements.summary');
-            Route::get('/export', 'export')->name('facility-inventory-movements.export');
-            Route::get('/product-balance', 'productBalance')->name('facility-inventory-movements.product-balance');
-            Route::get('/facility/{facility}/movements', 'facilityMovements')->name('facility-inventory-movements.facility');
-        });
-
-    // Monthly Inventory Report Routes
+    // Report Routes
     Route::controller(ReportController::class)
         ->prefix('reports')
         ->name('reports.')
@@ -260,20 +248,13 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::post('/monthly-inventory/reject', [ReportController::class, 'rejectMonthlyReport'])->name('monthly-inventory.reject');
             Route::post('/monthly-inventory/return-to-draft', [ReportController::class, 'returnMonthlyReportToDraft'])->name('monthly-inventory.return-to-draft');
             Route::post('/monthly-inventory/reopen', [ReportController::class, 'reopenMonthlyReport'])->name('monthly-inventory.reopen');
+            
+            // Inventory Movements (moved from FacilityInventoryMovementController)
+            Route::get('/inventory-movements', 'inventoryMovements')->name('inventory-movements');
+            Route::get('/inventory-movements/summary', 'inventoryMovementsSummary')->name('inventory-movements.summary');
+            Route::get('/inventory-movements/export', 'exportInventoryMovements')->name('inventory-movements.export');
         });
 
-    // Report Routes
-    // Route::controller(ReportController::class)
-    //     ->prefix('reports')
-    //     ->group(function () {
-    //         Route::get('/', 'index')->name('reports.index');
-    //         Route::get('/create', 'create')->name('reports.create');
-    //         Route::post('/store', 'store')->name('reports.store');
-    //         Route::get('/{report}/show', 'show')->name('reports.show');
-    //         Route::get('/{report}/edit', 'edit')->name('reports.edit');
-    //         Route::put('/{report}', 'update')->name('reports.update');
-    //         Route::delete('/{report}', 'destroy')->name('reports.destroy');
-    //     });
 });
 
 require __DIR__.'/auth.php';
