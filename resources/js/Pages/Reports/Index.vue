@@ -171,44 +171,6 @@
                         </div>
                     </div>
 
-                    <!-- Transfer Report -->
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                        <div class="p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-900">Transfer Report</h3>
-                                    <p class="text-sm text-gray-600">Inter-facility Transfers</p>
-                                </div>
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm mb-4">
-                                Monitor stock transfers between facilities, transfer performance, and redistribution efficiency.
-                            </p>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center text-sm text-gray-500">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>Monthly</span>
-                                </div>
-                                <button
-                                    class="px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
-                                    disabled
-                                >
-                                    Coming Soon
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
                 <!-- Quick Stats -->
