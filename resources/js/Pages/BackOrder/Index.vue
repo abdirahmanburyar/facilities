@@ -52,7 +52,7 @@
                     <thead class="bg-gray-50 text-gray-600 text-sm font-medium">
                         <tr>
                             <th class="px-4 py-3 text-left">#</th>
-                            <th class="px-4 py-3 text-left">Item</th>
+                            <th class="w-[250px] px-4 py-3 text-left">Item</th>
                             <th class="px-4 py-3 text-left">Item Info</th>
                             <th class="px-4 py-3 text-left">Type</th>
                             <th class="w-[200px] px-4 py-3 text-left">
@@ -141,59 +141,53 @@
                             <td class="px-4 py-2">
                                 {{ formatDate(item.created_at) }}
                             </td>
-                            <td class="px-4 py-2 space-x-2">
-                                <!-- Conditional Actions -->
-                                <template
-                                    v-if="
-                                        ['Missing', 'Lost'].includes(item.type)
-                                    "
-                                >
-                                    <!-- @click="liquidate(item)" -->
-                                    <button
-                                        @click="
-                                            handleAction('Liquidate', {
-                                                ...item,
-                                                status: item.status,
-                                                quantity: item.quantity,
-                                            })
-                                        "
-                                        class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-red-500 text-white hover:bg-red-600"
-                                    >
-                                        Liquidate
-                                    </button>
-                                    <button
-                                        @click="receive(item)"
-                                        class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-green-500 text-white hover:bg-green-600"
-                                    >
-                                        Receive
-                                    </button>
-                                </template>
-                                <template
-                                    v-else-if="
-                                        ['Damaged', 'Expired'].includes(
-                                            item.type
-                                        )
-                                    "
-                                >
-                                    <button
-                                        @click="
-                                            handleAction('Dispose', {
-                                                ...item,
-                                                status: item.status,
-                                                quantity: item.quantity,
-                                            })
-                                        "
-                                        class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-yellow-500 text-white hover:bg-yellow-600"
-                                    >
-                                        Dispose
-                                    </button>
-                                    <button
-                                        @click="receive(item)"
-                                        class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-green-500 text-white hover:bg-green-600"
-                                    >
-                                        Receive
-                                    </button>
-                                </template>
+                            <td class="px-4 py-2">
+                                <div class="flex gap-2 flex-wrap">
+                                    <!-- Actions for Missing/Lost items -->
+                                    <template v-if="['Missing', 'Lost'].includes(item.type)">
+                                        <button
+                                            @click="receive(item)"
+                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
+                                            title="Receive this item"
+                                        >
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Receive
+                                        </button>
+                                    </template>
+
+                                    <!-- Actions for Damaged/Expired items -->
+                                    <template v-else-if="['Damaged', 'Expired'].includes(item.type)">
+                                        <button
+                                            @click="liquidate(item)"
+                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
+                                            title="Liquidate this item"
+                                        >
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                            </svg>
+                                            Liquidate
+                                        </button>
+                                        <button
+                                            @click="dispose(item)"
+                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
+                                            title="Dispose this item"
+                                        >
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Dispose
+                                        </button>
+                                    </template>
+
+                                    <!-- Fallback for other types -->
+                                    <template v-else>
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500">
+                                            No actions available
+                                        </span>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -580,7 +574,6 @@ const handleFileChange = (formType, e) => {
     }
 };
 
-
 function removeFile(formType, index) {
     if (formType === "liquidate") {
         liquidateForm.value.attachments.splice(index, 1);
@@ -772,7 +765,6 @@ function receive(item) {
         }
     });
 }
-
 
 function formatDate(date) {
     return new Date(date).toLocaleDateString();

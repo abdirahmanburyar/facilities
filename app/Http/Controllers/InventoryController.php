@@ -8,6 +8,10 @@ use App\Models\Product;
 use App\Models\Location;
 use App\Models\Category;
 use App\Models\Dosage;
+use App\Models\Dispence;
+use App\Models\DispenceItem;
+use App\Models\FacilityInventoryMovement;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
@@ -24,24 +28,73 @@ class InventoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FacilityInventory::query();
+        // 1. Get the last 4 months for AMC calculation
+        $fourMonthsAgo = now()->subMonths(4)->startOfMonth();
+        
+        // 2. Prepare AMC subquery combining dispense data and facility issued movements
+        $amcSubqueryBase = DB::table(DB::raw('(
+            SELECT 
+                product_id,
+                batch_number,
+                SUM(quantity) as total_issued_quantity
+            FROM (
+                -- Dispense items (direct consumption)
+                SELECT 
+                    di.product_id,
+                    di.batch_number,
+                    di.quantity
+                FROM dispence_items di
+                INNER JOIN dispences d ON di.dispence_id = d.id
+                WHERE d.dispence_date >= ?
+                
+                UNION ALL
+                
+                -- Facility issued movements (transfers, etc.)
+                SELECT 
+                    fim.product_id,
+                    fim.batch_number,
+                    fim.facility_issued_quantity as quantity
+                FROM facility_inventory_movements fim
+                WHERE fim.movement_type = \'facility_issued\'
+                AND fim.movement_date >= ?
+            ) combined_issued
+            GROUP BY product_id, batch_number
+        ) as amc_base'))
+        ->addBinding([$fourMonthsAgo, $fourMonthsAgo])
+        ->select(
+            'product_id',
+            'batch_number',
+            DB::raw('COALESCE(total_issued_quantity / 4, 0) as amc')
+        );
+
+        // 3. Main inventory query
+        $query = FacilityInventory::query()
+            ->leftJoinSub($amcSubqueryBase, 'amc_data', function ($join) {
+                $join->on('facility_inventories.product_id', '=', 'amc_data.product_id')
+                     ->on('facility_inventories.batch_number', '=', 'amc_data.batch_number');
+            })
+            ->addSelect('facility_inventories.*')
+            ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
+            ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level')); // AMC * 6
 
         $user = auth()->user();
         
-        $query = $query->where('facility_id', $user->facility_id)->with(['product.dosage']);
+        $query = $query->with(['product.dosage:id,name', 'product.category:id,name']);
 
         // Apply filters
-        if ($request->has('search')) {
+        if ($request->has('search') && $request->search) { // Ensure search is not empty
             $search = $request->search;
-            $query->whereHas('product', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('barcode', 'like', "%{$search}%")
-                  ->orWhere('batch_number', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('facility_inventories.barcode', 'like', "%{$search}%")
+                  ->orWhere('facility_inventories.batch_number', 'like', "%{$search}%")
+                  ->orWhereHas('product', function ($prodQ) use ($search) {
+                      $prodQ->where('name', 'like', "%{$search}%");
+                  });
             });
         }
         
         if ($request->has('product_id') && $request->product_id) {
-            $query->where('product_id', $request->product_id);
+            $query->where('facility_inventories.product_id', $request->product_id);
         }
 
         if ($request->filled('category')) {
@@ -56,42 +109,70 @@ class InventoryController extends Controller
               });
         }
 
-
-        if ($request->filled('warehouse')) {
-            $query->whereHas('warehouse', function($query) use($request){
-                $query->where('name','like', "%{$request->warehouse}%");
-            });
+        if ($request->has('facility_id') && $request->facility_id) {
+            $query->where('facility_inventories.facility_id', $request->facility_id);
+        } else {
+            $query->where('facility_inventories.facility_id', $user->facility_id);
         }
-
-        if ($request->has('location') && $request->location) {
-            $query->whereHas('location', function($query) use($request){
-                $query->where('location','like', "%{$request->location}%");
-            }); 
-        }
-
-        $inventories = $query->paginate($request->input('per_page', 25), ['*'], 'page', $request->input('page', 1))
+        
+        $perPage = $request->input('per_page', 25); // Default to 25
+        $inventories = $query->paginate($perPage)
             ->withQueryString();
 
-        // Get products for dropdown
+        // Debug log for AMC and Reorder Level
+        if ($inventories->isNotEmpty()) {
+            Log::debug('Inventory AMC and Reorder Level Calculation Debug:');
+            foreach ($inventories->take(5) as $item) { // Log first 5 items
+                Log::debug(sprintf(
+                    'Product ID: %s, Batch: %s, AMC: %s, Reorder Level: %s, Current Qty: %s',
+                    $item->product_id,
+                    $item->batch_number,
+                    $item->amc,         // This is the calculated AMC from the query
+                    $item->reorder_level, // This is the calculated Reorder Level
+                    $item->quantity
+                ));
+            }
+        }
+
         $products = Product::select('id', 'name')->get();
+        
+        // Inventory Status Counts
 
-        // Get inventory status counts
-        $inStockCount = FacilityInventory::whereRaw('quantity > (products.id * 3)')
-            ->join('products', 'facility_inventories.product_id', '=', 'products.id')
+        // in stock: quantity > reorder_level
+        $inStockCount = DB::table('facility_inventories as inv')
+            ->leftJoinSub($amcSubqueryBase, 'amc_data', function($join) {
+                $join->on('inv.product_id', '=', 'amc_data.product_id')
+                     ->on('inv.batch_number', '=', 'amc_data.batch_number');
+            })
+            ->where('inv.facility_id', $user->facility_id)
+            ->whereRaw('inv.quantity > ROUND(COALESCE(amc_data.amc, 0) * 6)')
             ->count();
 
-        $lowStockCount = FacilityInventory::whereRaw('quantity <= (products.id * 3)')
-            ->join('products', 'facility_inventories.product_id', '=', 'products.id')
+        // low stock: 0 < quantity <= reorder_level
+        $lowStockCount = DB::table('facility_inventories as inv')
+            ->leftJoinSub($amcSubqueryBase, 'amc_data', function($join) {
+                $join->on('inv.product_id', '=', 'amc_data.product_id')
+                     ->on('inv.batch_number', '=', 'amc_data.batch_number');
+            })
+            ->where('inv.facility_id', $user->facility_id)
+            ->where('inv.quantity', '>', 0)
+            ->whereRaw('inv.quantity <= ROUND(COALESCE(amc_data.amc, 0) * 6)')
             ->count();
 
-        $outOfStockCount = FacilityInventory::where('quantity', 0)
+        $outOfStockCount = DB::table('facility_inventories')
+            ->where('facility_id', $user->facility_id)
+            ->where('quantity', 0)
             ->count();
-
-        $soonExpiringCount = FacilityInventory::where('expiry_date', '>', now())
-            ->where('expiry_date', '<=', now()->addDays(30))
+            
+        $soonExpiringCount = DB::table('facility_inventories')
+            ->where('facility_id', $user->facility_id)
+            ->where('expiry_date', '>', now())
+            ->where('expiry_date', '<=', now()->addDays(160))
             ->count();
-
-        $expiredCount = FacilityInventory::where('expiry_date', '<', now())
+            
+        $expiredCount = DB::table('facility_inventories')
+            ->where('facility_id', $user->facility_id)
+            ->where('expiry_date', '<', now())
             ->count();
         
         $inventoryStatusCounts = [
@@ -102,14 +183,11 @@ class InventoryController extends Controller
             ['status' => 'expired', 'count' => $expiredCount],
         ];
 
-        $inventories->setPath(url()->current()); // Force Laravel to use full URLs
-
-
         return Inertia::render('Inventory/Index', [
             'inventories' => InventoryResource::collection($inventories),
-            'products' => $products,
-            'filters' => $request->only('search', 'product_id', 'dosage','category', 'location', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page'),
             'inventoryStatusCounts' => $inventoryStatusCounts,
+            'products' => $products,
+            'filters' => $request->only('search', 'product_id', 'dosage','category', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page'),
             'category' => Category::pluck('name')->toArray(),
             'dosage' => Dosage::pluck('name')->toArray(),
         ]);
@@ -123,9 +201,8 @@ class InventoryController extends Controller
         try {
            
         $validated = $request->validate([
-            'id' => 'nullable|exists:inventories,id',
+            'id' => 'nullable|exists:facility_inventories,id',
             'product_id' => 'required|exists:products,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
             'quantity' => 'required|numeric|min:0',
             'manufacturing_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after:manufacturing_date',
@@ -137,7 +214,7 @@ class InventoryController extends Controller
 
         $isNew = !$request->id;
         
-        $inventory = Inventory::updateOrCreate(
+        $inventory = FacilityInventory::updateOrCreate(
             ['id' => $request->id],
             $validated
         );
@@ -154,7 +231,7 @@ class InventoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Inventory $inventory)
+    public function show(FacilityInventory $inventory)
     {
         $inventory->load(['product.category', 'product.dosage']);
         return response()->json([
@@ -166,7 +243,7 @@ class InventoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Inventory $inventory)
+    public function destroy(FacilityInventory $inventory)
     {        
         try {
             $inventory->delete();
