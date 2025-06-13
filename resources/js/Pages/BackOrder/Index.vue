@@ -170,7 +170,7 @@
                                             Liquidate
                                         </button>
                                         <button
-                                            @click="dispose(item)"
+                                            @click="disposal(item)"
                                             class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
                                             title="Dispose this item"
                                         >
@@ -768,5 +768,13 @@ function receive(item) {
 
 function formatDate(date) {
     return new Date(date).toLocaleDateString();
+}
+
+function liquidate(item) {
+    handleAction('Liquidate', item);
+}
+
+function disposal(item) {
+    handleAction('Dispose', item);
 }
 </script>
