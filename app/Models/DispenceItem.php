@@ -11,7 +11,6 @@ class DispenceItem extends Model
         'product_id',
         'dose',
         'frequency',
-        'start_date',
         'expiry_date',
         'batch_number',
         'barcode',

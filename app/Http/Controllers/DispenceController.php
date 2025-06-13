@@ -71,19 +71,22 @@ class DispenceController extends Controller
             DB::beginTransaction();
             $validated = $request->validate([
                 'patient_name' => 'required|string|max:255',
+                'patient_age' => 'required|integer|min:1|max:120',
+                'patient_gender' => 'required|in:male,female',
                 'phone_number' => 'required|string|max:255',
                 'diagnosis' => 'required|string|max:255',
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.dose' => 'required|numeric',
                 'items.*.frequency' => 'required|numeric',
-                'items.*.start_date' => 'required|date',
                 'items.*.duration' => 'required|numeric',
                 'items.*.quantity' => 'required|numeric|min:1',
             ]);
 
             $dispence = Dispence::create([
                 'patient_name' => $validated['patient_name'],
+                'patient_age' => $validated['patient_age'],
+                'patient_gender' => $validated['patient_gender'],
                 'patient_phone' => $validated['phone_number'],
                 'diagnosis' => $validated['diagnosis'],
                 'dispence_date' => Carbon::now()->toDateString(),
@@ -114,7 +117,6 @@ class DispenceController extends Controller
                         'barcode' => $inventory->barcode,
                         'uom' => $inventory->uom ?? 'N/A',
                         'frequency' => $item['frequency'],
-                        'start_date' => $item['start_date'],
                         'duration' => $item['duration'],
                         'quantity' => $quantityToDeduct,
                     ]);

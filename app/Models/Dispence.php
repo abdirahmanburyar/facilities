@@ -10,6 +10,8 @@ class Dispence extends Model
         'dispence_number',
         'dispence_date',
         'patient_name',
+        'patient_age',
+        'patient_gender',
         'patient_phone',
         'facility_id',
         'diagnosis',

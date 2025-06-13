@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('dispence_number');
             $table->date('dispence_date');
             $table->string('patient_name');
+            $table->integer('patient_age');
+            $table->enum('patient_gender', ['male', 'female']);
             $table->string('patient_phone');
             $table->foreignId('facility_id')->constrained('facilities')->onDelete('cascade');
             $table->foreignId('dispenced_by')->constrained('users');

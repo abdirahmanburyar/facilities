@@ -17,7 +17,6 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained('products')->onDelete('restrict');
             $table->integer('dose');
             $table->integer('frequency');
-            $table->date('start_date');
             $table->integer('duration');
             $table->integer('quantity');
             $table->string('barcode')->nullable();
