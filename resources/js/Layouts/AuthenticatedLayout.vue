@@ -2,7 +2,7 @@
     <div class="app-container">
         <!-- Permission changes are now handled globally in app.js -->
         <!-- Sidebar -->
-        <div :class="['sidebar', { 'sidebar-open': sidebarOpen }]" class="p-0" >
+        <div :class="['sidebar', { 'sidebar-open': sidebarOpen }]" class="p-0">
             <div class="white-box" style="border-color: white;">
                 <Link :href="route('dashboard')" class="logo-container flex justify-between">
                 <img src="/assets/images/moh.png" class="moh-logo" style="height: 30px" />
@@ -23,8 +23,8 @@
                 </div>
                 </Link>
 
-                <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }" v-if="$page.props.auth.can.order_view"
-                    @click="setCurrentPage('orders')">
+                <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }"
+                    v-if="$page.props.auth.can.order_view" @click="setCurrentPage('orders')">
                 <div class="menu-content">
                     <div class="menu-icon">
                         <img v-if="route().current('orders.*')" src="/assets/images/tracking-b.png" class="order-icon"
@@ -44,7 +44,7 @@
                         <img v-else src="/assets/images/transfer-w.png" class="transfer-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Transfers</span>
-                </div> 
+                </div>
                 </Link>
 
                 <Link :href="route('inventories.index')" class="menu-item" v-if="$page.props.auth.can.inventory_view"
@@ -88,14 +88,14 @@
                     :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('dispence.*')" src="/assets/images/dispence-b.png"
+                        <img v-if="route().current('dispence.*')" src="/assets/images/dispence.jpeg"
                             class="dispence-icon" style="height: 24px" />
                         <img v-else src="/assets/images/dispence-w.png" class="dispence-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Dispence</span>
                 </div>
-                </Link>               
-              
+                </Link>
+
                 <Link :href="route('backorders.index')" class="menu-item"
                     :class="{ active: route().current('backorders.*') }" @click="setCurrentPage('backorders')">
                 <div class="menu-content">
@@ -109,29 +109,17 @@
                 </Link>
 
                 <!-- Reports Menu -->
-                <Link :href="route('reports.index')" class="menu-item"
-                    :class="{ active: route().current('reports.*') }" @click="setCurrentPage('reports')">
+                <Link :href="route('reports.index')" class="menu-item" :class="{ active: route().current('reports.*') }"
+                    @click="setCurrentPage('reports')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('reports.*')" src="/assets/images/report-b.png"
-                            class="report-icon" style="height: 24px" />
+                        <img v-if="route().current('reports.*')" src="/assets/images/report-b.png" class="report-icon"
+                            style="height: 24px" />
                         <img v-else src="/assets/images/report-w.png" class="report-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Reports</span>
                 </div>
                 </Link>
-
-                <!-- <Link :href="route('assets.index')" class="menu-item" :class="{ active: route().current('assets.*') }"
-                    @click="setCurrentPage('assets')">
-                <div class="menu-content">
-                    <div class="menu-icon">
-                        <img v-if="route().current('assets.*')" src="/assets/images/assets-b.png" class="assets-icon"
-                            style="height: 24px" />
-                        <img v-else src="/assets/images/assets-w.png" class="assets-icon" style="height: 24px" />
-                    </div>
-                    <span class="menu-text">Assets</span>
-                </div>
-                </Link> -->
 
             </div>
         </div>
@@ -143,22 +131,21 @@
                 <div class="inventory-banner">
                     <div class="flex justify-between items-center">
                         <!-- <div class="flex flex-col"> -->
-                            <button @click="toggleSidebar" class="back-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                                    <path v-if="sidebarOpen"
-                                        d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
-                                        fill="currentColor" />
-                                    <path v-else d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"
-                                        fill="currentColor" />
-                                </svg>
-                            </button>
-                            <div class="inventory-text">
-                                <h1>{{ title }}</h1>
-                                <h3 class="text-black text-lg">"{{ description }}"</h3>
-                            </div>
+                        <button @click="toggleSidebar" class="back-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                <path v-if="sidebarOpen"
+                                    d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+                                    fill="currentColor" />
+                                <path v-else d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor" />
+                            </svg>
+                        </button>
+                        <div class="inventory-text">
+                            <h1 class="text-xs">{{ title }}</h1>
+                            <h3 class="text-black text-sm">"{{ description }}"</h3>
+                        </div>
                         <!-- </div> -->
                         <div v-if="img">
-                            <img :src="img" alt="Inventory illustration" class="svg-image" height="30" />
+                            <img :src="img" alt="Inventory illustration" class="svg-image" height="20" />
                         </div>
                     </div>
                     <div class="user-section">
@@ -233,7 +220,7 @@ const props = defineProps({
     },
     img: {
         type: String,
-        default: '/assets/images/head_web.gif'
+        default: ''
     }
 });
 
@@ -253,19 +240,19 @@ const setupPermissionChangeListener = () => {
         console.warn('⚠️ Echo not available, permission change listener not set up');
         return;
     }
-    
+
     // Get the current user ID
     const currentUserId = page.props.auth?.user?.id;
     if (!currentUserId) {
         console.warn('⚠️ User ID not available, permission change listener not set up');
         return;
     }
-    
+
     console.log('🔄 Setting up permission change listener for user:', currentUserId);
-    
+
     // Listen on the private user channel
     const channel = window.Echo.private(`user.${currentUserId}`);
-    
+
     // Listen for permission change events
     channel.listen('.permissions-changed', (event) => {
         console.log('🔔 Permission changed event received:', event);
@@ -277,9 +264,9 @@ const setupPermissionChangeListener = () => {
 // Function to handle the permission event
 const handlePermissionEvent = (event) => {
     console.log('🔄 Permission change detected, reloading page...');
-    
+
     toast.info('Your permissions have been updated. The page will reload to apply changes.');
-    
+
     // Reload the page after a short delay
     setTimeout(() => {
         console.log('🔄 Reloading page now...');
@@ -417,7 +404,7 @@ const logout = () => {
     padding: 0;
     z-index: 1;
     width: 100%;
-    height: 33px;
+    height: 45px;
 }
 
 .menu-item:hover {
@@ -435,7 +422,7 @@ const logout = () => {
     margin-right: -25px;
     padding-right: 25px;
     z-index: 5;
-    height: 46px;
+    height: 45px;
     display: flex;
     align-items: center;
     width: 100%;

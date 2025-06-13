@@ -28,10 +28,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/two-factor/resend', [TwoFactorController::class, 'resend'])->name('two-factor.resend');
 });
 
+// Welcome route - accessible to everyone
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('welcome');
+
 // All routes that require 2FA
 Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class])->group(function () {
     // Dashboard route
-    Route::get('/', function () {
+    Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
@@ -253,6 +261,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/inventory-movements', 'inventoryMovements')->name('inventory-movements');
             Route::get('/inventory-movements/summary', 'inventoryMovementsSummary')->name('inventory-movements.summary');
             Route::get('/inventory-movements/export', 'exportInventoryMovements')->name('inventory-movements.export');
+            
+            // Transfers Report
+            Route::get('/transfers', 'transfers')->name('transfers');
+            Route::get('/transfers/summary', 'transfersSummary')->name('transfers.summary');
+            Route::get('/transfers/export', 'exportTransfers')->name('transfers.export');
+
+            // Order Reports
+            Route::get('/orders', 'orders')->name('orders');
+            Route::get('/orders/summary', 'ordersSummary')->name('orders.summary');
+            Route::get('/orders/export', 'exportOrders')->name('orders.export');
         });
 
 });

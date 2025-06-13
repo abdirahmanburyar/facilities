@@ -7,7 +7,7 @@ import { Head } from '@inertiajs/vue3';
 
     <Head title="Dashboard" />
 
-    <AuthenticatedLayout>
+    <AuthenticatedLayout title="Supply Insight Hub" description="All Key Metrics, One Place">
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800">
                 Dashboard

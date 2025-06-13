@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Warehouse;
 use App\Models\Facility;
 use App\Models\FacilityInventory;
+use App\Models\FacilityInventoryMovement;
 use App\Models\Transfer;
 use App\Models\TransferItem;
 use App\Models\Product;

@@ -9,6 +9,10 @@ use App\Models\FacilityMonthlyReport;
 use App\Models\FacilityMonthlyReportItem;
 use App\Models\FacilityInventoryMovement;
 use App\Models\Product;
+use App\Models\Transfer;
+use App\Models\TransferItem;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Jobs\GenerateMonthlyInventoryReportJob;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -1009,6 +1013,418 @@ class ReportController extends Controller
                     $movement->reference_number ?: '',
                     $movement->createdBy->name ?? '',
                     $movement->created_at
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Display facility transfers with filtering options
+     */
+    public function transfers(Request $request)
+    {
+        $user = auth()->user();
+        $facilityId = $user->facility_id;
+
+        $perPage = $request->input('per_page', 15);
+
+        $query = Transfer::with([
+            'toWarehouse:id,name',
+            'fromWarehouse:id,name', 
+            'fromFacility:id,name',
+            'toFacility:id,name',
+            'createdBy:id,name',
+            'approvedBy:id,name',
+            'dispatchedBy:id,name',
+            'rejectedBy:id,name',
+            'items.product:id,name'
+        ])
+        ->where(function($q) use ($facilityId) {
+            $q->where('from_facility_id', $facilityId)
+              ->orWhere('to_facility_id', $facilityId);
+        });
+
+        // Apply filters
+        if ($request->filled('status') && is_array($request->status)) {
+            $query->whereIn('status', $request->status);
+        }
+
+        if ($request->filled('transfer_type')) {
+            if ($request->transfer_type === 'outgoing') {
+                $query->where('from_facility_id', $facilityId);
+            } elseif ($request->transfer_type === 'incoming') {
+                $query->where('to_facility_id', $facilityId);
+            }
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('transfer_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('transfer_date', '<=', $request->end_date);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('transferID', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%")
+                  ->orWhereHas('toWarehouse', function($wq) use ($search) {
+                      $wq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('fromWarehouse', function($wq) use ($search) {
+                      $wq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('toFacility', function($fq) use ($search) {
+                      $fq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('fromFacility', function($fq) use ($search) {
+                      $fq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $transfers = $query->orderBy('transfer_date', 'desc')
+                          ->paginate($perPage)
+                          ->withQueryString();
+
+        return Inertia::render('Reports/Transfers', [
+            'transfers' => $transfers,
+            'filters' => $request->only(['status', 'transfer_type', 'start_date', 'end_date', 'search', 'per_page']),
+            'status_options' => ['pending', 'approved', 'dispatched', 'received', 'rejected', 'cancelled'],
+        ]);
+    }
+
+    /**
+     * Get transfers summary for the facility
+     */
+    public function transfersSummary(Request $request)
+    {
+        $user = auth()->user();
+        $facilityId = $user->facility_id;
+
+        $query = Transfer::where(function($q) use ($facilityId) {
+            $q->where('from_facility_id', $facilityId)
+              ->orWhere('to_facility_id', $facilityId);
+        });
+
+        // Apply date filters if provided
+        if ($request->filled('start_date')) {
+            $query->whereDate('transfer_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('transfer_date', '<=', $request->end_date);
+        }
+
+        $summary = [
+            'total_transfers' => $query->count(),
+            'outgoing_transfers' => $query->clone()->where('from_facility_id', $facilityId)->count(),
+            'incoming_transfers' => $query->clone()->where('to_facility_id', $facilityId)->count(),
+            'pending' => $query->clone()->where('status', 'pending')->count(),
+            'approved' => $query->clone()->where('status', 'approved')->count(),
+            'dispatched' => $query->clone()->where('status', 'dispatched')->count(),
+            'received' => $query->clone()->where('status', 'received')->count(),
+            'rejected' => $query->clone()->where('status', 'rejected')->count(),
+        ];
+
+        return response()->json($summary);
+    }
+
+    /**
+     * Export transfers report to CSV
+     */
+    public function exportTransfers(Request $request)
+    {
+        $user = auth()->user();
+        $facilityId = $user->facility_id;
+
+        $query = Transfer::with([
+            'toWarehouse:id,name',
+            'fromWarehouse:id,name', 
+            'fromFacility:id,name',
+            'toFacility:id,name',
+            'createdBy:id,name',
+            'approvedBy:id,name',
+            'dispatchedBy:id,name',
+            'rejectedBy:id,name',
+            'items.product:id,name'
+        ])
+        ->where(function($q) use ($facilityId) {
+            $q->where('from_facility_id', $facilityId)
+              ->orWhere('to_facility_id', $facilityId);
+        });
+
+        // Apply the same filters as the main report
+        if ($request->filled('status') && is_array($request->status)) {
+            $query->whereIn('status', $request->status);
+        }
+
+        if ($request->filled('transfer_type')) {
+            if ($request->transfer_type === 'outgoing') {
+                $query->where('from_facility_id', $facilityId);
+            } elseif ($request->transfer_type === 'incoming') {
+                $query->where('to_facility_id', $facilityId);
+            }
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('transfer_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('transfer_date', '<=', $request->end_date);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('transferID', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%");
+            });
+        }
+
+        $transfers = $query->orderBy('transfer_date', 'desc')->get();
+
+        $filename = 'transfers_report_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function() use ($transfers) {
+            $file = fopen('php://output', 'w');
+            
+            // Add CSV headers
+            fputcsv($file, [
+                'Transfer ID',
+                'Transfer Date',
+                'Status',
+                'From',
+                'To',
+                'Items Count',
+                'Total Quantity',
+                'Created By',
+                'Approved By',
+                'Dispatched By',
+                'Note'
+            ]);
+
+            // Add data rows
+            foreach ($transfers as $transfer) {
+                $from = '';
+                if ($transfer->fromWarehouse) {
+                    $from = $transfer->fromWarehouse->name . ' (Warehouse)';
+                } elseif ($transfer->fromFacility) {
+                    $from = $transfer->fromFacility->name . ' (Facility)';
+                }
+
+                $to = '';
+                if ($transfer->toWarehouse) {
+                    $to = $transfer->toWarehouse->name . ' (Warehouse)';
+                } elseif ($transfer->toFacility) {
+                    $to = $transfer->toFacility->name . ' (Facility)';
+                }
+
+                $totalQuantity = $transfer->items->sum('quantity');
+
+                fputcsv($file, [
+                    $transfer->transferID ?: '',
+                    $transfer->transfer_date ?: '',
+                    $transfer->status ?: '',
+                    $from,
+                    $to,
+                    $transfer->items->count(),
+                    $totalQuantity,
+                    $transfer->createdBy->name ?? '',
+                    $transfer->approvedBy->name ?? '',
+                    $transfer->dispatchedBy->name ?? '',
+                    $transfer->note ?: ''
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Display orders report
+     */
+    public function orders(Request $request)
+    {
+        $facilityId = auth()->user()->facility_id;
+        
+        $query = Order::with([
+            'facility:id,name',
+            'user:id,name',
+            'items.product:id,name'
+        ])
+        ->where('facility_id', $facilityId);
+
+        // Apply filters
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('order_type')) {
+            $query->where('order_type', $request->order_type);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('order_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('order_date', '<=', $request->end_date);
+        }
+
+        $orders = $query->orderBy('order_date', 'desc')
+                       ->paginate($request->get('per_page', 15))
+                       ->withQueryString();
+
+        return Inertia::render('Reports/Orders', [
+            'orders' => $orders,
+            'filters' => $request->only(['search', 'status', 'order_type', 'start_date', 'end_date', 'per_page']),
+            'summary' => $this->ordersSummary($request)->getData()
+        ]);
+    }
+
+    /**
+     * Get orders summary statistics
+     */
+    public function ordersSummary(Request $request)
+    {
+        $facilityId = auth()->user()->facility_id;
+        
+        $query = Order::where('facility_id', $facilityId);
+
+        // Apply same filters as main query
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('order_type')) {
+            $query->where('order_type', $request->order_type);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('order_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('order_date', '<=', $request->end_date);
+        }
+
+        $summary = [
+            'total_orders' => $query->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'completed' => (clone $query)->where('status', 'completed')->count(),
+            'cancelled' => (clone $query)->where('status', 'cancelled')->count(),
+        ];
+
+        return response()->json($summary);
+    }
+
+    /**
+     * Export orders to CSV
+     */
+    public function exportOrders(Request $request)
+    {
+        $facilityId = auth()->user()->facility_id;
+        
+        $query = Order::with([
+            'facility:id,name',
+            'user:id,name',
+            'items.product:id,name'
+        ])
+        ->where('facility_id', $facilityId);
+
+        // Apply same filters as main query
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('order_type')) {
+            $query->where('order_type', $request->order_type);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('order_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('order_date', '<=', $request->end_date);
+        }
+
+        $orders = $query->orderBy('order_date', 'desc')->get();
+
+        $filename = 'orders-report-' . now()->format('Y-m-d-H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function() use ($orders) {
+            $file = fopen('php://output', 'w');
+            
+            // Add CSV headers
+            fputcsv($file, [
+                'Order Number',
+                'Order Date',
+                'Order Type',
+                'Status',
+                'Items Count',
+                'Total Quantity',
+                'Created By',
+                'Expected Date',
+                'Notes'
+            ]);
+
+            // Add data rows
+            foreach ($orders as $order) {
+                fputcsv($file, [
+                    $order->order_number ?? 'N/A',
+                    $order->order_date ? \Carbon\Carbon::parse($order->order_date)->format('Y-m-d') : 'N/A',
+                    ucfirst($order->order_type ?? 'N/A'),
+                    ucfirst($order->status ?? 'N/A'),
+                    $order->items->count(),
+                    $order->items->sum('quantity'),
+                    $order->user->name ?? 'N/A',
+                    $order->expected_date ? \Carbon\Carbon::parse($order->expected_date)->format('Y-m-d') : 'N/A',
+                    $order->notes ?? $order->note ?? ''
                 ]);
             }
 

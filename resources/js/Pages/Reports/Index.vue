@@ -95,77 +95,39 @@
                         </div>
                     </div>
                     
-                    <!-- Consumption Report -->
+                    <!-- Transfers Report -->
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
                         <div class="p-6">
                             <div class="flex items-center mb-4">
                                 <div class="flex-shrink-0">
                                     <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                                         <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                                         </svg>
                                     </div>
                                 </div>
                                 <div class="ml-4 flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-900">Consumption Report</h3>
-                                    <p class="text-sm text-gray-600">Usage Patterns & Trends</p>
+                                    <h3 class="text-lg font-semibold text-gray-900">Transfers Report</h3>
+                                    <p class="text-sm text-gray-600">Stock Transfer Tracking</p>
                                 </div>
                             </div>
                             
                             <p class="text-gray-600 text-sm mb-4">
-                                Analyze consumption patterns, trends, and forecast future needs based on historical usage data.
+                                Track all stock transfers between facilities and warehouses including status updates, transfer history, and summary statistics.
                             </p>
                             
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center text-sm text-gray-500">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                     </svg>
-                                    <span>Quarterly</span>
+                                    <span>Real-time</span>
                                 </div>
                                 <button
-                                    class="px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
-                                    disabled
+                                    @click="goToTransfers"
+                                    class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
                                 >
-                                    Coming Soon
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Expiry Report -->
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                        <div class="p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-900">Expiry Report</h3>
-                                    <p class="text-sm text-gray-600">Near-Expiry & Expired Items</p>
-                                </div>
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm mb-4">
-                                Track items approaching expiry dates and expired stock to minimize waste and ensure quality.
-                            </p>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center text-sm text-gray-500">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>Weekly</span>
-                                </div>
-                                <button
-                                    class="px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
-                                    disabled
-                                >
-                                    Coming Soon
+                                    View Transfers
                                 </button>
                             </div>
                         </div>
@@ -195,16 +157,16 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center text-sm text-gray-500">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z"></path>
                                     </svg>
-                                    <span>Monthly</span>
+                                    <span>Historical Data</span>
                                 </div>
-                                <button
-                                    class="px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
-                                    disabled
+                                <Link
+                                    :href="route('reports.orders')"
+                                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors"
                                 >
-                                    Coming Soon
-                                </button>
+                                    View Report
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -233,7 +195,7 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center text-sm text-gray-500">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z"></path>
                                     </svg>
                                     <span>Monthly</span>
                                 </div>
@@ -338,6 +300,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { Link } from '@inertiajs/vue3'
 
 const goToMonthlyInventory = () => {
     router.get('/reports/monthly-inventory')
@@ -345,6 +308,10 @@ const goToMonthlyInventory = () => {
 
 const goToInventoryMovements = () => {
     router.get('/reports/inventory-movements')
+}
+
+const goToTransfers = () => {
+    router.get('/reports/transfers')
 }
 </script>
 

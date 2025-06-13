@@ -237,7 +237,7 @@ const formatDate = (date) => {
 <template>
 
     <Head title="All Orders" />
-    <AuthenticatedLayout title="All Orders" img="/assets/images/orders.png">
+    <AuthenticatedLayout title="Tracks Your Orders" description="Keeping Essenticals Ready, Every Time" img="/assets/images/orders.png">
        <div class="mb-6">
          <!-- Filters Section -->
          <div class="flex items-center justify-between mb-4">
