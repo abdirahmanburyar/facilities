@@ -538,12 +538,10 @@ class OrderController extends Controller
                         $facilityInventoryMovementService->recordOrderReceived(
                             $order,
                             $item,
-                            $order->facility_id,
                             $finalQuantity,
                             $allocation->batch_number,
                             $allocation->expiry_date,
-                            $allocation->barcode,
-                            $allocation->uom
+                            $allocation->barcode
                         );
                     }
                 }

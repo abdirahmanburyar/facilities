@@ -1209,17 +1209,6 @@ const batchBackOrders = ref({});
 const showIncompleteBackOrderModal = ref(false);
 const isSaving = ref(false);
 
-// Computed property to get back order items
-const backOrderItems = computed(() => {
-    if (!props.order.items) return [];
-    return props.order.items.filter((item) => {
-        return (
-            item.received_quantity !== undefined &&
-            item.received_quantity < item.quantity
-        );
-    });
-});
-
 // Computed properties for back order modal
 const missingQuantity = computed(() => {
     if (!selectedItem.value) return 0;
@@ -1245,10 +1234,6 @@ const totalExistingDifferences = computed(() => {
         (total, bo) => total + Number(bo.quantity || 0),
         0
     );
-});
-
-const actualMismatches = computed(() => {
-    return missingQuantity.value - totalExistingDifferences.value;
 });
 
 const remainingToAllocate = computed(() => {
@@ -1711,17 +1696,6 @@ const statusClasses = {
         "bg-green-100 text-green-800 rounded-full font-bold flex items-center",
     partially_received: "bg-orange-100 text-orange-800 rounded-full font-bold",
     default: "bg-gray-100 text-gray-800 rounded-full font-bold",
-};
-
-// Function to get the display status
-const getDisplayStatus = (status, hasBackOrder) => {
-    if (status === "received") {
-        if (hasBackOrder) {
-            return "Partially Received";
-        }
-        return "Completed";
-    }
-    return status.charAt(0).toUpperCase() + status.slice(1).replace("_", " ");
 };
 
 const form = ref([]);
