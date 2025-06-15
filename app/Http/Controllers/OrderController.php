@@ -193,6 +193,9 @@ class OrderController extends Controller
                             'warehouse_id' => $inventory->warehouse_id,
                             'location_id' => $inventory->location_id,
                             'expiry_date' => $inventory->expiry_date,
+                            'uom' => $inventory->uom,
+                            'unit_cost' => $inventory->unit_cost,
+                            'total_cost' => $inventory->unit_cost * $quantityToAllocate,
                         ]);
 
                         // Update inventory quantity
