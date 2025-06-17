@@ -158,7 +158,7 @@ class OrderController extends Controller
                         'quantity_on_order' => $item['quantity_on_order'],
                         'quantity_to_release' => (int) $item['quantity'] - (int) $item['quantity_on_order'],
                         'no_of_days' => $item['no_of_days'],
-                        'days' => $item['days'],
+                        'days' => $item['no_of_days'],
                         'status' => 'pending',
                     ]);
 
