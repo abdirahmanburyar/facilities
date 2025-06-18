@@ -117,20 +117,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::delete('/{facility}', 'destroy')->name('facilities.destroy');
         });
 
-        // Route::controller(OrderController::class)
-        // ->prefix('/orders')
-        // ->group(function () {
-        //     Route::get('/', 'index')->name('orders.index');
-        //     Route::post('/store', 'store')->name('orders.store');
-        //     Route::post('/search', 'search')->name('orders.search');
-        //     Route::post('/create', 'createOrder')->name('orders.create');
-        //     Route::get('/remove', 'remove')->name('orders.remove');
-        //     Route::post('/submit', 'submitOrder')->name('orders.submit');
-        //     Route::post('/received-items', 'receivedItems')->name('orders.receivedItems');           
-        //     Route::post('/update-items', 'updateItem')->name('orders.update-item');           
-
-        // });
-
         // Backorder routes
         Route::controller(BackOrderController::class)->prefix('backorders')->group(function () {
             Route::get('/', 'index')->name('backorders.index');
@@ -159,12 +145,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
             Route::get('/create', 'create')->name('orders.create');
             Route::post('/store', 'store')->name('orders.store');
-            Route::get('/{order}/edit', 'edit')->name('orders.edit');
-            Route::put('/{order}', 'update')->name('orders.update');
-            Route::delete('/{order}', 'destroy')->name('orders.destroy');
-
-            // facility orders
-            Route::get('/create', 'create')->name('orders.create');
             
             // Inventory check
             Route::post('/check/inventory', 'checkInventory')->name('orders.check-inventory');

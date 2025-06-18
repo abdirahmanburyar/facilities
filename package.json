@@ -24,7 +24,7 @@
         "@headlessui/vue": "^1.7.23",
         "@heroicons/vue": "^2.2.0",
         "@soketi/soketi-js": "^1.4.3",
-        "chart.js": "^4.4.9",
+        "chart.js": "^4.5.0",
         "date-fns": "^4.1.0",
         "dayjs": "^1.11.13",
         "html2pdf.js": "^0.10.3",

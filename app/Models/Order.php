@@ -25,8 +25,25 @@ class Order extends Model
         'notes',
         'order_date',
         'expected_date',
-        'note'
+        'dispatched_by',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at',
+        'delivered_by',
+        'received_by',
+        'processed_by',
+        'dispatched_at',
+        'delivered_at',
+        'received_at',
+        'reviewed_by',
+        'reviewed_at',
+        'processed_at',
     ];
+    
+    public function dispatch(){
+        return $this->hasMany(DispatchInfo::class);
+    }
 
     public function facility()
     {
@@ -42,10 +59,39 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-
-    public function approvals()
+    
+    public function approvedBy()
     {
-        return $this->hasMany(Approval::class);
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function reviewedBy()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by');
+    }
+    
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function dispatchedBy()
+    {
+        return $this->belongsTo(User::class, 'dispatched_by');
+    }
+    public function deliveredBy()
+    {
+        return $this->belongsTo(User::class, 'delivered_by');
+    }
+
+    public function receivedBy()
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 
 }

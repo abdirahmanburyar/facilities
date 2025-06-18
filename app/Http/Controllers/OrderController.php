@@ -71,21 +71,40 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = Order::with(['facility', 'user'])
-            ->where('facility_id', auth()->user()->facility_id)
-            ->when($request->dateFrom && $request->dateTo, function ($query) use ($request) {
-                $query->whereBetween('order_date', [$request->dateFrom, $request->dateTo]);
-            })
-            ->when($request->orderType, function ($query, $orderType) {
-                $query->where('order_type', $orderType);
-            })
-            ->when($request->currentStatus, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->latest();
+        $facility = $request->facility;
+        $facilityLocation = $request->facilityLocation;
+        $query = Order::query();
 
+        $query->where('facility_id', auth()->user()->facility_id);
+
+        if($request->filled('search')){
+            $query->where('order_number', 'like', "%{$request->search}%");
+        }
+
+        if($request->filled('currentStatus')){
+            $query->where('status', $request->currentStatus);
+        }
+
+        if($request->filled('dateFrom') && !$request->filled('dateTo')){
+            $query->whereDate('order_date', $request->dateFrom);
+        }
+
+        if($request->filled('dateFrom') && $request->filled('dateTo')){
+            $query->whereBetween('order_date', [$request->dateFrom, $request->dateTo]);
+        }
+
+        if($request->filled('orderType')){
+            $query->where('order_type', $request->orderType);
+        }
+        
+        $query->with(['facility.handledby:id,name', 'user']);
+
+        $orders = $query->paginate($request->input('per_page', 25), ['*'], 'page', $request->input('page', 1))
+            ->withQueryString();
+        $orders->setPath(url()->current()); // Force Laravel to use full URLs
         // Get order statistics from orders table
         $stats = DB::table('orders')
+            ->where('facility_id', auth()->user()->facility_id)
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->get()
@@ -97,23 +116,21 @@ class OrderController extends Controller
         // Ensure all statuses have a value
         $defaultStats = [
             'pending' => 0,
+            'reviewed' => 0,
             'approved' => 0,
             'rejected' => 0,
             'in_process' => 0,
             'dispatched' => 0,
-            'delivery_pending' => 0,
-            'delivered' => 0,
             'received' => 0
         ];
 
         $stats = array_merge($defaultStats, $stats);
-
-        $orders = $query->paginate(500);
-
+        
         return Inertia::render('Order/Index', [
             'orders' => OrderResource::collection($orders),
-            'filters' => $request->only('search', 'page', 'orderType', 'dateFrom', 'dateTo', 'currentStatus'),
+            'filters' => $request->only('search', 'page', 'orderType','currentStatus', 'dateFrom', 'dateTo','per_page'),
             'stats' => $stats,
+            'totalOrders' => Order::count()
         ]);
     }
 
@@ -218,59 +235,6 @@ class OrderController extends Controller
         }
     }
 
-    public function destroy(Order $order)
-    {
-        try {
-            if ($order->status !== 'pending') {
-                return back()->with('error', 'Only pending orders can be deleted.');
-            }
-
-            $order->items()->delete();
-            $order->delete();
-
-            return back()->with('success', 'Order deleted successfully.');
-        } catch (\Throwable $th) {
-            return back()->with($th->getMessage(), 500);
-        }
-    }
-
-    public function bulk(Request $request)
-    {
-        try {
-            $orderIds = $request->input('orderIds');
-
-            // Validate that at least one order is selected
-            if (empty($orderIds)) {
-                return response()->json('Please select at least one order', 400);
-            }
-
-            // Get all selected orders
-            $orders = Order::whereIn('id', $orderIds)->get();
-
-            // Check if any order has non-pending items and collect their IDs
-            $nonPendingOrders = [];
-            foreach ($orders as $order) {
-                if ($order->status !== 'pending') {
-                    $nonPendingOrders[] = $order->id;
-                }
-            }
-
-            if (!empty($nonPendingOrders)) {
-                return response()->json('Cannot delete orders that are not in pending status', 500);
-            }
-
-            // Delete orders if all are pending
-            $orders->each(function ($order) {
-                $order->items()->delete();
-                $order->delete();
-            });
-
-            return response()->json('Selected orders deleted successfully', 200);
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
-    }
-
     public function searchProduct(Request $request)
     {
         try {
@@ -289,82 +253,6 @@ class OrderController extends Controller
             return response()->json($products, 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
-        }
-    }
-
-    public function changeStatus(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            // Validate request
-            $request->validate([
-                'order_id' => 'required|exists:orders,id',
-                'status' => ['required|in:received']
-            ]);
-
-            $order = Order::where('id', $request->order_id)->first();
-
-            if(!$order) return response()->json("Order not found", 500);
-
-            // Define allowed transitions
-            $allowedTransitions = [
-                'pending' => ['approved'],
-                'approved' => ['in_process'],
-                'in_process' => ['dispatched'],
-                'rejected' => ['approved'], // Allow rejected orders to be approved
-                'received' => ['received'],
-            ];
-
-            // Check if the transition is allowed
-            if (
-                !isset($allowedTransitions[$order->status]) ||
-                !in_array($request->status, $allowedTransitions[$order->status])
-            ) {
-                return response()->json("Status transition not allowed", 422);
-            }
-
-            $userId = auth()->id();
-            $now = now();
-
-            // Prepare updates for order
-            $updates = ['status' => $request->status];
-
-            // Add timestamp based on the status
-            switch ($request->status) {
-                case 'approved':
-                    $updates['approved_at'] = $now;
-                    $updates['approved_by'] = $userId;
-                    
-                    // If transitioning from rejected to approved, clear rejection data
-                    if ($order->status === 'rejected') {
-                        $updates['rejected_by'] = null;
-                        $updates['rejected_at'] = null;
-                    }
-                    break;
-                case 'in_process':
-                    $updates['in_process'] = true;
-                    $updates['in_process_at'] = $now;
-                    $updates['in_process_by'] = $userId;
-                    break;
-                case 'dispatched':
-                    $updates['dispatched_by'] = $userId;
-                    $updates['dispatched_at'] = $now;
-                    break;
-            }
-
-            // Update the order
-            $order->update($updates);
-
-            // Trigger Kafka event for order status change
-            Kafka::publishOrderPlaced("Refreshed");
-            // Broadcast event
-            event(new OrderEvent('Refreshed'));
-
-            DB::commit();
-            return response()->json('Order status updated successfully.', 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json($e->getMessage(), 500);
         }
     }
 
@@ -399,92 +287,6 @@ class OrderController extends Controller
         }
     }
 
-    public function updateItem(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-
-            $validated = $request->validate([
-                'id' => 'required|exists:order_items,id',
-                'quantity' => 'required|integer|min:1',
-            ]);
-
-            $orderItem = OrderItem::findOrFail($validated['id']);
-
-            // Check if the new quantity will not exceed the current inventory quantity
-            $currentInventoryQuantity = \App\Models\Inventory::where('product_id', $orderItem->product_id)->sum('quantity');
-            if ($validated['quantity'] > $currentInventoryQuantity) {
-                return response()->json('The new quantity exceeds the current inventory quantity.', 500);
-            }
-
-            $orderItem->update([
-                'quantity' => $validated['quantity'],
-            ]);
-            Kafka::publishOrderPlaced("Refreshed");
-            event(new OrderEvent('Refreshed'));
-
-            DB::commit();
-            return response()->json('Order item updated successfully.', 200);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json($e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Bulk change status of orders
-     */
-    public function bulkChangeStatus(Request $request)
-    {
-        $request->validate([
-            'order_ids' => 'required|array',
-            'order_ids.*' => 'required|exists:orders,id',
-            'status' => ['required', Rule::in(['approved', 'in process', 'dispatched', 'delivery_pending', 'delivered'])]
-        ]);
-
-        $allowedTransitions = [
-            'pending' => ['approved'],
-            'approved' => ['in process'],
-            'in process' => ['dispatched'],
-            'dispatched' => ['delivery_pending', 'delivered'],
-            'delivery_pending' => ['delivered']
-        ];
-
-        DB::beginTransaction();
-        try {
-            $orders = Order::whereIn('id', $request->order_ids)->get();
-            $updatedCount = 0;
-
-            foreach ($orders as $order) {
-                if (
-                    isset($allowedTransitions[$order->status]) &&
-                    in_array($request->status, $allowedTransitions[$order->status])
-                ) {
-
-                    $oldStatus = $order->status;
-                    $order->status = $request->status;
-                    $order->save();
-
-
-                    $updatedCount++;
-                }
-            }
-
-            DB::commit();
-
-            if ($updatedCount === 0) {
-                return response()->json("No orders were eligible for status change", 500);
-            }
-
-            Kafka::publishOrderPlaced('Refreshed');
-            event(new OrderEvent('Order status updated'));
-            return response()->json("Successfully updated {$updatedCount} orders to {$request->status}");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json($e->getMessage(), 500);
-        }
-    }
-
     public function changeItemStatus(Request $request)
     {
         try {
@@ -495,13 +297,20 @@ class OrderController extends Controller
                 'status' => 'required'
             ]);
 
-            $order = Order::with('items.inventory_allocations.backorders','items.inventory_allocations.warehouse','items.inventory_allocations.location','items.product', 'facility')
-                ->where('status', 'dispatched')
+            $order = Order::with('items.inventory_allocations.backorders')
                 ->where('id', $request->order_id)
                 ->first();
-            if($order->status != 'dispatched'){
-                return response()->json('Order is not dispatched', 500);
+            if($request->status == 'delivered' && $order->status == 'dispatched'){
+                logger()->info($request->all());
+                logger()->info($order->status);
+                $order->status = 'delivered';
+                $order->delivered_at = Carbon::now();
+                $order->delivered_by = auth()->user()->id;
+                $order->save();
+                DB::commit();
+                return response()->json("Marked as Delivered", 200);
             }
+            
             $debugInfo = []; // For debugging purposes
             
             $facilityInventoryMovementService = new FacilityInventoryMovementService();
@@ -551,11 +360,13 @@ class OrderController extends Controller
             
             // Update order status to received
             $order->status = 'received';
+            $order->received_at = Carbon::now();
+            $order->received_by = auth()->user()->id;
             $order->save();
 
             // Broadcast event if needed
             // Kafka::publishOrderPlaced('Refreshed');
-            event(new OrderEvent('Refreshed'));
+            // event(new OrderEvent('Refreshed'));
 
             DB::commit();
             
@@ -571,8 +382,8 @@ class OrderController extends Controller
     {
         try {
             DB::beginTransaction();
-            $order = Order::where('orders.id', $id)
-                ->with(['items.product', 'items.inventory_allocations.backorders', 'items.inventory_allocations.warehouse', 'items.inventory_allocations.location', 'facility', 'user'])
+            $order = Order::where('id', $id)
+                ->with(['items.product.category','dispatch', 'items.inventory_allocations.warehouse', 'items.inventory_allocations.location','items.inventory_allocations.backorders', 'facility', 'user','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'])
                 ->first();
 
             // Get items with SOH using subquery
