@@ -356,7 +356,7 @@
                                 class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
                             <div>
                                 <label>Received Quantity</label>
-                                <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'dispatched'
+                                <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'
                                     " @input="validateReceivedQuantity(item)"
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
                             </div>
