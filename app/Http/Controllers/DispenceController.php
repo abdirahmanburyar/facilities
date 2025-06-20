@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\FacilityInventory;
+use App\Models\Product;
 use App\Models\Dispence;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\DispenceResource;
 use App\Services\FacilityInventoryMovementService;
+
 
 class DispenceController extends Controller
 {
@@ -39,30 +41,34 @@ class DispenceController extends Controller
 
     public function create()
     {
-        $inventories = FacilityInventory::where('facility_id', auth()->user()->facility_id)
-            ->select(
-                'facility_inventories.id',
-                'facility_inventories.product_id',
-                'facility_inventories.quantity',
-                'facility_inventories.expiry_date',
-                'products.name as product_name'
-            )
-            ->join('products', 'products.id', '=', 'facility_inventories.product_id')
-            ->where('facility_inventories.quantity', '>', 0)
-            ->where('facility_inventories.expiry_date', '>', Carbon::now())
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'id' => $item->product_id,
-                    'name' => $item->product_name,
-                    'quantity' => $item->quantity,
-                    'expiry_date' => $item->expiry_date
-                ];
-            });
-
+        $user =  auth()->user();
+        $items = Product::whereHas('inventory', function($q) use($user){
+            $q->where('facility_id', $user->facility_id);
+        })
+        ->select('id','name')
+        ->get();
         return inertia('Dispence/Create', [
-            'inventories' => $inventories,
+            'inventories' => $items,
         ]);
+    }
+
+    public function checkInventory(Request $request){
+        try {
+            $request->validate([
+                'product_id' => 'required',
+                'quantity' => 'required',
+            ]);
+            $user = auth()->user();
+            $inventory = FacilityInventory::where('facility_id', $user->facility_id)
+                ->where('product_id', $request->product_id)
+                ->withSum('items', 'quantity')
+                ->first();
+            logger()->info((int) $inventory->items_sum_quantity);
+            return response()->json((int) $inventory->items_sum_quantity, 200);
+
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 200);
+        }
     }
 
     public function store(Request $request)

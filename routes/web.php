@@ -161,6 +161,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/create', 'create')->name('dispence.create');
             Route::post('/store', 'store')->name('dispence.store');
             Route::get('/{id}/show', 'show')->name('dispence.show');
+
+            // dispence.check-invnetory
+            Route::post('/check-invnetory', 'checkInventory')->name('dispence.check-invnetory');
         });
 
             // Transfer Management Routes

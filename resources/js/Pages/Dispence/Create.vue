@@ -129,7 +129,7 @@
                                 <h3 class="text-lg font-medium text-gray-900">Prescription Items</h3>
                                 <button type="button" @click="addItem"
                                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                    :disabled="isProcessing">
+                                    :disabled="isProcessing || haveIssue.length > 0">
                                     <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -181,9 +181,9 @@
                                                     @input="calculateItemQuantity(index)" required />
                                                 <label for="">Frequency</label>
                                                 <input type="number"
-                                                        class="pl-8 block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                                        v-model="item.frequency" placeholder="Per day" min="1"
-                                                        @input="calculateItemQuantity(index)" required />
+                                                    class="pl-8 block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                                    v-model="item.frequency" placeholder="Per day" min="1"
+                                                    @input="calculateItemQuantity(index)" required />
                                                 <label for="">Duration</label>
                                                 <input type="number"
                                                     class="pl-8 block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs"
@@ -193,20 +193,11 @@
                                                     <label for="">Quantity</label>
                                                     <input type="number"
                                                         class="w-full rounded-md border-gray-200 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                                        v-model="item.quantity" readonly required />
-                                                    <div v-if="item.max_quantity" class="mt-1">
-                                                        <span :class="{
-                                                            'text-green-600': item.quantity <= item.max_quantity,
-                                                            'text-red-600': item.quantity > item.max_quantity
-                                                        }" class="text-xs font-medium">
-                                                            {{ item.quantity > item.max_quantity ? 'Insufficient' :
-                                                            'Available' }}: {{ item.max_quantity }}
-                                                        </span>
-                                                        <span v-if="item.quantity > item.max_quantity"
-                                                            class="block text-xs font-medium text-red-600">
-                                                            (Short by {{ item.quantity - item.max_quantity }})
-                                                        </span>
-                                                    </div>
+                                                        v-model="item.quantity" readonly required
+                                                        @input="checkAvailability(index, item)" />
+                                                        <span v-if="haveIssue[index] != null" :class="[
+                                                            haveIssue[index] != null ? 'text-red-500' : ''
+                                                        ]">{{ haveIssue[index] }}</span>
                                                 </div>
                                             </td>
                                             <td class="px-2 py-3 text-center">
@@ -237,7 +228,7 @@
                             </Link>
                             <button type="submit"
                                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                :disabled="isProcessing">
+                                :disabled="isProcessing || haveIssue.length > 0">
                                 <svg v-if="isProcessing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
                                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -326,13 +317,8 @@ const calculateItemQuantity = (index) => {
         item.quantity = calculatedQty;
 
         // Check if quantity exceeds available stock
-        if (item.max_quantity && calculatedQty > item.max_quantity) {
-            Swal.fire({
-                title: 'Warning',
-                text: `Required quantity (${calculatedQty}) exceeds available stock (${item.max_quantity})`,
-                icon: 'warning',
-                confirmButtonText: 'OK'
-            });
+        if (item.dose && item.dose && item.duration) {
+            checkAvailability(index, item)
         }
     }
 };
@@ -384,19 +370,39 @@ watch(() => form.value.items, (items) => {
     });
 }, { deep: true });
 
-const submit = async () => {
-    isProcessing.value = true;
-    await axios.post(route('dispence.store'), form.value)
+const haveIssue = ref([]);
+
+async function checkAvailability(index, item) {
+    haveIssue.value = [];
+    await axios.post(route('dispence.check-invnetory'), {
+        quantity: item.quantity,
+        product_id: item.product_id
+    })
         .then((response) => {
-            isProcessing.value = false;
-            toast.success(response.data);
-            reloadDispences();
+            if (response.data < item.quantity) {
+                console.log("kawayn");
+                haveIssue.value[index] = `Only ${response.data} quantities are available`;
+            }
         })
         .catch((error) => {
-            isProcessing.value = false;
-            console.error('Error creating dispense:', error);
-            toast.error('Error creating dispense');
-        });
+            console.log(error.response.data);
+        })
+}
+
+const submit = async () => {
+    console.log(form.value);
+    // isProcessing.value = true;
+    // await axios.post(route('dispence.store'), form.value)
+    //     .then((response) => {
+    //         isProcessing.value = false;
+    //         toast.success(response.data);
+    //         reloadDispences();
+    //     })
+    //     .catch((error) => {
+    //         isProcessing.value = false;
+    //         console.error('Error creating dispense:', error);
+    //         toast.error('Error creating dispense');
+    //     });
 };
 
 function reloadDispences() {

@@ -28,12 +28,6 @@ class FacilityMonthlyReport extends Model
         'rejected_by'
     ];
 
-    protected $casts = [
-        'submitted_at' => 'datetime',
-        'reviewed_at' => 'datetime',
-        'approved_at' => 'datetime',
-        'rejected_at' => 'datetime',
-    ];
 
     /**
      * Get the facility that owns the report

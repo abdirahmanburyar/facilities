@@ -87,19 +87,11 @@ class Product extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Get the inventories for the product.
-     */
-    public function inventories()
-    {
-        return $this->hasMany(Inventory::class);
-    }
-
     public function eligible(){
         return $this->hasMany(EligibleItem::class);
     }
 
-    public function facilityInventories(){
+    public function inventory(){
         return $this->hasMany(FacilityInventory::class);
     }
 }
