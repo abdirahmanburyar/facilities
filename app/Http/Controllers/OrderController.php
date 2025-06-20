@@ -11,6 +11,7 @@ use App\Models\Warehouse;
 use App\Models\Inventory;
 use App\Models\InventoryAllocation;
 use App\Models\FacilityBackorder;
+use App\Models\FacilityInventoryItem;
 use App\Models\InventoryItem;
 use App\Models\FacilityInventory;
 // App Events and Resources
