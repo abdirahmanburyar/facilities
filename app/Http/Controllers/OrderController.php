@@ -327,9 +327,8 @@ class OrderController extends Controller
                         return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                     }
                     $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
-                    $inventory = FacilityInventoryItem::where('product_id', $allocation->product_id)
-                        ->where('batch_number', $allocation->batch_number)
-                        ->where('expiry_date', $allocation->expiry_date)
+                    $inventory = FacilityInventory::where('product_id', $allocation->product_id)
+                        ->where('facility_name', auth()->user()->facility_id)
                         ->first();
 
                     if($inventory){
@@ -347,8 +346,7 @@ class OrderController extends Controller
                             'barcode' => $allocation->barcode,
                             'uom' => $allocation->uom,
                             'unit_cost' => $allocation->unit_cost,
-                            'total_cost' => $allocation->unit_cost * $finalQuantity,
-
+                            'total_cost' => $allocation->unit_cost * $finalQuantity
                         ]);
                     }
                     
@@ -730,8 +728,6 @@ class OrderController extends Controller
             if(!$soh){
                 $soh = 0;
             }
-
-            logger()->info($soh);
     
             // Get last 4 months for AMC calculation (exclude current month)
             $months = [];
