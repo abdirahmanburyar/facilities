@@ -326,7 +326,7 @@ class OrderController extends Controller
                         return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                     }
                     $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
-                    $inventory = FacilityInventory::where('product_id', $allocation->product_id)
+                    $inventory = FacilityInventoryItem::where('product_id', $allocation->product_id)
                         ->where('batch_number', $allocation->batch_number)
                         ->where('expiry_date', $allocation->expiry_date)
                         ->first();
@@ -336,12 +336,18 @@ class OrderController extends Controller
                     }else{
                         $inventory = FacilityInventory::create([
                             'facility_id' => $order->facility_id,
+                            'product_id' => $allocation->product_id
+                        ]);
+                        $inventory->items()->create([
                             'product_id' => $allocation->product_id,
                             'batch_number' => $allocation->batch_number,
                             'expiry_date' => $allocation->expiry_date,
                             'quantity' => $finalQuantity,
                             'barcode' => $allocation->barcode,
                             'uom' => $allocation->uom,
+                            'unit_cost' => $allocation->unit_cost,
+                            'total_cost' => $allocation->unit_cost * $finalQuantity,
+
                         ]);
                     }
                     
