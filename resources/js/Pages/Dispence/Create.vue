@@ -196,7 +196,7 @@
                                                         v-model="item.quantity" readonly required
                                                         @input="checkAvailability(index, item)" />
                                                         <span v-if="haveIssue[index] != null" :class="[
-                                                            haveIssue[index] != null ? 'text-red-500' : ''
+                                                            haveIssue[index] != null ? 'text-xs text-red-500' : ''
                                                         ]">{{ haveIssue[index] }}</span>
                                                 </div>
                                             </td>
@@ -391,18 +391,18 @@ async function checkAvailability(index, item) {
 
 const submit = async () => {
     console.log(form.value);
-    // isProcessing.value = true;
-    // await axios.post(route('dispence.store'), form.value)
-    //     .then((response) => {
-    //         isProcessing.value = false;
-    //         toast.success(response.data);
-    //         reloadDispences();
-    //     })
-    //     .catch((error) => {
-    //         isProcessing.value = false;
-    //         console.error('Error creating dispense:', error);
-    //         toast.error('Error creating dispense');
-    //     });
+    isProcessing.value = true;
+    await axios.post(route('dispence.store'), form.value)
+        .then((response) => {
+            isProcessing.value = false;
+            toast.success(response.data);
+            reloadDispences();
+        })
+        .catch((error) => {
+            isProcessing.value = false;
+            console.error('Error creating dispense:', error);
+            toast.error('Error creating dispense');
+        });
 };
 
 function reloadDispences() {

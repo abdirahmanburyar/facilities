@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\FacilityInventory;
+use App\Models\FacilityInventoryItem;
 use App\Models\Product;
 use App\Models\Dispence;
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\DispenceResource;
@@ -104,7 +106,9 @@ class DispenceController extends Controller
 
             foreach($validated['items'] as $item){
                 $remainingQuantity = $item['quantity'];
-                $inventories = FacilityInventory::where('facility_id', auth()->user()->facility_id)
+                $inventories = FacilityInventoryItem::whereHas('inventory', function($query) {
+                    $query->where('facility_id', auth()->user()->facility_id);
+                })
                     ->where('product_id', $item['product_id'])
                     ->where('quantity', '>', 0)
                     ->orderBy('expiry_date', 'asc')
