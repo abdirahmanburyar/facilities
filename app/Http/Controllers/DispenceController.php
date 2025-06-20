@@ -62,13 +62,12 @@ class DispenceController extends Controller
             ]);
             $user = auth()->user();
             $inventory = FacilityInventoryItem::whereHas('inventory', function($query) use($user) {
-                $query('facility_id', $user->facility_id);
+                $query->where('facility_id', $user->facility_id);
                 })
                 ->where('product_id', $request->product_id)
                 ->sum('quantity');
-            logger()->info((int) $inventory);
+                
             return response()->json((int) $inventory, 200);
-
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 200);
         }
