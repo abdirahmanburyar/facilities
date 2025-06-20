@@ -13,30 +13,17 @@ class Inventory extends Model
 
     protected $fillable = [
         'product_id',
-        'warehouse_id',
         'quantity',
-        'reorder_level',
-        'manufacturing_date',
-        'expiry_date',
-        'batch_number',
-        'location_id',
-        'notes',
-        'uom',
-        'is_active',
     ];
+
+    public function items()
+    {
+        return $this->hasMany(InventoryItem::class);
+    }
 
     public function product()
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function warehouse()
-    {
-        return $this->belongsTo(Warehouse::class);
-    }
-
-    public function location()
-    {
-        return $this->belongsTo(Location::class);
-    }
 }

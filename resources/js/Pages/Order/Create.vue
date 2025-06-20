@@ -297,6 +297,7 @@ async function checkInventory(index, selected) {
             product_id: selected.id,
         })
         .then((response) => {
+            console.log(response);
             form.value.items[index].soh = response.data.soh;
             form.value.items[index].quantity = response.data.quantity;
             form.value.items[index].amc = response.data.amc;
