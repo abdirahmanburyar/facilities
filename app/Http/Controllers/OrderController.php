@@ -725,7 +725,11 @@ class OrderController extends Controller
             // Calculate Stock on Hand (SOH)
             $soh = FacilityInventory::where('product_id', $request->product_id)
                 ->withSum('items', 'quantity')
-                ->first() ?? 0;
+                ->first();
+
+            if(!$soh){
+                $soh = 0;
+            }
 
             logger()->info($soh);
     
