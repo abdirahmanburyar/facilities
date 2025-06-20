@@ -721,13 +721,15 @@ class OrderController extends Controller
             }
     
             // Calculate Stock on Hand (SOH)
-            $soh = FacilityInventory::where('product_id', $request->product_id)
-                ->withSum('items', 'quantity')
-                ->first();
+            $soh = FacilityInventoryItem::whereHas('inventory', function($query) use ($user){
+                $query->where('facility_id', $user->facility_id);
+            })
+                ->where('product_id', $request->product_id)
+                ->sum('quantity');
 
-            if(!$soh){
-                $soh = 0;
-            }
+            // if($soh){
+            //     $soh = 0;
+            // }
     
             // Get last 4 months for AMC calculation (exclude current month)
             $months = [];
