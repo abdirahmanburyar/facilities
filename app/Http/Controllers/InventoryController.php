@@ -30,28 +30,15 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         // Step 1: Get last 3 months (excluding current)
-        $lastThreeMonths = collect();
-        for ($i = 1; $i <= 3; $i++) {
-            $lastThreeMonths->push(Carbon::now()->subMonths($i)->format('Y-m'));
-        }
-
+        $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
+        $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
         // Step 2: Convert string date and filter by last 3 months
-       $amcSubquery = FacilityInventoryMovement::facilityIssued()
+        $amcSubquery = FacilityInventoryMovement::facilityIssued()
             ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
-            ->whereRaw("
-                DATE_FORMAT(STR_TO_DATE(movement_date, '%d/%m/%Y'), '%Y-%m') IN (" .
-                implode(',', array_fill(0, 3, '?')) . ")",
-                collect(range(1, 3))->map(fn($i) => Carbon::now()->subMonths($i)->format('Y-m'))->toArray()
-            )
+            ->whereBetween('movement_date', [$startDate, $endDate])
             ->groupBy('product_id');
 
         logger()->info($amcSubquery->get());
-
-        // $amcSubquery = IssueQuantityItem::join('issue_quantity_reports', 'issue_quantity_items.parent_id', '=', 'issue_quantity_reports.id')
-        //     ->whereIn('issue_quantity_reports.month_year', $lastThreeMonths)
-        //     ->select('issue_quantity_items.product_id', DB::raw('COALESCE(SUM(issue_quantity_items.quantity) / 3, 0) as amc'))
-        //     ->groupBy('issue_quantity_items.product_id');
-
         $query = FacilityInventory::query()
             ->with([
                 'product:id,name,category_id,dosage_id',

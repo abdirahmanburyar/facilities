@@ -390,7 +390,6 @@ async function checkAvailability(index, item) {
 }
 
 const submit = async () => {
-    console.log(form.value);
     isProcessing.value = true;
     await axios.post(route('dispence.store'), form.value)
         .then((response) => {

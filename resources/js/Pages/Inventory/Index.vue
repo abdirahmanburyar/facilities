@@ -239,14 +239,15 @@ const formatDate = (date) => {
 
 // Check if inventory is low
 const isLowStock = (inventory) => {
+    const total = inventory.items.reduce((sum, i) => sum + i.quantity, 0);
     return (
-        inventory.quantity > 0 && inventory.quantity <= inventory.reorder_level
+        total > 0 && total <= inventory.reorder_level
     );
 };
 
 // Check if inventory is out of stock
 const isOutOfStock = (inventory) => {
-    return inventory.quantity <= 0;
+    return inventory.items?.reduce((sum, i) => sum + i.quantity, 0) <= 0;
 };
 
 // Check if product is expiring soon (within 30 days)
@@ -544,7 +545,7 @@ function getResults(page = 1) {
                                 </td>
 
                                 <td class="px-3 py-2 text-gray-800">
-                                    {{ inventory }}
+                                    {{ inventory.reorder_level }}
                                 </td>
 
                                 <td class="px-3 py-2">
@@ -592,28 +593,13 @@ function getResults(page = 1) {
                                     class="px-3 py-4 whitespace-nowrap text-sm font-medium"
                                 >
                                     <div class="flex items-center space-x-3">
-                                        <div v-if="isLowStock(inventory)">
-                                            <img src="/assets/images/reorder_status.png" alt="Reorder Status" class="w-6 h-6" title="Reorder Status">
-                                        </div>
                                         <Link
-                                            :href="route('supplies.purchase_order')"
-                                            v-if="inventory.quantity > inventory.reorder_level"
+                                            :href="route('orders.create')"
+                                            v-if="isLowStock(inventory)"
                                             class="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                class="h-5 w-5"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
                                             >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                />
-                                            </svg>
+                                            <img src="/assets/images/reorder-status.png" alt="Reorder Status" class="w-6 h-6" title="Reorder Status">
+                                            
                                         </Link>
                                     </div>
                                 </td>
