@@ -1691,8 +1691,7 @@ const changeStatus = (orderId, newStatus, type) => {
                         // Reload the page to show the updated status
                         router.get(route("orders.show", props.order.id), {}, {
                             preserveScroll: true,
-                            preserveState: false,
-                            replace: true,
+                            preserveState: true,
                             only: [
                                 'orders'
                             ]
