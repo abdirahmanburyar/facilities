@@ -314,6 +314,7 @@ class OrderController extends Controller
             $debugInfo = []; // For debugging purposes
             
             $facilityInventoryMovementService = new FacilityInventoryMovementService();
+            $user = auth()->user();
             
             foreach ($order->items as $item) {
                 // Debug information for this item
@@ -325,12 +326,26 @@ class OrderController extends Controller
                         return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                     }
                     $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
-                    $inventory = FacilityInventory::where('product_id', $allocation->product_id)
-                        ->where('facility_id', auth()->user()->facility_id)
+                    $inventory = FacilityInventory::where('facility_id', $user->facility_id)
+                        ->where('product_id', $allocation->product_id)
                         ->first();
 
                     if($inventory){
-                        $inventory->increment('quantity', $finalQuantity);
+                        $inventoryItem = $inventory->item()->where('batch_number', $allocation['batch_number'])->first();
+                        if($inventoryItem){
+                            $inventoryItem->increment(['quantity' => $finalQuantity]);
+                        }else{
+                            $inventory->items()->create([
+                                'product_id' => $allocation['product_id'],
+                                'quantity' => $allocation['finalQuantity'],
+                                'expiry_date' => $allocation['expiry_date'],
+                                'batch_number' => $allocation['batch_number'],
+                                'barcode' => $allocation['barcode'],
+                                'uom' => $allocation['uom'],
+                                'unit_cost' => $allocation['unit_cost'],
+                                'total_cost' => $allocation['unit_cost'] *  $allocation['finalQuantity']
+                            ]);
+                        }
                     }else{
                         $inventory = FacilityInventory::create([
                             'facility_id' => $order->facility_id,
