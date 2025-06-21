@@ -267,9 +267,12 @@ class OrderController extends Controller
             $order = OrderItem::whereHas('order', function($query){
                 $query->where('status', 'delivered');
             })->find($request->order_item_id);
+            logger()->info($order);
+
             if(!$order) return response()->json("Order not exist, or not in delivered stage", 500);
             if((int) $order->received_quantity > (int) $order->quantity) return response()->json("Received quantity can be exceed the original quantity", 500);
             $order->received_quantity = $request->received_quantity;
+            $order->save();
             return response()->json('Done', 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);

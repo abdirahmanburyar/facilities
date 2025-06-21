@@ -68,19 +68,19 @@
                         <BuildingOfficeIcon class="h-4 w-4 text-gray-400 mr-2" />
                         <span class="text-sm text-gray-600">{{
                             props.order.facility.name
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center">
                         <EnvelopeIcon class="h-4 w-4 text-gray-400 mr-2" />
                         <span class="text-sm text-gray-600">{{
                             props.order.facility.email
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center">
                         <PhoneIcon class="h-4 w-4 text-gray-400 mr-2" />
                         <span class="text-sm text-gray-600">{{
                             props.order.facility.phone
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center">
                         <MapPinIcon class="h-4 w-4 text-gray-400 mr-2" />
@@ -356,11 +356,11 @@
                                 class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
                             <div>
                                 <label>Received Quantity</label>
-                                <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'
-                                    "@input.enter="receivedQty(item, index)"
+                                <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
+                                    @keyup.enter="receivedQty(item, index)"
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
-                                    <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
-                                    <!-- " @input.keyup="validateReceivedQuantity(item)" -->
+                                <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
+                                <!-- " @input.keyup="validateReceivedQuantity(item)" -->
                             </div>
                             <button
                                 v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
@@ -646,9 +646,9 @@
                                                 statusOrder.indexOf(
                                                     props.order.status
                                                 ) > statusOrder.indexOf("delivered")
-                                                    ? "Delivered on " + moment(props.order?.received_at).format('DD/MM/YYYY HH:mm')
-                                                    :  isType['is_delivering'] ? 'Please Wait....' : "Mark as Delivered"
-                                                        }}
+                                                    ? "Delivered on " + moment(props.order?.received_at).format('DD/MM/YYYY HH: mm')
+                                            : isType['is_delivering'] ? 'Please Wait....' : "Mark as Delivered"
+                                                    }}
                                         </span>
                                     </button>
                                     <span v-show="props.order?.delivered_by" class="text-sm text-gray-600">
@@ -682,9 +682,9 @@
                                                 statusOrder.indexOf(
                                                     props.order.status
                                                 ) > statusOrder.indexOf("delivered")
-                                                    ? "Received on " + moment(props.order?.received_at).format('DD/MM/YYYY HH:mm')
-                                                    :  isType['is_receiving'] ? 'Please Wait....' : "Mark as Received"
-                                                        }}
+                                                    ? "Received on " + moment(props.order?.received_at).format('DD/MM/YYYY HH: mm')
+                                            : isType['is_receiving'] ? 'Please Wait....' : "Mark as Received"
+                                                    }}
                                         </span>
                                     </button>
                                     <span v-show="props.order?.received_by" class="text-sm text-gray-600">
@@ -830,7 +830,7 @@
                     </h2>
                     <span v-if="message" class="text-sm text-red-600">{{
                         message
-                    }}</span>
+                        }}</span>
 
                     <div class="mb-4 bg-gray-50 p-3 rounded">
                         <p class="text-xs font-medium text-gray-600">
@@ -921,7 +921,7 @@
                                     Batch: {{ allocation.batch_number }}
                                     <span class="ml-2 text-sm text-gray-500">({{
                                         allocation.allocated_quantity
-                                    }}
+                                        }}
                                         units)</span>
                                 </div>
                                 <div>
@@ -1696,36 +1696,34 @@ const changeStatus = (orderId, newStatus, type) => {
 const notSubmitted = ref(false);
 
 const itemsWithZeroReceived = computed(() => {
-  return props.order?.items?.some(item => item.received_quantity === 0);
+    return props.order?.items?.some(item => item.received_quantity === 0);
 });
 
 watch(itemsWithZeroReceived, (newVal, oldVal) => {
-  console.log('Has item with 0 received_quantity:', newVal);
+    console.log('Has item with 0 received_quantity:', newVal);
 });
 
 const isSavingQty = ref([]);
-async function receivedQty(item, index){
+async function receivedQty(item, index) {
     isSavingQty.value[index] = true;
     // console.log(item, index);
-    if(item.quantity_to_release < item.received_quantity){
+    if (item.quantity_to_release < item.received_quantity) {
         item.received_quantity = item.quantity_to_release;
-        isSavingQty.value[index] = true;
-        return;
     }
 
     await axios.post(route('orders.receivedQuantity'), {
         order_item_id: item.id,
         received_quantity: item.received_quantity
     })
-    .then((response) => {
-    isSavingQty.value[index] = false;
-        console.log(response.data);
-    })
-    .catch((error) => {
-        console.log(error.response.data);
-    isSavingQty.value[index] = false;
+        .then((response) => {
+            isSavingQty.value[index] = false;
+            console.log(response.data);
+        })
+        .catch((error) => {
+            console.log(error.response.data);
+            isSavingQty.value[index] = false;
 
-    });
+        });
     // 'orders.receivedQuantity
 }
 
