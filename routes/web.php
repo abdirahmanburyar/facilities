@@ -152,6 +152,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             // Back order
             Route::post('/backorder', 'backorder')->name('orders.backorder');
             Route::post('/remove-back-order', 'removeBackOrder')->name('orders.remove-back-order');
+
+            // receivedQuantity
+            Route::post('/update-received-quantity', 'receivedQuantity')->name('orders.receivedQuantity');
         });
 
         Route::controller(DispenceController::class)

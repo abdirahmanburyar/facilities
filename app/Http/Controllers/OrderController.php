@@ -258,6 +258,24 @@ class OrderController extends Controller
         }
     }
 
+    public function receivedQuantity(Request $request){
+        try {
+            $request->validate([
+                'order_item_id' => 'required',
+                'received_quantity' => 'required|min:1',
+            ]);
+            $order = OrderItem::whereHas('order', function($query){
+                $query->where('status', 'delivered');
+            })->find($request->order_item_id);
+            if(!$order) return response()->json("Order not exist, or not in delivered stage", 500);
+            if((int) $order->received_quantity > (int) $order->quantity) return response()->json("Received quantity can be exceed the original quantity", 500);
+            $order->received_quantity = $request->received_quantity;
+            return response()->json('Done', 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
     public function getOutstanding(Request $request, $id)
     {
         try {
@@ -346,6 +364,7 @@ class OrderController extends Controller
                                 'total_cost' => $allocation['unit_cost'] *  $allocation['finalQuantity']
                             ]);
                         }
+                        
                     }else{
                         $inventory = FacilityInventory::create([
                             'facility_id' => $order->facility_id,

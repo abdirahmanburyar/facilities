@@ -357,8 +357,10 @@
                             <div>
                                 <label>Received Quantity</label>
                                 <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'
-                                    " @input="validateReceivedQuantity(item)"
+                                    "@input.enter="receivedQty(item, index)"
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
+                                    <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
+                                    <!-- " @input.keyup="validateReceivedQuantity(item)" -->
                             </div>
                             <button
                                 v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
@@ -1614,35 +1616,6 @@ const formatDate = (date) => {
     return moment(date).format("DD/MM/YYYY");
 };
 
-// Validate received quantity to ensure it doesn't exceed quantity_to_release
-const validateReceivedQuantity = (item) => {
-    if (!item.quantity_to_release) return;
-
-    // Convert to numbers for comparison
-    const qtyToRelease = Number(item.quantity_to_release);
-    let receivedQty = Number(item.received_quantity);
-
-    // Ensure received quantity is a valid number
-    if (isNaN(receivedQty)) {
-        item.received_quantity = 0;
-        return;
-    }
-
-    // Ensure received quantity doesn't exceed quantity_to_release
-    if (receivedQty > qtyToRelease) {
-        item.received_quantity = qtyToRelease;
-        Swal.fire({
-            title: "Quantity Adjusted",
-            text: "Received quantity cannot exceed quantity to release.",
-            icon: "warning",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-        });
-    }
-};
-
 const statusOrder = [
     "pending",
     "reviewed",
@@ -1673,7 +1646,7 @@ const changeStatus = (orderId, newStatus, type) => {
             await axios
                 .post(route("orders.change-status"), {
                     order_id: orderId,
-                    status: newStatus,
+                    status: newStatus
                 })
                 .then((response) => {
                     isType.value[type] = false;
@@ -1719,5 +1692,41 @@ const changeStatus = (orderId, newStatus, type) => {
         }
     });
 };
+
+const notSubmitted = ref(false);
+
+const itemsWithZeroReceived = computed(() => {
+  return props.order?.items?.some(item => item.received_quantity === 0);
+});
+
+watch(itemsWithZeroReceived, (newVal, oldVal) => {
+  console.log('Has item with 0 received_quantity:', newVal);
+});
+
+const isSavingQty = ref([]);
+async function receivedQty(item, index){
+    isSavingQty.value[index] = true;
+    // console.log(item, index);
+    if(item.quantity_to_release < item.received_quantity){
+        item.received_quantity = item.quantity_to_release;
+        isSavingQty.value[index] = true;
+        return;
+    }
+
+    await axios.post(route('orders.receivedQuantity'), {
+        order_item_id: item.id,
+        received_quantity: item.received_quantity
+    })
+    .then((response) => {
+    isSavingQty.value[index] = false;
+        console.log(response.data);
+    })
+    .catch((error) => {
+        console.log(error.response.data);
+    isSavingQty.value[index] = false;
+
+    });
+    // 'orders.receivedQuantity
+}
 
 </script>
