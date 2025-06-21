@@ -145,7 +145,7 @@ class OrderController extends Controller
                 'expected_date' => 'required|date|after_or_equal:order_date',
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|exists:products,id',
-                'items.*.quantity' => 'required|numeric|min:1',
+                'items.*.quantity' => 'required|numeric',
             ],[
                 'items.*.product_id.required' => 'Item is required',
             ]);
