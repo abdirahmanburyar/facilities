@@ -303,8 +303,6 @@ class OrderController extends Controller
                 ->where('id', $request->order_id)
                 ->first();
             if($request->status == 'delivered' && $order->status == 'dispatched'){
-                logger()->info($request->all());
-                logger()->info($order->status);
                 $order->status = 'delivered';
                 $order->delivered_at = Carbon::now();
                 $order->delivered_by = auth()->user()->id;
@@ -328,7 +326,7 @@ class OrderController extends Controller
                     }
                     $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
                     $inventory = FacilityInventory::where('product_id', $allocation->product_id)
-                        ->where('facility_name', auth()->user()->facility_id)
+                        ->where('facility_id', auth()->user()->facility_id)
                         ->first();
 
                     if($inventory){
