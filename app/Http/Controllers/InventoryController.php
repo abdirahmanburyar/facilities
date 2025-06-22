@@ -38,7 +38,6 @@ class InventoryController extends Controller
             ->whereBetween('movement_date', [$startDate, $endDate])
             ->groupBy('product_id');
 
-        logger()->info($amcSubquery->get());
         $query = FacilityInventory::query()
             ->with([
                 'product:id,name,category_id,dosage_id',

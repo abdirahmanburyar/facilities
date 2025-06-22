@@ -424,6 +424,7 @@ function getResults(page = 1) {
                             <tr
                                 v-for="inventory in props.inventories.data"
                                 :key="inventory.id"
+                                v-if="props.inventories.data.length > 0"
                                 class="divide-x divide-gray-300"
                             >
                                 <td class="px-3 py-2 font-medium text-gray-800">
@@ -472,7 +473,7 @@ function getResults(page = 1) {
                                             <tr
                                                 v-for="item in inventory.items"
                                                 :key="item.id"
-                                                class="bg-white even:bg-gray-50"
+                                                class="bg-white even:bg-gray-50"                                                
                                             >
                                             <td
                                                     :class="[
@@ -535,7 +536,7 @@ function getResults(page = 1) {
                                                         />
                                                     </div>
                                                 </td>
-                                            </tr>
+                                            </tr>                                           
                                         </tbody>
                                     </table>
                                 </td>
@@ -602,6 +603,11 @@ function getResults(page = 1) {
                                             
                                         </Link>
                                     </div>
+                                </td>
+                            </tr>
+                            <tr v-else>
+                                <td colspan="7" class="px-3 py-2 text-center text-gray-500">
+                                    No inventory items found
                                 </td>
                             </tr>
                         </tbody>
