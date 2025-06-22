@@ -196,7 +196,6 @@ class OrderController extends Controller
 
                     // Allocate inventory from different batches
                     foreach ($availableInventory as $inventory) {
-                        logger()->info($inventory);
                         if ($remainingQuantity <= 0) break;
 
                         $quantityToAllocate = min($remainingQuantity, $inventory->quantity);
@@ -324,99 +323,100 @@ class OrderController extends Controller
 
             logger()->info($request->all());
 
-            // $order = Order::with('items.inventory_allocations.backorders')
-            //     ->where('id', $request->order_id)
-            //     ->first();
-            // if($request->status == 'delivered' && $order->status == 'dispatched'){
-            //     $order->status = 'delivered';
-            //     $order->delivered_at = Carbon::now();
-            //     $order->delivered_by = auth()->user()->id;
-            //     $order->save();
-            //     DB::commit();
-            //     return response()->json("Marked as Delivered", 200);
-            // }
-            
-            // $debugInfo = []; // For debugging purposes
-            
-            // $facilityInventoryMovementService = new FacilityInventoryMovementService();
-            // $user = auth()->user();
-            
-            // foreach ($order->items as $item) {
-            //     // Debug information for this item
+            $order = Order::with('items.inventory_allocations.backorders')
+                ->where('id', $request->order_id)
+                ->first();
                 
-            //     foreach ($item->inventory_allocations as $allocation) {
-            //         // Calculate total back order quantity for this allocation
-            //         if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
-            //             DB::rollback();
-            //             return response()->json('Backorder quantities exceeded the allocated quantity', 500);
-            //         }
-            //         $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
-            //         $inventory = FacilityInventory::where('facility_id', $user->facility_id)
-            //             ->where('product_id', $allocation->product_id)
-            //             ->first();
-
-            //         if($inventory){
-            //             $inventoryItem = $inventory->item()->where('batch_number', $allocation['batch_number'])->first();
-            //             if($inventoryItem){
-            //                 $inventoryItem->increment(['quantity' => $finalQuantity]);
-            //             }else{
-            //                 $inventory->items()->create([
-            //                     'product_id' => $allocation['product_id'],
-            //                     'quantity' => $allocation['finalQuantity'],
-            //                     'expiry_date' => $allocation['expiry_date'],
-            //                     'batch_number' => $allocation['batch_number'],
-            //                     'barcode' => $allocation['barcode'],
-            //                     'uom' => $allocation['uom'],
-            //                     'unit_cost' => $allocation['unit_cost'],
-            //                     'total_cost' => $allocation['unit_cost'] *  $allocation['finalQuantity']
-            //                 ]);
-            //             }
-                        
-            //         }else{
-            //             $inventory = FacilityInventory::create([
-            //                 'facility_id' => $order->facility_id,
-            //                 'product_id' => $allocation->product_id
-            //             ]);
-            //             $inventory->items()->create([
-            //                 'product_id' => $allocation->product_id,
-            //                 'batch_number' => $allocation->batch_number,
-            //                 'expiry_date' => $allocation->expiry_date,
-            //                 'quantity' => $finalQuantity,
-            //                 'barcode' => $allocation->barcode,
-            //                 'uom' => $allocation->uom,
-            //                 'unit_cost' => $allocation->unit_cost,
-            //                 'total_cost' => $allocation->unit_cost * $finalQuantity
-            //             ]);
-            //         }
+            if($request->status == 'delivered' && $order->status == 'dispatched'){
+                $order->status = 'delivered';
+                $order->delivered_at = Carbon::now();
+                $order->delivered_by = auth()->user()->id;
+                $order->save();
+                DB::commit();
+                return response()->json("Marked as Delivered", 200);
+            }
+            
+            $debugInfo = []; // For debugging purposes
+            
+            $user = auth()->user();
+            
+            foreach ($order->items as $item) {
+                // Debug information for this item
+                
+                foreach ($item->inventory_allocations as $allocation) {
+                    // Calculate total back order quantity for this allocation
+                    if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                        DB::rollback();
+                        return response()->json('Backorder quantities exceeded the allocated quantity', 500);
+                    }
+                    $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
                     
-            //         // Record facility inventory movement for received quantity
-            //         if ($finalQuantity > 0) {
-            //             $facilityInventoryMovementService->recordOrderReceived(
-            //                 $order,
-            //                 $item,
-            //                 $finalQuantity,
-            //                 $allocation->batch_number,
-            //                 $allocation->expiry_date,
-            //                 $allocation->barcode
-            //             );
-            //         }
-            //     }
-            // }
-            
-            // // Update order status to received
-            // $order->status = 'received';
-            // $order->received_at = Carbon::now();
-            // $order->received_by = auth()->user()->id;
-            // $order->save();
+                    $inventory = FacilityInventory::where('facility_id', $user->facility_id)
+                        ->where('product_id', $allocation->product_id)
+                        ->first();
 
-            // // Broadcast event if needed
-            // // Kafka::publishOrderPlaced('Refreshed');
-            // // event(new OrderEvent('Refreshed'));
-
-            // DB::commit();
+                    if($inventory){
+                        $inventoryItem = $inventory->items()->where('batch_number', $allocation->batch_number)->first();
+                        if($inventoryItem){
+                            $inventoryItem->increment('quantity', $finalQuantity);
+                        }else{
+                            $inventory->items()->create([
+                                'product_id' => $allocation->product_id,
+                                'quantity' => $finalQuantity,
+                                'expiry_date' => $allocation->expiry_date,
+                                'batch_number' => $allocation->batch_number,
+                                'barcode' => $allocation->barcode,
+                                'uom' => $allocation->uom,
+                                'unit_cost' => $allocation->unit_cost,
+                                'total_cost' => $allocation->unit_cost * $finalQuantity
+                            ]);
+                        }
+                        
+                    }else{
+                        $inventory = FacilityInventory::create([
+                            'facility_id' => $order->facility_id,
+                            'product_id' => $allocation->product_id
+                        ]);
+                        $inventory->items()->create([
+                            'product_id' => $allocation->product_id,
+                            'batch_number' => $allocation->batch_number,
+                            'expiry_date' => $allocation->expiry_date,
+                            'quantity' => $finalQuantity,
+                            'barcode' => $allocation->barcode,
+                            'uom' => $allocation->uom,
+                            'unit_cost' => $allocation->unit_cost,
+                            'total_cost' => $allocation->unit_cost * $finalQuantity
+                        ]);
+                    }
+                    
+                    // Record facility inventory movement for received quantity
+                    if ($finalQuantity > 0) {
+                        FacilityInventoryMovementService::recordOrderReceived(
+                            $order,
+                            $item,
+                            $finalQuantity,
+                            $allocation->batch_number,
+                            $allocation->expiry_date,
+                            $allocation->barcode
+                        );
+                    }
+                }
+            }
             
-            // // Return debug information along with success message
-            // return response()->json('Order received successfully and inventory updated.', 200);
+            // Update order status to received
+            $order->status = 'received';
+            $order->received_at = Carbon::now();
+            $order->received_by = auth()->user()->id;
+            $order->save();
+
+            // Broadcast event if needed
+            // Kafka::publishOrderPlaced('Refreshed');
+            // event(new OrderEvent('Refreshed'));
+
+            DB::commit();
+            
+            // Return debug information along with success message
+            return response()->json('Order received successfully and inventory updated.', 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json($e->getMessage(), 500);
