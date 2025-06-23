@@ -192,7 +192,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::post('/remove-back-order', [TransferController::class, 'removeBackOrder'])->name('transfers.remove-back-order');
         
         // Item status change
-        Route::post('/change-item-status', [TransferController::class, 'changeItemStatus'])->name('transfers.changeItemStatus');
+        Route::post('/change-item-status', [TransferController::class, 'changeStatus'])->name('transfers.changeItemStatus');
         
         // receive transfer
         Route::post('/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receiveTransfer');
