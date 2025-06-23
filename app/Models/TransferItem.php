@@ -10,10 +10,8 @@ class TransferItem extends Model
         'transfer_id',
         'product_id',
         'quantity',
-        'barcode',
-        'uom',
-        'batch_number',
-        'expire_date'
+        'quantity_to_release',
+        'quantity_per_unit'
     ];
     
     public function transfer()
@@ -29,6 +27,10 @@ class TransferItem extends Model
     public function backorders()
     {
         return $this->hasMany(FacilityBackorder::class, 'transfer_item_id');
+    }
+
+    public function inventory_allocations(){
+        return $this->hasMany(InventoryAllocation::class, 'transfer_item_id');
     }
 
 }

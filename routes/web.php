@@ -170,8 +170,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         });
 
             // Transfer Management Routes
-    // ->middleware(PermissionMiddleware::class . ':transfer.view')
-    Route::prefix('transfers')->group(function () {
+
+ Route::prefix('transfers')->group(function () {
         Route::get('/', [TransferController::class, 'index'])->name('transfers.index');
         Route::get('/{id}/show', [TransferController::class, 'show'])->name('transfers.show');
         Route::get('/create', [TransferController::class, 'create'])->name('transfers.create');
@@ -179,17 +179,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         Route::get('/{transfer}/edit', [TransferController::class, 'edit'])->name('transfers.edit');
         Route::put('/{transfer}', [TransferController::class, 'update'])->name('transfers.update');
         Route::delete('/{transfer}', [TransferController::class, 'destroy'])->name('transfers.destroy');
-        
-        // Transfer Status Change Routes
-        Route::post('/{id}/approve', [TransferController::class, 'approve'])->name('transfers.approve');
-        Route::post('/{id}/reject', [TransferController::class, 'reject'])->name('transfers.reject');
-        Route::post('/{id}/in-process', [TransferController::class, 'inProcess'])->name('transfers.inProcess');
-        Route::post('/{id}/dispatch', [TransferController::class, 'dispatch'])->name('transfers.dispatch');
-        
+
+        // get inventory for transfer
+        Route::post('/inventory', [TransferController::class, 'getSourceInventoryDetail'])->name('transfers.inventory');
+                
         // Route to get available inventories for transfer
         Route::get('/get-inventories', [TransferController::class, 'getInventories'])->name('transfers.getInventories');
                
-        
+         
         // Back order functionality
         Route::post('/backorder', [TransferController::class, 'backorder'])->name('transfers.backorder');
         Route::post('/remove-back-order', [TransferController::class, 'removeBackOrder'])->name('transfers.remove-back-order');
@@ -199,12 +196,38 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         
         // receive transfer
         Route::post('/receive', [TransferController::class, 'receiveTransfer'])->name('transfers.receiveTransfer');
+        
+        // receive back order
+        Route::post('/receive-back-order', [TransferController::class, 'receiveBackOrder'])->name('transfers.receiveBackOrder');
+        
+        // delete transfer item
         Route::get('/items/{id}', [TransferController::class, 'destroyItem'])->name('transfers.items.destroy');
 
         // update transfer item quantity
         Route::post('/update-item', [TransferController::class, 'updateItem'])->name('transfers.update-item');
-    });
 
+        // transfer back order
+        Route::get('/back-order', [TransferController::class, 'transferBackOrder'])->name('transfers.back-order');
+
+        // transfer liquidate
+        Route::post('/liquidate', [TransferController::class, 'transferLiquidate'])->name('transfers.liquidate');
+
+        // transfer dispose
+        Route::post('/dispose', [TransferController::class, 'transferDispose'])->name('transfers.dispose');
+
+
+         // transfer update-quantity
+         Route::post('/update-quantity', [TransferController::class, 'updateQuantity'])->name('transfers.update-quantity');
+
+         // save transfer back orders
+         Route::post('/save-back-orders', [TransferController::class, 'saveBackOrders'])->name('transfers.save-back-orders');
+         
+         // delete transfer back order
+         Route::post('/delete-back-order', [TransferController::class, 'deleteBackOrder'])->name('transfers.delete-back-order');
+          // change transfer status
+          Route::post('/change-status', [TransferController::class, 'changeStatus'])->name('transfers.change-status');
+
+    });
     // Report Routes
     Route::controller(ReportController::class)
         ->prefix('reports')

@@ -15,23 +15,42 @@ class Transfer extends Model
     use SoftDeletes;
     protected $fillable = [
         'transferID',
+        'transfer_date',
         'from_warehouse_id',
         'to_warehouse_id',
         'from_facility_id',
         'to_facility_id',
-        'created_by',
+        'created_by',  
+        'status',
+        'expected_date',
+        'dispatched_by',
         'approved_by',
         'approved_at',
-        'dispatched_by',
-        'dispatched_at',
         'rejected_by',
         'rejected_at',
-        'quantity',
-        'transfer_date',
-        'status',
-        'note'
+        'delivered_by',
+        'received_by',
+        'processed_by',
+        'dispatched_at',
+        'delivered_at',
+        'received_at',
+        'reviewed_by',
+        'reviewed_at',
+        'processed_at',
     ];
 
+    public static function generateTransferId()
+    {
+        $latestTransfer = self::latest()->first();
+        $latestId = $latestTransfer ? (int) $latestTransfer->transferID : 0;
+        $nextId = $latestId + 1;
+
+        // Determine the minimum length based on the latest ID's length, default to 4
+        $minLength = max(strlen((string)$latestId), 4);
+
+        // Return zero-padded ID dynamically
+        return str_pad($nextId, $minLength, '0', STR_PAD_LEFT);
+    }
     public function toWarehouse()
     {
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
@@ -56,15 +75,10 @@ class Transfer extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
-    public function inventory()
+    
+    public function items()
     {
-        return $this->belongsTo(Inventory::class);
-    }
-
-    public function createdBy()
-    {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->hasMany(TransferItem::class);
     }
 
     public function approvedBy()
@@ -72,18 +86,32 @@ class Transfer extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function dispatchedBy()
+    public function reviewedBy()
     {
-        return $this->belongsTo(User::class, 'dispatched_by');
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by');
+    }
+    
     public function rejectedBy()
     {
         return $this->belongsTo(User::class, 'rejected_by');
     }
-    
-    public function items()
+
+    public function dispatchedBy()
     {
-        return $this->hasMany(TransferItem::class);
+        return $this->belongsTo(User::class, 'dispatched_by');
+    }
+    public function deliveredBy()
+    {
+        return $this->belongsTo(User::class, 'delivered_by');
+    }
+
+    public function receivedBy()
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 }

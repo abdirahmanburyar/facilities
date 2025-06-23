@@ -7,16 +7,15 @@
             <!-- Buttons First -->
             <div class="flex items-center justify-end">
                 <!-- New Transfer -->
-                <Link :href="route('transfers.create')"
+                <button @click="router.visit(route('transfers.create'))"
                     class="inline-flex items-center rounded-2xl px-4 py-2 border border-transparent text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     New Transfer
-                </Link>
+                </button>
             </div>
 
             <!-- Filters Section -->
             <div class="mb-4">
-                <!-- First Row: Search, Facility, Warehouse -->
-                <div class="grid grid-cols-3 gap-4 mb-3">
+                <div class="grid grid-cols-5 gap-3">
                     <!-- Search -->
                     <div class="relative">
                         <input type="text" v-model="search"
@@ -31,6 +30,13 @@
                         </div>
                     </div>
 
+                    <!-- warehouse or facility selection -->
+                    <div>
+                        <Multiselect v-model="transfer_type" :options="facilityType" :searchable="true"
+                            :allow-empty="true" :show-labels="false" placeholder="All Transfer Type" class="rounded-2xl">
+                        </Multiselect>
+                    </div>
+
                     <!-- Facility Selector -->
                     <div>
                         <Multiselect v-model="facility" :options="props.facilities" :searchable="true"
@@ -40,60 +46,48 @@
 
                     <!-- Warehouse Selector -->
                     <div>
-                        <Multiselect v-model="warehouse" :options="props.warehouses"
-                            :searchable="true" :allow-empty="true" :show-labels="false" 
-                            placeholder="All Warehouses" class="rounded-2xl">
+                        <Multiselect v-model="warehouse" :options="props.warehouses" :close-on-select="true"
+                            :clear-on-select="false" :preserve-search="true" placeholder="All Warehouses" class="rounded-2xl" :preselect-first="false">
                         </Multiselect>
+                    </div>
+                    <div class="relative">
+                        <input type="date" v-model="date_from"
+                            class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="From Date">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="relative">
+                        <input type="date" v-model="date_to"
+                            class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="To Date">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Second Row: Date Filters and Per Page -->
-                <div class="flex items-center justify-between">
-                    <div class="flex space-x-4">
-                        <!-- From Date -->
-                        <div class="relative">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                            <input type="date" v-model="date_from"
-                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="From Date">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style="top: 24px;">
-                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- To Date -->
-                        <div class="relative">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                            <input type="date" v-model="date_to"
-                                class="pl-10 pr-2 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="To Date">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style="top: 24px;">
-                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Per Page Selector -->
-                    <div style="width: 200px;">
-                        <select class="rounded-3xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-full" 
-                            v-model="per_page" @change="props.filters.page = 1">
-                            <option value="2">2 per page</option>
-                            <option value="10">10 per page</option>
-                            <option value="25">25 per page</option>
-                            <option value="50">50 per page</option>
-                            <option value="100">100 per page</option>
-                        </select>
-                    </div>
+                <div class="flex justify-end mt-2">
+                    <select class="rounded-3xl" name="per_page" id="per_page" @change="props.filters.page = 1"
+                        v-model="per_page">
+                        <option value="2">2 per page</option>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
                 </div>
             </div>
 
@@ -118,25 +112,37 @@
             <div class="md:col-span-9 sm:col-span-12">
                 <div class="max-w-full overflow-auto">
                     <table class="min-w-full rounded-3xl">
-                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <thead style="background-color: #EEF1F8;">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Transfer ID</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    From</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    To</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Items</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Transfer ID
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Date
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    From
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    To
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Items
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-[#6C75B8] uppercase tracking-wider">
+                                    Status
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="">
                             <tr v-if="props.transfers.data.length === 0">
-                                <td colspan="6" class="text-center text-gray-500 py-4">
+                                <td colspan="7" class="text-center text-gray-500 py-4">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -145,7 +151,8 @@
                                             </path>
                                         </svg>
                                         <p class="mt-2 text-xs font-medium">No transfer data available</p>
-                                        <p class="mt-1 text-xs">Create a new transfer or adjust your filters to see results</p>
+                                        <p class="mt-1 text-xs">Create a new transfer or adjust your filters to see
+                                            results</p>
                                     </div>
                                 </td>
                             </tr>
@@ -157,6 +164,9 @@
                                     </Link>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                    {{ new Date(transfer.transfer_date).toLocaleDateString() }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
                                     {{ transfer.from_warehouse?.name || transfer.from_facility?.name }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
@@ -165,9 +175,6 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
                                     {{ transfer.items_count }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                                    {{ new Date(transfer.transfer_date).toLocaleDateString() }}
-                                </td>
                                 <td class="px-6 py-4 text-xs text-gray-500">
                                     <div class="flex items-center gap-2">
                                         <!-- Status Progress Icons - Only show actions taken -->
@@ -175,7 +182,7 @@
                                             <!-- Show status progression up to current status - icons with labels -->
                                             <!-- Always show pending as it's the initial state -->
                                             <div class="flex items-center gap-1">
-                                                <img src="/assets/images/pending.png" class="w-6 h-6" alt="Pending"
+                                                <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending"
                                                     title="Pending" />
                                             </div>
 
@@ -183,7 +190,7 @@
                                             <template
                                                 v-if="['approved', 'in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/approved.png" class="w-6 h-6"
+                                                    <img src="/assets/images/approved.png" class="w-8 h-8"
                                                         alt="Approved" title="Approved" />
                                                 </div>
                                             </template>
@@ -192,7 +199,7 @@
                                             <template
                                                 v-if="['in_process', 'dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/inprocess.png" class="w-6 h-6"
+                                                    <img src="/assets/images/inprocess.png" class="w-8 h-8"
                                                         alt="Processed" title="Processed" />
                                                 </div>
                                             </template>
@@ -201,15 +208,17 @@
                                             <template
                                                 v-if="['dispatched', 'transferred', 'delivered', 'received'].includes(transfer.status?.toLowerCase())">
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/dispatch.png" class="w-6 h-6"
+                                                    <img src="/assets/images/dispatch.png" class="w-8 h-8"
                                                         alt="Dispatched" title="Dispatched" />
                                                 </div>
                                             </template>
 
+                                            <!-- Transfer icon removed as requested -->
+
                                             <!-- Show received if status is received -->
                                             <template v-if="['received'].includes(transfer.status?.toLowerCase())">
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/received.png" class="w-6 h-6"
+                                                    <img src="/assets/images/received.png" class="w-8 h-8"
                                                         alt="Received" title="Received" />
                                                 </div>
                                             </template>
@@ -217,7 +226,7 @@
                                             <!-- Show rejected if status is rejected (special case) -->
                                             <template v-if="transfer.status?.toLowerCase() === 'rejected'">
                                                 <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/rejected.png" class="w-6 h-6"
+                                                    <img src="/assets/images/rejected.png" class="w-8 h-8"
                                                         alt="Rejected" title="Rejected" />
                                                 </div>
                                             </template>
@@ -228,12 +237,9 @@
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Pagination Controls -->
-                 <div class="mt-3 flex justify-end items-center">
-                    <TailwindPagination :data="props.transfers" @pagination-change-page="goToPage" :meta="props.transfers.meta" :limit="2" :links="props.transfers.links" />
-
-                 </div>
+                <div class="mt-3 flex justify-end items-center">
+                    <TailwindPagination :data="props.transfers" :limit="2" @pagination-change-page="getResults" />
+                </div>
             </div>
 
             <!-- Statistics Section (3 cols) -->
@@ -245,14 +251,14 @@
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-amber-50 rounded-2xl relative overflow-hidden shadow-md">
                                 <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
-                                    <img src="/assets/images/pending_small.png" class="h-6 w-6 object-contain"
+                                    <img src="/assets/images/pending_small.png" class="h-8 w-8 object-contain"
                                         alt="Pending" />
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics?.pending?.percentage || 0) + '%' }">
+                                    :style="{ height: props.statistics.pending.percentage + '%' }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ props.statistics?.pending?.percentage || 0 }}%
+                                        {{ props.statistics.pending.percentage }}%
                                     </div>
                                 </div>
                             </div>
@@ -266,14 +272,14 @@
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-blue-50 rounded-2xl relative overflow-hidden shadow-md">
                                 <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
-                                    <img src="/assets/images/approved_small.png" class="h-6 w-6 object-contain"
+                                    <img src="/assets/images/approved_small.png" class="h-8 w-8 object-contain"
                                         alt="Approved" />
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics?.approved?.percentage || 0) + '%' }">
+                                    :style="{ height: props.statistics.approved.percentage + '%' }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ props.statistics?.approved?.percentage || 0 }}%
+                                        {{ props.statistics.approved.percentage }}%
                                     </div>
                                 </div>
                             </div>
@@ -287,14 +293,14 @@
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-slate-50 rounded-2xl relative overflow-hidden shadow-md">
                                 <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
-                                    <img src="/assets/images/inprocess.png" class="h-6 w-6 object-contain"
+                                    <img src="/assets/images/inprocess.png" class="h-8 w-8 object-contain"
                                         alt="In Process" />
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics?.in_process?.percentage || 0) + '%' }">
+                                    :style="{ height: props.statistics.in_process.percentage + '%' }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ props.statistics?.in_process?.percentage || 0 }}%
+                                        {{ props.statistics.in_process.percentage }}%
                                     </div>
                                 </div>
                             </div>
@@ -308,14 +314,14 @@
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-purple-50 rounded-2xl relative overflow-hidden shadow-md">
                                 <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
-                                    <img src="/assets/images/dispatch.png" class="h-6 w-6 object-contain"
+                                    <img src="/assets/images/dispatch.png" class="h-8 w-8 object-contain"
                                         alt="Dispatched" />
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics?.transferred?.percentage || 0) + '%' }">
+                                    :style="{ height: (props.statistics.dispatched?.percentage || 0) + '%' }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ props.statistics?.transferred?.percentage || 0 }}%
+                                        {{ props.statistics.dispatched?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
@@ -329,14 +335,14 @@
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-emerald-50 rounded-2xl relative overflow-hidden shadow-md">
                                 <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
-                                    <img src="/assets/images/received.png" class="h-6 w-6 object-contain"
+                                    <img src="/assets/images/received.png" class="h-8 w-8 object-contain"
                                         alt="Received" />
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
-                                    :style="{ height: (props.statistics?.received?.percentage || 0) + '%' }">
+                                    :style="{ height: (props.statistics.received?.percentage || 0) + '%' }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ props.statistics?.received?.percentage || 0 }}%
+                                        {{ props.statistics.received?.percentage || 0 }}%
                                     </div>
                                 </div>
                             </div>
@@ -353,21 +359,17 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
-import { router, Link, usePage } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { router, Link } from '@inertiajs/vue3';
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 import '@/Components/multiselect.css';
-import { TailwindPagination } from "laravel-vue-pagination";
-
-
-// In Vue 3 with script setup, components are automatically registered when imported
+import { TailwindPagination } from 'laravel-vue-pagination';
 
 const props = defineProps({
     transfers: {
         type: Object,
-        required: true
     },
     statistics: {
         type: Object,
@@ -376,7 +378,6 @@ const props = defineProps({
             pending: { count: 0, percentage: 0 },
             in_process: { count: 0, percentage: 0 },
             transferred: { count: 0, percentage: 0 },
-            received: { count: 0, percentage: 0 },
             rejected: { count: 0, percentage: 0 }
         })
     },
@@ -392,56 +393,7 @@ const props = defineProps({
 });
 
 const currentTab = ref('all');
-const facility = ref(props.filters.facility);
-const warehouse = ref(props.filters.warehouse);
-const search = ref(props.filters.search);
-const per_page = ref(props.filters.per_page);
-const date_from = ref(props.filters.date_from);
-const date_to = ref(props.filters.date_to);
-
-// Methods to handle filter updates
-const updateFilters = () => {
-    const query = {};
-    
-    // Add all non-empty filter values
-    if (search.value) query.search = search.value;
-    if (facility.value) query.facility = facility.value;
-    if (per_page.value) query.per_page = per_page.value;
-    if (warehouse.value) query.warehouse = warehouse.value;
-    if (date_from.value) query.date_from = date_from.value;
-    if (date_to.value) query.date_to = date_to.value;
-    
-    if (currentTab.value) query.tab = currentTab.value;
-    // Update the URL immediately
-
-    if (props.filters.page) query.page = props.filters.page;
-
-    console.log(query);
-    router.get(route("transfers.index"), query, {
-        preserveState: true,
-        preserveScroll: true,
-        only: ["transfers", 'statistics', 'facilities', 'warehouses']
-    });
-}
-
-watch([
-    () => search.value,
-    () => facility.value,
-    () => per_page.value,
-    () => warehouse.value,
-    () => date_from.value,
-    () => date_to.value,
-    () => currentTab.value,
-    () => props.filters.page
-], () => {
-    updateFilters();
-}, { immediate: true });
-
-const goToPage = (page) => {
-    props.filters.page = page;
-};
-    
-
+const facilityType = ['Warehouse to Warehouse', 'Facility to Facility','Facility to Warehouse','Warehouse to Facility'];
 // Status configuration
 const statusTabs = [
     { value: 'all', label: 'All Transfers', color: 'blue' },
@@ -452,5 +404,53 @@ const statusTabs = [
     { value: 'received', label: 'Received', color: 'gray' },
     { value: 'rejected', label: 'Rejected', color: 'red' },
 ];
+
+const search = ref(props.filters.search);
+const per_page = ref(props.filters.per_page);
+const facility = ref(props.filters.facility);
+const warehouse = ref(props.filters.warehouse);
+const date_from = ref(props.filters.date_from);
+const date_to = ref(props.filters.date_to);
+const transfer_type = ref(props.filters.transfer_type);
+
+watch([
+    () => search.value,
+    () => per_page.value,
+    () => facility.value,
+    () => props.filters.page,
+    () => currentTab.value,
+    () => warehouse.value,
+    () => date_from.value,
+    () => date_to.value,
+    () => transfer_type.value,
+], () => {
+    reloadTransfer();
+})
+
+
+function getResults(page = 1) {
+    props.filters.page = page;
+}
+
+function reloadTransfer() {
+    const query = {}
+    if (search.value) query.search = search.value;
+    if (per_page.value) query.per_page = per_page.value;
+    if (props.filters.page) query.page = props.filters.page;
+    if (currentTab.value) query.tab = currentTab.value;
+    if (facility.value) query.facility = facility.value;
+    if (warehouse.value) query.warehouse = warehouse.value;
+    if (date_from.value) query.date_from = date_from.value;
+    if (date_to.value) query.date_to = date_to.value;
+    if (transfer_type.value) query.transfer_type = transfer_type.value;
+
+    router.get(route('transfers.index'), query, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['transfers']
+    })
+
+}
 
 </script>
