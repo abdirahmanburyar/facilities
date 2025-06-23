@@ -2550,7 +2550,7 @@ const canReceive = computed(() => {
     return (
         (user.warehouse_id === props.transfer.to_warehouse_id ||
             user.facility_id === props.transfer.to_facility_id) &&
-        user.can.transfer_dispatch
+        user.can.transfer_receive
     );
 });
 
