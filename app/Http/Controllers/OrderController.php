@@ -321,8 +321,6 @@ class OrderController extends Controller
                 'status' => 'required'
             ]);
 
-            logger()->info($request->all());
-
             $order = Order::with('items.inventory_allocations.backorders')
                 ->where('id', $request->order_id)
                 ->first();

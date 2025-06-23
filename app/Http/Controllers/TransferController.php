@@ -43,7 +43,7 @@ class TransferController extends Controller
                 'status' => 'required|in:reviewed,approved,rejected,in_process,dispatched,delivered,received'
             ]);
 
-            $transfer = Transfer::find($request->transfer_id);
+            $transfer = Transfer::with('items.inventory_allocations.backorders')->find($request->transfer_id);
             if(!$transfer){
                 return response()->json("Not Found or you are not authorized to take this action", 500);
             }
@@ -151,11 +151,76 @@ class TransferController extends Controller
             
             // delivered -> received (RECEIVER ACTION)
             if($oldStatus == 'delivered' && $newStatus == 'received' && $isReceiver && auth()->user()->can('transfer.receive')){
-                $transfer->update([
-                    'status' => 'received',
-                    'received_by' => auth()->id(),    
-                    'received_at' => now()
-                ]);
+                $user = auth()->user();
+            
+                foreach ($transfer->items as $item) {
+                    // Debug information for this item
+                    
+                    foreach ($item->inventory_allocations as $allocation) {
+                        // Calculate total back order quantity for this allocation
+                        if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                            DB::rollback();
+                            return response()->json('Backorder quantities exceeded the allocated quantity', 500);
+                        }
+                        $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
+                        
+                        $inventory = FacilityInventory::where('facility_id', $user->facility_id)
+                            ->where('product_id', $allocation->product_id)
+                            ->first();
+    
+                        if($inventory){
+                            $inventoryItem = $inventory->items()->where('batch_number', $allocation->batch_number)->first();
+                            if($inventoryItem){
+                                $inventoryItem->increment('quantity', $finalQuantity);
+                            }else{
+                                $inventory->items()->create([
+                                    'product_id' => $allocation->product_id,
+                                    'quantity' => $finalQuantity,
+                                    'expiry_date' => $allocation->expiry_date,
+                                    'batch_number' => $allocation->batch_number,
+                                    'barcode' => $allocation->barcode,
+                                    'uom' => $allocation->uom,
+                                    'unit_cost' => $allocation->unit_cost,
+                                    'total_cost' => $allocation->unit_cost * $finalQuantity
+                                ]);
+                            }
+                            
+                        }else{
+                            $inventory = FacilityInventory::create([
+                                'facility_id' => $transfer->to_facility_id,
+                                'product_id' => $allocation->product_id
+                            ]);
+                            $inventory->items()->create([
+                                'product_id' => $allocation->product_id,
+                                'batch_number' => $allocation->batch_number,
+                                'expiry_date' => $allocation->expiry_date,
+                                'quantity' => $finalQuantity,
+                                'barcode' => $allocation->barcode,
+                                'uom' => $allocation->uom,
+                                'unit_cost' => $allocation->unit_cost,
+                                'total_cost' => $allocation->unit_cost * $finalQuantity
+                            ]);
+                        }
+                        
+                        // Record facility inventory movement for received quantity
+                        if ($finalQuantity > 0) {
+                            FacilityInventoryMovementService::recordTransferReceived(
+                                $transfer,
+                                $item,
+                                $finalQuantity,
+                                $allocation->batch_number,
+                                $allocation->expiry_date,
+                                $allocation->barcode
+                            );
+                        }
+                    }
+                }
+                
+                // Update transfer status to received
+                $transfer->status = 'received';
+                $transfer->received_at = Carbon::now();
+                $transfer->received_by = auth()->user()->id;
+                $transfer->save();
                 
                 // Dispatch event for status change
                 event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
@@ -933,9 +998,9 @@ class TransferController extends Controller
             $transfer = $transferItem->transfer;
 
             // Verify user has permission to save back orders for this transfer
-            if (!in_array($transfer->status, ['pending', 'shipped', 'received'])) {
-                return response()->json('Cannot save back orders for transfers with this status', 400);
-            }
+            // if (!in_array($transfer->status, ['pending', 'shipped', 'received'])) {
+            //     return response()->json('Cannot save back orders for transfers with this status', 400);
+            // }
 
             // Calculate missing quantity
             $missingQuantity = $transferItem->quantity_to_release - ($transferItem->received_quantity ?? 0);
