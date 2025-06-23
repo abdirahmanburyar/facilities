@@ -954,8 +954,66 @@
                     </div>
                 </div>
             </div>
-            <!-- actions -->
+            
+            <!--  -->
+             <!-- dispatch information -->
+              {{ props.transfer.dispatch }}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+                <div
+                    v-for="dispatch in props.transfer.dispatch"
+                    :key="dispatch.id"
+                    class="bg-white rounded-lg shadow-lg"
+                >
+                    <div class="p-5">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                Order #{{ dispatch.order_id }}
+                            </h3>
+                            <span class="text-sm text-gray-500">
+                                {{
+                                    new Date(
+                                        dispatch.created_at
+                                    ).toLocaleDateString()
+                                }}
+                            </span>
+                        </div>
 
+                        <!-- Driver Info -->
+                        <div class="text-sm text-gray-600 space-y-1 mb-4">
+                            <p>
+                                <span class="font-medium text-gray-700"
+                                    >Driver:</span
+                                >
+                                {{ dispatch.driver_name }}
+                            </p>
+                            <p>
+                                <span class="font-medium text-gray-700"
+                                    >Phone:</span
+                                >
+                                {{ dispatch.driver_number }}
+                            </p>
+                            <p>
+                                <span class="font-medium text-gray-700"
+                                    >Plate #:</span
+                                >
+                                {{ dispatch.plate_number }}
+                            </p>
+                        </div>
+
+                        <!-- Dispatch Details -->
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm">
+                                <span class="text-gray-500">Cartons</span>
+                                <div class="font-semibold text-gray-800">
+                                    {{ dispatch.no_of_cartoons }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- actions -->
             <div class="mt-8 mb-6 px-6 py-6 bg-white rounded-lg shadow-sm">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">
                 Order Status Actions
@@ -1854,6 +1912,103 @@
                 </div>
             </div>
         </div>
+
+
+        <Modal :show="showDispatchForm" @close="showDispatchForm = false">
+            <div class="p-6 bg-white rounded-md shadow-md">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                    Dispatch Information
+                </h2>
+
+                <!-- Driver Name -->
+                <div class="mb-4">
+                    <label
+                        for="driver_name"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        Driver Name
+                    </label>
+                    <input
+                        id="driver_name"
+                        type="text"
+                        v-model="dispatchForm.driver_name"
+                        required
+                        placeholder="Enter driver name"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+
+                <!-- Driver Phone Number -->
+                <div class="mb-4">
+                    <label
+                        for="driver_number"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        Driver Phone Number
+                    </label>
+                    <input
+                        id="driver_number"
+                        type="tel"
+                        v-model="dispatchForm.driver_number"
+                        placeholder="Enter driver phone number"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+
+                <!-- Vehicle Plate Number -->
+                <div class="mb-4">
+                    <label
+                        for="plate_number"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        Vehicle Plate Number
+                    </label>
+                    <input
+                        id="plate_number"
+                        type="text"
+                        v-model="dispatchForm.plate_number"
+                        placeholder="Enter plate number"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+
+                <!-- Number of Cartons -->
+                <div class="mb-6">
+                    <label
+                        for="no_of_cartoons"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        No. of Cartons
+                    </label>
+                    <input
+                        id="no_of_cartoons"
+                        type="number"
+                        min="0"
+                        v-model="dispatchForm.no_of_cartoons"
+                        placeholder="Enter number of cartons"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-end space-x-3">
+                    <button
+                        @click="showDispatchForm = false"
+                        :disabled="isSaving"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="createDispatch"
+                        :disabled="isSaving"
+                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                    >
+                        {{ isSaving ? "Processing..." : "Save and Dispatch" }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 
@@ -1882,8 +2037,19 @@ const showModal = ref(false);
 const selectedBackOrderItem = ref(null);
 const backOrderRows = ref([]);
 const backOrderError = ref("");
-const isSaving = ref(false);
 const isDeleting = ref([]);
+
+// dispatch info
+const showDispatchForm = ref(false);
+
+const dispatchForm = ref({
+    driver_name: "",
+    driver_number: "",
+    plate_number: "",
+    no_of_cartoons: "",
+    transfer_id: props.transfer?.id,
+    status: "Dispatched",
+});
 
 onMounted(() => {
     form.value = props.transfer.items || [];
@@ -2277,4 +2443,31 @@ const changeStatus = (transferId, newStatus, type) => {
         }
     });
 };
+
+
+
+const isSaving = ref(false);
+
+async function createDispatch() {
+    isSaving.value = true;
+    await axios
+        .post(route("orders.dispatch-info"), dispatchForm.value)
+        .then((response) => {
+            isSaving.value = false;
+            showDispatchForm.value = false;
+            Swal.fire({
+                title: "Success!",
+                text: response.data,
+                icon: "success",
+                confirmButtonText: "OK",
+            }).then(() => {
+                router.get(route("orders.show", props.order?.id));
+            });
+        })
+        .catch((error) => {
+            isSaving.value = false;
+            console.log(error);
+            toast.error(error.response?.data || "Failed to create dispatch");
+        });
+}
 </script>
