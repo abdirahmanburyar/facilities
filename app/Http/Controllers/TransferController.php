@@ -998,9 +998,9 @@ class TransferController extends Controller
             $transfer = $transferItem->transfer;
 
             // Verify user has permission to save back orders for this transfer
-            // if (!in_array($transfer->status, ['pending', 'shipped', 'received'])) {
-            //     return response()->json('Cannot save back orders for transfers with this status', 400);
-            // }
+            if (!in_array($transfer->status, ['pending', 'shipped', 'received'])) {
+                return response()->json('Cannot save back orders for transfers with this status', 400);
+            }
 
             // Calculate missing quantity
             $missingQuantity = $transferItem->quantity_to_release - ($transferItem->received_quantity ?? 0);
