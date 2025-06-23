@@ -2508,7 +2508,7 @@ const saveBackOrders = async () => {
     await axios
         .post(route("transfers.save-back-orders"), {
             item_id: selectedBackOrderItem.value.id,
-            backorderss: backOrderRows.value,
+            backorders: backOrderRows.value,
         })
         .then((response) => {
             toast.success(response.data);
