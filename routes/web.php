@@ -227,6 +227,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
           // change transfer status
           Route::post('/change-status', [TransferController::class, 'changeStatus'])->name('transfers.change-status');
 
+           // receivedQuantity
+           Route::post('/update-received-quantity', [TransferController::class, 'receivedQuantity'])->name('transfers.receivedQuantity');
     });
     // Report Routes
     Route::controller(ReportController::class)

@@ -33,6 +33,26 @@ use App\Services\FacilityInventoryMovementService;
 
 class TransferController extends Controller
 {
+    
+    public function receivedQuantity(Request $request){
+        try {
+            $request->validate([
+                'transfer_item_id' => 'required',
+                'received_quantity' => 'required|min:1',
+            ]);
+            $transferItem = TransferItem::find($request->transfer_item_id);
+            logger()->info($transferItem);
+
+            if(!$transferItem) return response()->json("Transfer item not exist", 500);
+            if((int) $transferItem->received_quantity > (int) $transferItem->quantity) return response()->json("Received quantity can be exceed the original quantity", 500);
+            $transferItem->received_quantity = $request->received_quantity;
+            $transferItem->save();
+            return response()->json('Done', 200);
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
 
     public function changeItemStatus(Request $request)
     {
