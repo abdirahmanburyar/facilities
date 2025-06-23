@@ -2588,7 +2588,8 @@ const changeStatus = (transferId, newStatus, type) => {
 
             try {
                 const response = await axios.post(
-                    route("transfers.change-status"),
+                    // route("transfers.change-status"),
+                    route('transfers.changeItemStatus'),
                     {
                         transfer_id: transferId,
                         status: newStatus,

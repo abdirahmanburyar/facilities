@@ -29,6 +29,7 @@ use App\Events\TransferStatusChanged;
 use App\Events\InventoryUpdated;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\TransferResource;
+use App\Services\FacilityInventoryMovementService;
 
 class TransferController extends Controller
 {
@@ -43,7 +44,7 @@ class TransferController extends Controller
                 'status' => 'required|in:reviewed,approved,rejected,in_process,dispatched,delivered,received'
             ]);
 
-            $transfer = Transfer::with('items.inventory_allocations.backorders')->find($request->transfer_id);
+            $transfer = Transfer::with('items.inventory_allocations.back_order')->find($request->transfer_id);
             if(!$transfer){
                 return response()->json("Not Found or you are not authorized to take this action", 500);
             }
@@ -157,12 +158,13 @@ class TransferController extends Controller
                     // Debug information for this item
                     
                     foreach ($item->inventory_allocations as $allocation) {
+                        logger()->info($allocation);
                         // Calculate total back order quantity for this allocation
-                        if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                        if((int) $allocation->allocated_quantity < (int) $allocation->back_order->sum('quantity')){
                             DB::rollback();
                             return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                         }
-                        $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
+                        $finalQuantity = $allocation->allocated_quantity - $allocation->back_order->sum('quantity');
                         
                         $inventory = FacilityInventory::where('facility_id', $transfer->to_facility_id)
                             ->where('product_id', $allocation->product_id)
