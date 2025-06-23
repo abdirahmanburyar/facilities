@@ -1006,14 +1006,14 @@ class TransferController extends Controller
 
             $request->validate([
                 'item_id' => 'required|exists:transfer_items,id',
-                'back_orders' => 'required|array',
-                'back_orders.*.quantity' => 'required|integer|min:1',
-                'back_orders.*.status' => 'required|string|in:Missing,Damaged,Lost,Expired,Low quality',
-                'back_orders.*.note' => 'nullable|string'
+                'backorders' => 'required|array',
+                'backorders.*.quantity' => 'required|integer|min:1',
+                'backorders.*.status' => 'required|string|in:Missing,Damaged,Lost,Expired,Low quality',
+                'backorders.*.note' => 'nullable|string'
             ],[
-                'back_orders.*.quantity.required' => 'Quantity is required',
-                'back_orders.*.status.required' => 'Status is required',
-                'back_orders.*.note' => 'Note is required'
+                'backorders.*.quantity.required' => 'Quantity is required',
+                'backorders.*.status.required' => 'Status is required',
+                'backorders.*.note' => 'Note is required'
             ]);
 
             $transferItem = TransferItem::findOrFail($request->item_id);
@@ -1028,7 +1028,7 @@ class TransferController extends Controller
             $missingQuantity = $transferItem->quantity_to_release - ($transferItem->received_quantity ?? 0);
             
             // Validate total back order quantity doesn't exceed missing quantity
-            $totalBackOrderQuantity = collect($request->back_orders)->sum('quantity');
+            $totalBackOrderQuantity = collect($request->backorders)->sum('quantity');
             if ($totalBackOrderQuantity > $missingQuantity) {
                 return response()->json('Total back order quantity cannot exceed missing quantity', 400);
             }
@@ -1043,7 +1043,7 @@ class TransferController extends Controller
 
             $remainingToAllocate = $totalBackOrderQuantity;
             
-            foreach ($request->back_orders as $backOrderData) {
+            foreach ($request->backorders as $backOrderData) {
                 $quantityForThisStatus = $backOrderData['quantity'];
                 $tempRemaining = $quantityForThisStatus;
 
