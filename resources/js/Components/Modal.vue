@@ -19,6 +19,8 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 const dialog = ref();
 const showSlot = ref(props.show);
+const showDispatchForm = ref(false);
+
 
 watch(
     () => props.show,
