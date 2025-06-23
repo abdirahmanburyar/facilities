@@ -897,13 +897,11 @@
                                                 :id="`received-quantity-${index}`"
                                                 class="w-20 text-center border border-black rounded px-2 py-1 text-sm"
                                             />
-                                            <span v-if="isSavingQty[index]" class="text-green-600">
-                                                {{ isSavingQty[index] ? 'Updating...' : '' }}
-                                            </span>
-
+                                            <!-- :readonly="!['delivered', 'received'].includes(props.transfer.status)" -->
+                                            <!-- Backorder button - show when quantity_to_release > received_quantity -->
                                             <button
                                                 @click="
-                                                    showbackorderssModal(item)
+                                                    showBackOrderModal(item)
                                                 "
                                                 v-if="
                                                     (item.quantity_to_release ||
@@ -1797,7 +1795,7 @@
                 <div class="p-6">
                     <!-- Product Information -->
                     <div
-                        v-if="selectedbackorderssItem"
+                        v-if="selectedBackOrderItem"
                         class="mb-6 bg-gray-50 p-4 rounded-lg"
                     >
                         <div class="grid grid-cols-2 gap-4">
@@ -1806,7 +1804,7 @@
                                     Product
                                 </p>
                                 <p class="text-sm text-gray-900">
-                                    {{ selectedbackorderssItem.product?.name }}
+                                    {{ selectedBackOrderItem.product?.name }}
                                 </p>
                             </div>
                             <div>
@@ -1815,7 +1813,7 @@
                                 </p>
                                 <p class="text-sm text-gray-900">
                                     {{
-                                        selectedbackorderssItem.product?.productID
+                                        selectedBackOrderItem.product?.productID
                                     }}
                                 </p>
                             </div>
@@ -1825,7 +1823,7 @@
                                 </p>
                                 <p class="text-sm text-gray-900">
                                     {{
-                                        selectedbackorderssItem.quantity_to_release
+                                        selectedBackOrderItem.quantity_to_release
                                     }}
                                 </p>
                             </div>
@@ -1835,7 +1833,7 @@
                                 </p>
                                 <p class="text-sm text-gray-900">
                                     {{
-                                        selectedbackorderssItem.received_quantity ||
+                                        selectedBackOrderItem.received_quantity ||
                                         0
                                     }}
                                 </p>
@@ -1847,7 +1845,7 @@
                                 <p class="text-sm font-bold text-red-600">
                                     {{
                                         getMissingQuantity(
-                                            selectedbackorderssItem
+                                            selectedBackOrderItem
                                         )
                                     }}
                                 </p>
@@ -1858,8 +1856,8 @@
                                 </p>
                                 <p class="text-sm text-gray-900">
                                     {{
-                                        getExistingbackordersss(
-                                            selectedbackorderssItem
+                                        getExistingBackOrders(
+                                            selectedBackOrderItem
                                         )
                                     }}
                                 </p>
@@ -1895,12 +1893,12 @@
                             can add multiple entries to account for different
                             issue types. The total of all entries should equal
                             the missing quantity ({{
-                                getMissingQuantity(selectedbackorderssItem)
+                                getMissingQuantity(selectedBackOrderItem)
                             }}).
                         </p>
                     </div>
 
-                    <!-- backorderss Recording Table -->
+                    <!-- Backorder Recording Table -->
                     <div class="mb-6">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">
                             Record Missing Items
@@ -1908,10 +1906,10 @@
 
                         <!-- Error Message -->
                         <div
-                            v-if="backorderssError"
+                            v-if="backOrderError"
                             class="mb-4 bg-red-50 border border-red-200 text-red-600 p-4 rounded"
                         >
-                            {{ backorderssError }}
+                            {{ backOrderError }}
                         </div>
 
                         <!-- Table -->
@@ -1945,7 +1943,7 @@
                                     class="bg-white divide-y divide-gray-200"
                                 >
                                     <tr
-                                        v-for="(row, index) in backorderssRows"
+                                        v-for="(row, index) in backOrderRows"
                                         :key="index"
                                     >
                                         <td class="px-3 py-2">
@@ -1956,11 +1954,11 @@
                                                 min="1"
                                                 :max="
                                                     getMissingQuantity(
-                                                        selectedbackorderssItem
+                                                        selectedBackOrderItem
                                                     )
                                                 "
                                                 @input="
-                                                    validatebackorderssQuantities
+                                                    validateBackOrderQuantities
                                                 "
                                             />
                                         </td>
@@ -1995,9 +1993,9 @@
                                         <td class="px-3 py-2">
                                             <button
                                                 @click="
-                                                    removebackorderssRow(index)
+                                                    removeBackOrderRow(index)
                                                 "
-                                                v-if="backorderssRows.length > 1"
+                                                v-if="backOrderRows.length > 1"
                                                 class="text-red-600 hover:text-red-800 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 type="button"
                                                 :disabled="isDeleting[index]"
@@ -2051,7 +2049,7 @@
                         <div class="mt-4 flex justify-between items-center">
                             <div class="flex items-center gap-4">
                                 <button
-                                    @click="addbackorderssRow"
+                                    @click="addBackOrderRow"
                                     class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     :disabled="!canAddMoreRows"
                                 >
@@ -2059,13 +2057,13 @@
                                 </button>
                                 <div class="text-sm">
                                     <span class="font-medium text-gray-900">{{
-                                        totalbackorderssQuantity
+                                        totalBackOrderQuantity
                                     }}</span>
                                     <span class="text-gray-600">
                                         /
                                         {{
                                             getMissingQuantity(
-                                                selectedbackorderssItem
+                                                selectedBackOrderItem
                                             )
                                         }}
                                         items recorded</span
@@ -2103,7 +2101,7 @@
                         Exit
                     </button>
                     <button
-                        @click="savebackordersss"
+                        @click="saveBackOrders"
                         class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="isSaving || !isValidForSave"
                     >
@@ -2235,9 +2233,9 @@ const props = defineProps({
 const form = ref([]);
 const isLoading = ref(false);
 const showModal = ref(false);
-const selectedbackorderssItem = ref(null);
-const backorderssRows = ref([]);
-const backorderssError = ref("");
+const selectedBackOrderItem = ref(null);
+const backOrderRows = ref([]);
+const backOrderError = ref("");
 const isDeleting = ref([]);
 
 // dispatch info
@@ -2344,24 +2342,24 @@ async function updateQuantity(item, type) {
         });
 }
 
-const showbackorderssModal = (item) => {
+const showBackOrderModal = (item) => {
     console.log(item);
-    selectedbackorderssItem.value = null;
+    selectedBackOrderItem.value = null;
     showModal.value = true;
-    selectedbackorderssItem.value = item;
-    backorderssRows.value = [];
+    selectedBackOrderItem.value = item;
+    backOrderRows.value = [];
     isDeleting.value = []; // Reset deleting states
 
-    // Load existing backordersss from inventory allocations
+    // Load existing backorders from inventory allocations
     if (item.inventory_allocations) {
         item.inventory_allocations.forEach((allocation) => {
-            if (allocation.backorderss && allocation.backorderss.length > 0) {
-                allocation.backorderss.forEach((backorderss) => {
-                    backorderssRows.value.push({
-                        id: backorderss.id, // Include ID for existing backordersss
-                        quantity: backorderss.quantity,
-                        status: backorderss.type,
-                        note: backorderss.notes || "",
+            if (allocation.backorders && allocation.backorders.length > 0) {
+                allocation.backorders.forEach((backOrder) => {
+                    backOrderRows.value.push({
+                        id: backOrder.id, // Include ID for existing backorders
+                        quantity: backOrder.quantity,
+                        status: backOrder.type,
+                        note: backOrder.notes || "",
                     });
                     isDeleting.value.push(false); // Initialize deleting state for each row
                 });
@@ -2369,9 +2367,9 @@ const showbackorderssModal = (item) => {
         });
     }
 
-    // If no existing backordersss found, add one empty row for new entry
-    if (backorderssRows.value.length === 0) {
-        addbackorderssRow();
+    // If no existing backorders found, add one empty row for new entry
+    if (backOrderRows.value.length === 0) {
+        addBackOrderRow();
     }
 };
 
@@ -2385,21 +2383,21 @@ const getMissingQuantity = (item) => {
     return item.quantity_to_release - item.received_quantity;
 };
 
-const getExistingbackordersss = (item) => {
+const getExistingBackOrders = (item) => {
     if (!item || !item.inventory_allocations) return 0;
 
-    let totalbackordersss = 0;
+    let totalBackOrders = 0;
     item.inventory_allocations.forEach((allocation) => {
-        if (allocation.backorderss && allocation.backorderss.length > 0) {
-            totalbackordersss += allocation.backorderss.length;
+        if (allocation.backorders && allocation.backorders.length > 0) {
+            totalBackOrders += allocation.backorders.length;
         }
     });
 
-    return totalbackordersss;
+    return totalBackOrders;
 };
 
-const addbackorderssRow = () => {
-    backorderssRows.value.push({
+const addBackOrderRow = () => {
+    backOrderRows.value.push({
         quantity: 0,
         status: "",
         note: "",
@@ -2407,23 +2405,23 @@ const addbackorderssRow = () => {
     isDeleting.value.push(false); // Initialize deleting state for new row
 };
 
-const removebackorderssRow = async (index) => {
-    const row = backorderssRows.value[index];
+const removeBackOrderRow = async (index) => {
+    const row = backOrderRows.value[index];
 
-    // If the row has an ID, it's an existing backorderss - delete from database
+    // If the row has an ID, it's an existing backorder - delete from database
     if (row.id) {
         // Set loading state for this specific row
         isDeleting.value[index] = true;
 
         try {
             await axios.post(route("transfers.delete-back-order"), {
-                backorderss_id: row.id,
+                backorder_id: row.id,
             });
-            toast.success("backorderss record deleted");
+            toast.success("Backorder record deleted");
         } catch (error) {
-            console.error("Error deleting backorderss:", error);
+            console.error("Error deleting backorder:", error);
             toast.error(
-                error.response?.data?.error || "Failed to delete backorderss"
+                error.response?.data?.error || "Failed to delete backorder"
             );
             return; // Don't remove from frontend if backend deletion failed
         } finally {
@@ -2433,44 +2431,44 @@ const removebackorderssRow = async (index) => {
     }
 
     // Remove from frontend array
-    backorderssRows.value.splice(index, 1);
+    backOrderRows.value.splice(index, 1);
 
     // Also remove the corresponding isDeleting entry to keep arrays in sync
     isDeleting.value.splice(index, 1);
 };
 
-const validatebackorderssQuantities = () => {
-    const totalQuantity = backorderssRows.value.reduce(
+const validateBackOrderQuantities = () => {
+    const totalQuantity = backOrderRows.value.reduce(
         (total, row) => total + row.quantity,
         0
     );
-    if (totalQuantity > getMissingQuantity(selectedbackorderssItem.value)) {
-        backorderssError.value = "Total quantity exceeds missing quantity";
+    if (totalQuantity > getMissingQuantity(selectedBackOrderItem.value)) {
+        backOrderError.value = "Total quantity exceeds missing quantity";
     } else {
-        backorderssError.value = "";
+        backOrderError.value = "";
     }
 };
 
-const totalbackorderssQuantity = computed(() => {
-    return backorderssRows.value.reduce((total, row) => total + row.quantity, 0);
+const totalBackOrderQuantity = computed(() => {
+    return backOrderRows.value.reduce((total, row) => total + row.quantity, 0);
 });
 
 const canAddMoreRows = computed(() => {
     return (
-        totalbackorderssQuantity.value <
-        getMissingQuantity(selectedbackorderssItem.value)
+        totalBackOrderQuantity.value <
+        getMissingQuantity(selectedBackOrderItem.value)
     );
 });
 
 const remainingToAllocate = computed(() => {
     return (
-        getMissingQuantity(selectedbackorderssItem.value) -
-        totalbackorderssQuantity.value
+        getMissingQuantity(selectedBackOrderItem.value) -
+        totalBackOrderQuantity.value
     );
 });
 
 const isValidForSave = computed(() => {
-    return remainingToAllocate.value === 0 && backorderssError.value === "";
+    return remainingToAllocate.value === 0 && backOrderError.value === "";
 });
 
 const getAvailableStatuses = (currentIndex) => {
@@ -2481,8 +2479,8 @@ const getAvailableStatuses = (currentIndex) => {
         "Expired",
         "Low quality",
     ];
-    const currentRowStatus = backorderssRows.value[currentIndex]?.status;
-    const selectedStatuses = backorderssRows.value
+    const currentRowStatus = backOrderRows.value[currentIndex]?.status;
+    const selectedStatuses = backOrderRows.value
         .map((row, index) => (index !== currentIndex ? row.status : null))
         .filter((status) => status && status !== "");
 
@@ -2503,14 +2501,14 @@ const getAvailableStatuses = (currentIndex) => {
     return availableStatuses;
 };
 
-const savebackordersss = async () => {
+const saveBackOrders = async () => {
     if (!isValidForSave.value) return;
 
     isSaving.value = true;
     await axios
         .post(route("transfers.save-back-orders"), {
-            item_id: selectedbackorderssItem.value.id,
-            backordersss: backorderssRows.value,
+            item_id: selectedBackOrderItem.value.id,
+            backorderss: backOrderRows.value,
         })
         .then((response) => {
             toast.success(response.data);
