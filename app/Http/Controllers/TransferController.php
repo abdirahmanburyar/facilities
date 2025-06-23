@@ -64,7 +64,7 @@ class TransferController extends Controller
                 'status' => 'required|in:reviewed,approved,rejected,in_process,dispatched,delivered,received'
             ]);
 
-            $transfer = Transfer::with('items.inventory_allocations.backorders')->find($request->transfer_id);
+            $transfer = Transfer::with('items.inventory_allocations.backorderss')->find($request->transfer_id);
             if(!$transfer){
                 return response()->json("Not Found or you are not authorized to take this action", 500);
             }
@@ -569,7 +569,7 @@ class TransferController extends Controller
             'toFacility',
             'items.inventory_allocations.location',
             'dispatchInfo',
-            'items.inventory_allocations.backorder','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
+            'items.inventory_allocations.backorders','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
         ])->first();
 
         return inertia('Transfer/Show', [
