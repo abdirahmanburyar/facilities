@@ -2353,8 +2353,8 @@ const showBackOrderModal = (item) => {
     // Load existing backorders from inventory allocations
     if (item.inventory_allocations) {
         item.inventory_allocations.forEach((allocation) => {
-            if (allocation.back_order && allocation.back_order.length > 0) {
-                allocation.back_order.forEach((backOrder) => {
+            if (allocation.backorder && allocation.backorder.length > 0) {
+                allocation.backorder.forEach((backOrder) => {
                     backOrderRows.value.push({
                         id: backOrder.id, // Include ID for existing backorders
                         quantity: backOrder.quantity,
@@ -2388,8 +2388,8 @@ const getExistingBackOrders = (item) => {
 
     let totalBackOrders = 0;
     item.inventory_allocations.forEach((allocation) => {
-        if (allocation.back_order && allocation.back_order.length > 0) {
-            totalBackOrders += allocation.back_order.length;
+        if (allocation.backorder && allocation.backorder.length > 0) {
+            totalBackOrders += allocation.backorder.length;
         }
     });
 
@@ -2508,7 +2508,7 @@ const saveBackOrders = async () => {
     await axios
         .post(route("transfers.save-back-orders"), {
             item_id: selectedBackOrderItem.value.id,
-            back_orders: backOrderRows.value,
+            backorders: backOrderRows.value,
         })
         .then((response) => {
             toast.success(response.data);

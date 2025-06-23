@@ -569,7 +569,7 @@ class TransferController extends Controller
             'toFacility',
             'items.inventory_allocations.location',
             'dispatchInfo',
-            'items.inventory_allocations.back_order','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
+            'items.inventory_allocations.backorder','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
         ])->first();
 
         return inertia('Transfer/Show', [
