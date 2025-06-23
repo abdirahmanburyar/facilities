@@ -1590,8 +1590,79 @@ class TransferController extends Controller
                         DB::rollBack();
                         return response()->json('Transfer must be delivered to receive', 400);
                     }
-                    $transfer->received_at = now();
-                    $transfer->received_by = $user->id;
+            
+                foreach ($transfer->items as $item) {
+                    // Debug information for this item
+                    
+                    foreach ($item->inventory_allocations as $allocation) {
+                        logger()->info($allocation);
+                        // Calculate total back order quantity for this allocation
+                        if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                            DB::rollback();
+                            return response()->json('Backorder quantities exceeded the allocated quantity', 500);
+                        }
+                        $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
+                        
+                        $inventory = FacilityInventory::where('facility_id', $transfer->to_facility_id)
+                            ->where('product_id', $allocation->product_id)
+                            ->first();
+    
+                        if($inventory){
+                            $inventoryItem = $inventory->items()->where('batch_number', $allocation->batch_number)->first();
+                            if($inventoryItem){
+                                $inventoryItem->increment('quantity', $finalQuantity);
+                            }else{
+                                $inventory->items()->create([
+                                    'product_id' => $allocation->product_id,
+                                    'quantity' => $finalQuantity,
+                                    'expiry_date' => $allocation->expiry_date,
+                                    'batch_number' => $allocation->batch_number,
+                                    'barcode' => $allocation->barcode,
+                                    'uom' => $allocation->uom,
+                                    'unit_cost' => $allocation->unit_cost,
+                                    'total_cost' => $allocation->unit_cost * $finalQuantity
+                                ]);
+                            }
+                            
+                        }else{
+                            $inventory = FacilityInventory::create([
+                                'facility_id' => $transfer->to_facility_id,
+                                'product_id' => $allocation->product_id
+                            ]);
+                            $inventory->items()->create([
+                                'product_id' => $allocation->product_id,
+                                'batch_number' => $allocation->batch_number,
+                                'expiry_date' => $allocation->expiry_date,
+                                'quantity' => $finalQuantity,
+                                'barcode' => $allocation->barcode,
+                                'uom' => $allocation->uom,
+                                'unit_cost' => $allocation->unit_cost,
+                                'total_cost' => $allocation->unit_cost * $finalQuantity
+                            ]);
+                        }
+                        
+                        // Record facility inventory movement for received quantity
+                        if ($finalQuantity > 0) {
+                            FacilityInventoryMovementService::recordTransferReceived(
+                                $transfer,
+                                $item,
+                                $finalQuantity,
+                                $allocation->batch_number,
+                                $allocation->expiry_date,
+                                $allocation->barcode
+                            );
+                        }
+                    }
+                }
+                
+                // Update transfer status to received
+                $transfer->status = 'received';
+                $transfer->received_at = Carbon::now();
+                $transfer->received_by = auth()->user()->id;
+                $transfer->save();
+                
+                // Dispatch event for status change
+                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
                     break;
 
                 default:
