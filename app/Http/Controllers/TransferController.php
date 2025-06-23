@@ -164,7 +164,7 @@ class TransferController extends Controller
                         }
                         $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
                         
-                        $inventory = FacilityInventory::where('facility_id', $user->facility_id)
+                        $inventory = FacilityInventory::where('facility_id', $transfer->to_facility_id)
                             ->where('product_id', $allocation->product_id)
                             ->first();
     
