@@ -2545,7 +2545,7 @@ const canDispatch = computed(() => {
 });
 
 const canReceive = computed(() => {
-    const user = page.props.auth.user;
+    const user = page.props.auth;
     return (
         (user.warehouse_id === props.transfer.to_warehouse_id ||
             user.facility_id === props.transfer.to_facility_id) &&
