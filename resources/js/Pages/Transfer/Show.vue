@@ -2097,13 +2097,6 @@ const totalReceivedQuantity = computed(() => {
     );
 });
 
-const completionPercentage = computed(() => {
-    if (totalOrderedQuantity.value === 0) return 0;
-    return Math.round(
-        (totalReceivedQuantity.value / totalOrderedQuantity.value) * 100
-    );
-});
-
 // Methods
 const isExpiringItem = (expiryDate) => {
     if (!expiryDate) return false;
@@ -2451,7 +2444,7 @@ const isSaving = ref(false);
 async function createDispatch() {
     isSaving.value = true;
     await axios
-        .post(route("orders.dispatch-info"), dispatchForm.value)
+        .post(route("transfer.dispatch-info"), dispatchForm.value)
         .then((response) => {
             isSaving.value = false;
             showDispatchForm.value = false;
@@ -2461,7 +2454,7 @@ async function createDispatch() {
                 icon: "success",
                 confirmButtonText: "OK",
             }).then(() => {
-                router.get(route("orders.show", props.order?.id));
+                router.get(route("transfer.show", props.transfer?.id));
             });
         })
         .catch((error) => {

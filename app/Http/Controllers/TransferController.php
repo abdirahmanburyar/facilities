@@ -437,6 +437,41 @@ class TransferController extends Controller
         }
     }
 
+    
+    public function dispatchInfo(Request $request){
+        
+        try {
+            return DB::transaction(function() use ($request){
+                $request->validate([
+                    'driver_name',
+                    'driver_number',
+                    'place_number',
+                    'no_of_cartoons',
+                    'transfer_id',
+                    'status'
+                ]);
+                logger()->info($request->all());
+                $transfer = Transfer::with('dispatchInfo')->where('id',$request->transfer_id)->first();
+                $transfer->dispatchInfo()->create([
+                    'transfer_id' => $request->transfer_id,
+                    'driver_name' => $request->driver_name,
+                    'driver_number' => $request->driver_number,
+                    'plate_number' => $request->plate_number,
+                    'no_of_cartoons' => $request->no_of_cartoons,
+                ]);
+
+                $transfer->status = $request->status;
+                $transfer->dispatched_at = now();
+                $transfer->dispatched_by = auth()->user()->id;
+                $transfer->save();
+                
+                return response()->json("Dispatched Successfully", 200);
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
     public function show($id){
         $transfer = Transfer::where('id', $id)->with([
             'items.product.category', 
@@ -446,7 +481,7 @@ class TransferController extends Controller
             'fromFacility', 
             'toFacility',
             'items.inventory_allocations.location',
-            'dispatch',
+            'dispatchInfo',
             'items.inventory_allocations.back_order','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
         ])->first();
 
