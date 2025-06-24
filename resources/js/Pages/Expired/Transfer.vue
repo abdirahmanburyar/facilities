@@ -82,7 +82,8 @@ const handleSubmit = async () => {
                 expiry_date: props.inventory.expiry_date || null,
                 uom: props.inventory.uom || null
             }],
-            notes: `Transferred ${quantityToTransfer.value} items to ${selectedDestination.value.name}`
+            notes: `Transferred ${quantityToTransfer.value} items to ${selectedDestination.value.name}`,
+            transfer_type: transferType.value
         });
 
         await Swal.fire({

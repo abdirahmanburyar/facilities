@@ -146,14 +146,14 @@
                                     <!-- Actions for Missing/Lost items -->
                                     <template v-if="['Missing', 'Lost'].includes(item.type)">
                                         <button
-                                            @click="receive(item)"
+                                            @click="receive(item, index)"
                                             class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
                                             title="Receive this item"
                                         >
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                             </svg>
-                                            Receive
+                                            {{ typeOf[index] ? 'Receiving...' : 'Receive'}}
                                         </button>
                                     </template>
 
@@ -716,7 +716,8 @@ const submitDisposal = async () => {
         });
 };
 
-function receive(item) {
+const typeOf = ref([]);
+function receive(item, index) {
     Swal.fire({
         title: 'Enter Quantity',
         input: 'number',
@@ -738,6 +739,7 @@ function receive(item) {
         }
     }).then(async (result) => {
         if (result.isConfirmed) {
+            typeOf.value[index] = true;
             const enteredQuantity = result.value;
             console.log(`Received quantity: ${enteredQuantity}`);
             await axios.post(route('backorders.received'), {
@@ -745,6 +747,7 @@ function receive(item) {
                 quantity: enteredQuantity
             })
             .then((response) => {
+                typeOf.value[index] = false;
                 Swal.fire({
                     icon: 'success',
                     title: response.data,
@@ -755,6 +758,7 @@ function receive(item) {
                 });
             })
             .catch((error) => {
+                typeOf.value[index] = false;
                 Swal.fire({
                     icon: 'error',
                     title: error.response.data,
@@ -770,11 +774,11 @@ function formatDate(date) {
     return new Date(date).toLocaleDateString();
 }
 
-function liquidate(item) {
-    handleAction('Liquidate', item);
+function liquidate(item, index) {
+    handleAction('Liquidate', item, index);
 }
 
-function disposal(item) {
-    handleAction('Dispose', item);
+function disposal(item, index) {
+    handleAction('Dispose', item, index);
 }
 </script>

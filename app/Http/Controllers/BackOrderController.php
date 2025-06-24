@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use App\Models\BackOrderHistory;
 use App\Models\FacilityInventory;
 use App\Models\Liquidate;
+use App\Models\FacilityInventoryItem;
 use Illuminate\Http\Request;
 
 use App\Models\Disposal;
@@ -18,7 +19,7 @@ class BackOrderController extends Controller
 {
     public function index(Request $request){
         try {
-            $backorders = FacilityBackorder::whereNull('finalized')->whereHas('transferItem.transfer', function($query) {
+            $backorders = FacilityBackorder::whereHas('transferItem.transfer', function($query) {
                 $query->where('to_facility_id', auth()->user()->facility_id);
             })
             ->orWhereHas('orderItem.order', function($query) {
@@ -47,7 +48,8 @@ class BackOrderController extends Controller
                 'filters' => $request->only('search', 'per_page', 'page', 'status')
             ]);
         } catch (\Throwable $th) {
-            return redirect()->back()->with('error', $th->getMessage());
+            logger()->info($th->getMessage());
+            return redirect()->back()->with(['error' => $th->getMessage()]);
         }
     }
 
@@ -61,17 +63,18 @@ class BackOrderController extends Controller
                 'status' => 'required|string',
                 'note' => 'nullable|string|max:255',
                 'attachments' => 'nullable|array',
-                'attachments.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240', // Max 10MB per file
+                'attachments.*' => 'nullable|file|mimes:pdf', // Max 10MB per file
             ]);
             
             // Start a database transaction
             DB::beginTransaction();
             
             // Get the packing list to include its number in the note
-            $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type')->find($request->id);
+            $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type','transferItem.transfer:id,transferID,transfer_type')
+                ->find($request->id);
             
             // Generate note based on condition and source
-            $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->type .' - '. $request->note : 'Unknown';
+            $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->transferItem->transfer->transferID .' - '. $request->note : 'Unknown';
             
             // Handle file attachments if any
             $attachments = [];
@@ -156,7 +159,7 @@ class BackOrderController extends Controller
             
             // Generate note based on condition and source
             if($item->transferItem){
-                $note = $item->transferItem->transfer->transfer_number .' - '. $item->type .' - '. $request->note;
+                $note = $item->transferItem->transfer->transferID .' - '. $item->type .' - '. $request->note;
             }else{
                 $note = $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->type .' - '. $request->note;
             }
@@ -233,92 +236,112 @@ class BackOrderController extends Controller
                     'id' => 'required|exists:facility_backorders,id',
                     'quantity' => 'required|integer|min:1',
                 ]);
-                
+    
                 $facilityInventoryMovementService = new FacilityInventoryMovementService();
-                
-                $item = FacilityBackorder::with('inventoryAllocation','orderItem.order:id,order_number,order_type,facility_id','transferItem.transfer:id,from_facility_id,to_facility_id')->find($request->id);
-                
-                if ($item) {
-                    $facilityId = $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id;
-                    $productId = $item->inventoryAllocation->product_id ?? $item->transferItem->product_id;
-                    $batchNumber = $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number;
-                    $expiryDate = $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date;
-                    $barcode = $item->inventoryAllocation->barcode ?? $item->transferItem->barcode;
-                    $uom = $item->inventoryAllocation->uom ?? $item->transferItem->uom;
-                    
-                    $inventory = FacilityInventory::where('product_id', $productId)
-                        ->where('facility_id', $facilityId)
-                        ->where('batch_number', $batchNumber)
-                        ->first();
-
-                    if($inventory){
-                        $inventory->increment('quantity', $request->quantity);
-                    }else{
-                        $inventory = FacilityInventory::create([
-                            'product_id' => $productId,
-                            'facility_id' => $facilityId,
-                            'batch_number' => $batchNumber,
-                            'quantity' => $request->quantity,
-                            'uom' => $uom,
-                            'barcode' => $barcode,
-                            'expiry_date' => $expiryDate
-                        ]);
-                    }
-                    
-                    // Record facility inventory movement for backorder received
-                    if ($item->transferItem) {
-                        // This is a transfer backorder
-                        $facilityInventoryMovementService->recordTransferReceived(
-                            $item->transferItem->transfer,
-                            $item->transferItem,
-                            $facilityId,
-                            $request->quantity
-                        );
-                    } elseif ($item->orderItem) {
-                        // This is an order backorder
-                        $facilityInventoryMovementService->recordOrderReceived(
-                            $item->orderItem->order,
-                            $item->orderItem,
-                            $facilityId,
-                            $request->quantity,
-                            $batchNumber,
-                            $expiryDate,
-                            $barcode,
-                            $uom
-                        );
-                    }
-                    
-                    // Create a record in BackOrderHistory before deleting
-                    BackOrderHistory::create([
-                        'order_id' => $item->orderItem->order_id ?? null,
-                        'transfer_id' => $item->transferItem->id ?? null,
-                        'product_id' => $productId,
-                        'quantity' => $request->quantity,
-                        'status' => 'Received',
-                        'note' => "From the backorder",
-                        'performed_by' => auth()->id()
-                    ]);
-                    
-                    // Delete the record
-                    if($item->transferItem) {
-                        $item->transferItem->increment('received_quantity', $request->quantity);
-                    } else {
-                        $item->orderItem->increment('received_quantity', $request->quantity);
-                    }
-
-                    $item->decrement('quantity', $request->quantity);
-                    $item->refresh();
-                    
-                    if ($item->quantity == 0) {
-                        $item->delete();
-                    }
+    
+                $item = FacilityBackorder::with([
+                    'inventoryAllocation',
+                    'orderItem.order:id,order_number,order_type,facility_id',
+                    'transferItem.transfer:id,from_facility_id,to_facility_id'
+                ])->find($request->id);
+    
+                if (!$item) {
+                    return response()->json('Backorder item not found.', 404);
                 }
+    
+                // Determine source of data
+                $facilityId   = $item->orderItem->order->facility_id ?? $item->transferItem->transfer->to_facility_id;
+                $productId    = $item->inventoryAllocation->product_id ?? $item->transferItem->product_id;
+                $batchNumber  = $item->inventoryAllocation->batch_number ?? $item->transferItem->batch_number;
+                $expiryDate   = $item->inventoryAllocation->expiry_date ?? $item->transferItem->expiry_date;
+                $barcode      = $item->inventoryAllocation->barcode ?? $item->transferItem->barcode;
+                $uom          = $item->inventoryAllocation->uom ?? $item->transferItem->uom;
+    
+                // Ensure main inventory record exists
+                $inventory = FacilityInventory::firstOrCreate([
+                    'product_id' => $productId,
+                    'facility_id' => $facilityId,
+                ]);
+    
+                // Check if inventory item exists with the same batch/barcode/expiry
+                $inventoryItem = FacilityInventoryItem::where('facility_inventory_id', $inventory->id)
+                    ->where('batch_number', $batchNumber)
+                    ->where('expiry_date', $expiryDate)
+                    ->where('barcode', $barcode)
+                    ->first();
+    
+                if ($inventoryItem) {
+                    $inventoryItem->increment('quantity', $request->quantity);
+                } else {
+                    $inventoryItem = FacilityInventoryItem::create([
+                        'facility_inventory_id' => $inventory->id,
+                        'product_id'            => $productId,
+                        'quantity'              => $request->quantity,
+                        'batch_number'          => $batchNumber,
+                        'expiry_date'           => $expiryDate,
+                        'barcode'               => $barcode,
+                        'uom'                   => $uom,
+                        'unit_cost'             => null, // Optional, fill if available
+                        'total_cost'            => null,
+                    ]);
+                }
+    
+                // Sync the main inventory's quantity from its items
+                $inventory->quantity = $inventory->items()->sum('quantity');
+                $inventory->save();
+    
+                // Record movement
+                if ($item->transferItem) {
+                    $facilityInventoryMovementService->recordTransferReceived(
+                        $item->transferItem->transfer,
+                        $item->transferItem,
+                        $facilityId,
+                        $request->quantity
+                    );
+                } elseif ($item->orderItem) {
+                    $facilityInventoryMovementService->recordOrderReceived(
+                        $item->orderItem->order,
+                        $item->orderItem,
+                        $facilityId,
+                        $request->quantity,
+                        $batchNumber,
+                        $expiryDate,
+                        $barcode,
+                        $uom
+                    );
+                }
+    
+                // Record in backorder history
+                BackOrderHistory::create([
+                    'order_id'     => $item->orderItem->order_id ?? null,
+                    'transfer_id'  => $item->transferItem->id ?? null,
+                    'product_id'   => $productId,
+                    'quantity'     => $request->quantity,
+                    'status'       => 'Received',
+                    'note'         => "From the backorder",
+                    'performed_by' => auth()->id()
+                ]);
+    
+                // Update received quantity
+                if ($item->transferItem) {
+                    $item->transferItem->increment('received_quantity', $request->quantity);
+                } else {
+                    $item->orderItem->increment('received_quantity', $request->quantity);
+                }
+    
+                $item->decrement('quantity', $request->quantity);
+                $item->refresh();
+    
+                if ($item->quantity == 0) {
+                    $item->delete();
+                }
+    
+                return response()->json("Received successfully.", 200);
             });
-            
-            return response()->json("Received Succesfully.", 200);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json($th->getMessage(), 500);
         }
     }
+    
 }

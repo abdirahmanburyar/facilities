@@ -19,6 +19,7 @@ class Transfer extends Model
         'from_warehouse_id',
         'to_warehouse_id',
         'from_facility_id',
+        'transfer_type',
         'to_facility_id',
         'created_by',  
         'status',

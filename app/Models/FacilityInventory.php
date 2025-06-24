@@ -15,16 +15,16 @@ class FacilityInventory extends Model
         'quantity',
     ];
 
-    public function facility()
-    {
-        return $this->belongsTo(Facility::class);
-    }
-
+    
     public function items()
     {
         return $this->hasMany(FacilityInventoryItem::class, 'facility_inventory_id');
     }
-
+    
+    public function facility()
+    {
+        return $this->belongsTo(Facility::class);
+    }
     public function product()
     {
         return $this->belongsTo(Product::class);
