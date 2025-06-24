@@ -74,7 +74,8 @@ class BackOrderController extends Controller
                 ->find($request->id);
             
             // Generate note based on condition and source
-            $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->transferItem->transfer->transferID .' - '. $request->note : 'Unknown';
+            // $note = $item ? $item->orderItem->order->order_number .' - '. $item->orderItem->order->order_type .' - '. $item->transferItem->transfer->transferID .' - '. $request->note : 'Unknown';
+            $note = $request->note;
             
             // Handle file attachments if any
             $attachments = [];
@@ -95,7 +96,8 @@ class BackOrderController extends Controller
             $liquidate = Liquidate::create([
                 'product_id' => $item->inventoryAllocation->product_id,
                 'liquidated_by' => auth()->id(),
-                'order_item_id' => $item->orderItem->id,
+                'order_item_id' => $item->orderItem->id ?? null,
+                'transfer_item_id' => $item->transferItem->id ?? null,
                 'liquidated_at' => Carbon::now(),
                 'quantity' => $request->quantity,
                 'status' => 'pending', // Default status is pending
@@ -110,7 +112,8 @@ class BackOrderController extends Controller
             if ($item) {
                 // Create a record in BackOrderHistory before deleting
                 BackOrderHistory::create([
-                    'order_id' => $item->order_id,
+                    'order_id' => $item->order_id ?? null,
+                    'transfer_id' => $item->transfer_id ?? null,
                     'product_id' => $item->inventoryAllocation->product_id,
                     'quantity' => $request->quantity,
                     'status' => 'Liquidated',
@@ -132,6 +135,7 @@ class BackOrderController extends Controller
             
             return response()->json("Liquidated Succesfully.", 200);
         } catch (\Throwable $th) {
+            logger()->info($th->getMessage());
             DB::rollBack();
             return response()->json($th->getMessage(), 500);
         }

@@ -615,9 +615,7 @@ const handleAction = async (action, item) => {
 // liquidation
 const submitLiquidation = async () => {
     isSubmitting.value = true;
-    console.log(selectedItem.value);
     const formData = new FormData();
-    console.log(selectedItem.value);
     formData.append("id", selectedItem.value.id);
     formData.append("product_id", selectedItem.value.product.id);
     formData.append("quantity", liquidateForm.value.quantity);
@@ -667,9 +665,7 @@ const submitLiquidation = async () => {
 
 const submitDisposal = async () => {
     isSubmitting.value = true;
-    console.log(selectedItem.value);
     const formData = new FormData();
-    console.log(selectedItem.value);
     formData.append("id", selectedItem.value.id);
     formData.append("product_id", selectedItem.value.product.id);
     formData.append("quantity", disposeForm.value.quantity);

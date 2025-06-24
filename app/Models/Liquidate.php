@@ -21,20 +21,20 @@ class Liquidate extends Model
     protected $fillable = [
         'liquidate_id',
         'product_id',
-        'order_item_id',
-        'transfer_id',
-        'purchase_order_id',
-        'packing_listitem_id',
-        'inventory_id',
         'liquidated_by',
         'liquidated_at',
         'quantity',
         'status',
+        'type',
         'barcode',
         'expire_date',
         'batch_number',
         'uom',
-        'attachments',
+        'location',
+        'facility',
+        'warehouse',
+        'unit_cost',
+        'tota_cost',
         'note',
         'reviewed_by',
         'reviewed_at',
@@ -43,6 +43,7 @@ class Liquidate extends Model
         'rejected_by',
         'rejected_at',
         'rejection_reason',
+        'attachments',
     ];
 
     /**
@@ -52,15 +53,6 @@ class Liquidate extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
-    /**
-     * Get the transfer that owns the liquidate record
-     */
-    public function transfer(): BelongsTo
-    {
-        return $this->belongsTo(Transfer::class);
-    }
-
 
     /**
      * Get the user who liquidated the item
