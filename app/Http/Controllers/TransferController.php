@@ -1098,11 +1098,11 @@ class TransferController extends Controller
         $allItemsProcessed = $transfer->items->every(function ($item) {
             $missingQuantity = $item->quantity_to_release - ($item->received_quantity ?? 0);
             $existingBackOrders = $item->inventory_allocations()
-                ->whereHas('backorder')
-                ->with('backorder')
+                ->whereHas('backorders')
+                ->with('backorders')
                 ->get()
                 ->flatMap(function($allocation) {
-                    return $allocation->backorder;
+                    return $allocation->backorders;
                 })
                 ->sum('quantity');
             
