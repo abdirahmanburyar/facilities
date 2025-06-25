@@ -29,7 +29,7 @@ class ExpiredController extends Controller
                 $query->where('expiry_date', '<=', $oneYearFromNow) // Items expiring within next year
                       ->orWhere('expiry_date', '<', $now); // Already expired items
             })
-            ->orderBy('items.expiry_date', 'asc')
+            // ->orderBy('items.expiry_date', 'asc')
             ->get()
             ->map(function($inventory) use ($now) {
                 // Calculate days until expiry
