@@ -2663,7 +2663,7 @@ async function createDispatch() {
                 icon: "success",
                 confirmButtonText: "OK",
             }).then(() => {
-                router.get(route("transfer.show", props.transfer?.id));
+                router.get(route("transfers.show", props.transfer?.id));
             });
         })
         .catch((error) => {
