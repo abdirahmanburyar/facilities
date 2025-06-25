@@ -440,11 +440,11 @@
             <div class="md:col-span-3 sm:col-span-12">
                 <div class="bg-white mb-4">
                     <h3 class="text-xs text-black mb-4">Transfer Statistics</h3>
-                    <div class="flex justify-between gap-3">
+                    <div class="flex justify-between gap-1">
                         <!-- Pending -->
                         <div class="flex flex-col items-center">
                             <div
-                                class="h-[250px] w-8 bg-amber-50 relative overflow-hidden shadow-md"
+                                class="h-[250px] w-8 bg-amber-50 relative overflow-hidden shadow-md rounded-2xl"
                             >
                                 <div
                                     class="absolute top-0 inset-x-0 flex justify-center pt-2"
@@ -481,10 +481,51 @@
                             </div>
                         </div>
 
+                         <!-- Reviewed -->
+                         <div class="flex flex-col items-center">
+                            <div
+                                class="h-[250px] w-8 bg-blue-50 relative overflow-hidden shadow-md rounded-2xl"
+                            >
+                                <div
+                                    class="absolute top-0 inset-x-0 flex justify-center pt-2"
+                                >
+                                    <img
+                                        src="/assets/images/review.png"
+                                        class="h-8 w-6 object-contain"
+                                        alt="Reviewed"
+                                    />
+                                </div>
+                                <div
+                                    class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
+                                    :style="{
+                                        height:
+                                            props.statistics.reviewed
+                                                .percentage + '%',
+                                    }"
+                                >
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide"
+                                    >
+                                        {{
+                                            props.statistics.reviewed
+                                                .percentage
+                                        }}%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <span
+                                    class="font-medium text-gray-900"
+                                    style="font-size: 10px; font-weight: bold"
+                                    >Reviewed</span
+                                >
+                            </div>
+                        </div>
+
                         <!-- Approved -->
                         <div class="flex flex-col items-center">
                             <div
-                                class="h-[250px] w-8 bg-blue-50 relative overflow-hidden shadow-md"
+                                class="h-[250px] w-8 bg-blue-50 relative overflow-hidden shadow-md rounded-2xl"
                             >
                                 <div
                                     class="absolute top-0 inset-x-0 flex justify-center pt-2"
@@ -525,7 +566,7 @@
                         <!-- In Process -->
                         <div class="flex flex-col items-center">
                             <div
-                                class="h-[250px] w-8 bg-slate-50 relative overflow-hidden shadow-md"
+                                class="h-[250px] w-8 bg-slate-50 relative overflow-hidden shadow-md rounded-2xl"
                             >
                                 <div
                                     class="absolute top-0 inset-x-0 flex justify-center pt-2"
@@ -566,7 +607,7 @@
                         <!-- Dispatched -->
                         <div class="flex flex-col items-center">
                             <div
-                                class="h-[250px] w-8 bg-purple-50 relative overflow-hidden shadow-md"
+                                class="h-[250px] w-8 bg-purple-50 relative overflow-hidden shadow-md rounded-2xl"
                             >
                                 <div
                                     class="absolute top-0 inset-x-0 flex justify-center pt-2"
@@ -607,7 +648,7 @@
                         <!-- Received -->
                         <div class="flex flex-col items-center">
                             <div
-                                class="h-[250px] w-8 bg-emerald-50 relative overflow-hidden shadow-md"
+                                class="h-[250px] w-8 bg-emerald-50 relative overflow-hidden shadow-md rounded-2xl"
                             >
                                 <div
                                     class="absolute top-0 inset-x-0 flex justify-center pt-2"
@@ -644,6 +685,7 @@
                                 >
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
