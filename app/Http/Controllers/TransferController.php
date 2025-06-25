@@ -53,6 +53,7 @@ class TransferController extends Controller
         }
     }
 
+    // dispatch info method
 
     public function changeItemStatus(Request $request)
     {
@@ -581,11 +582,17 @@ class TransferController extends Controller
         $warehouses = Warehouse::select('id','name')->get();
         $facilities = Facility::select('id','name')->get();
         $transferID = Transfer::generateTransferId();
+        $inventories = Product::whereHas('facilityInventories', function($query) {
+            $query->where('facility_id', auth()->user()->facility_id);
+        })
+        ->select('id','name')
+        ->get();
         
         return inertia('Transfer/Create', [
             'warehouses' => $warehouses,
             'facilities' => $facilities,
-            'transferID' => $transferID
+            'transferID' => $transferID,
+            'inventories' => $inventories
         ]);
     }
     

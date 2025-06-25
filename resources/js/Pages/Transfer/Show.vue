@@ -2653,7 +2653,7 @@ const isSaving = ref(false);
 async function createDispatch() {
     isSaving.value = true;
     await axios
-        .post(route("transfer.dispatch-info"), dispatchForm.value)
+        .post(route("transfers.dispatch-info"), dispatchForm.value)
         .then((response) => {
             isSaving.value = false;
             showDispatchForm.value = false;

@@ -18,7 +18,7 @@ import moment from "moment";
 const toast = useToast();
 
 const props = defineProps({
-    inventory: Object,
+    inventories: Array,
     warehouses: {
         type: Array,
         default: () => [],
@@ -87,32 +87,6 @@ const filteredDestinationOptions = computed(() => {
     return destinationOptions.value;
 });
 
-const handleSourceSelect = async (selected) => {
-    form.value.source_id = selected ? selected.id : null;
-    selectedInventory.value = null;
-
-    // Reset the items array to have only one empty item when source changes
-    form.value.items = [
-        {
-            id: null,
-            product_id: null,
-            product: null,
-            quantity: 0,
-            batch_number: "",
-            barcode: "",
-            expiry_date: null,
-            uom: "",
-            available_quantity: 0,
-        },
-    ];
-
-    if (selected) {
-        await fetchInventories();
-    } else {
-        availableInventories.value = [];
-        filteredInventories.value = [];
-    }
-};
 
 const handleDestinationSelect = (selected) => {
     form.value.destination_id = selected ? selected.id : null;
@@ -617,7 +591,7 @@ function formatDate(date) {
                                         <Multiselect
                                             v-model="item.product"
                                             :value="item.product_id"
-                                            :options="availableInventories"
+                                            :options="props.inventories"
                                             placeholder="Search for an item..."
                                             required
                                             track-by="id"
