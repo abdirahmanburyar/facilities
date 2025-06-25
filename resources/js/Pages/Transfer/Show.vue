@@ -885,7 +885,7 @@
                                                     0
                                                 "
                                                 :readonly="
-                                                    props.transfer.to_facility_id ==
+                                                    props.transfer.to_facility_id !=
                                                     $page.props.auth?.user?.facility_id
                                                 "
                                                 min="0"
