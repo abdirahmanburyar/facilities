@@ -209,16 +209,14 @@ function formatDate(date) {
     >
         <div class="mb-5">
             <div class="p-6 text-gray-900">
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-xs">Transfer Item</h2>
+                    <div class="flex flex-col">
+                        Transfer ID: {{ props.transferID }}
+                    </div>
+                </div>
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="flex gap-2">
-                       <div class="flex">
-                        <div>
-                        <div class="flex justify-between mb-6">
-                            <h2 class="text-xs">Transfer Item</h2>
-                            <div class="flex flex-col">
-                                Transfer ID: {{ props.transferID }}
-                            </div>
-                        </div>  
                         <div>
                             <div class="flex flex-col">
                                 <label for="transfer_date">Transfer Date</label>
@@ -229,19 +227,16 @@ function formatDate(date) {
                                 />
                             </div>
                         </div>
-                       </div>
-
-                           <div class="flex flex-col">
-                               <label for="transfer_type">Transfer Type</label>
-                               <textarea
-                                   name="transfer_type"
-                                   id="transfer_type"
-                                   v-model="form.transfer_type"
-                                   class="form-input w-[300px]"
-                                   placeholder="Enter transfer type [Soon to expire, Replenishment, ...]"
-                               ></textarea>
-                           </div>
-                       </div>
+                        <div class="flex flex-col">
+                            <label for="transfer_type">Transfer Type</label>
+                            <textarea
+                                name="transfer_type"
+                                id="transfer_type"
+                                v-model="form.transfer_type"
+                                class="form-input w-[300px]"
+                                placeholder="Enter transfer type [Soon to expire, Replenishment, ...]"
+                            ></textarea>
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Source Type Selection -->
