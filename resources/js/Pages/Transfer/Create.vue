@@ -31,6 +31,10 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    facilityID: {
+        type: Number,
+        required: true,
+    },
 });
 
 const sourceType = ref("warehouse");
@@ -42,6 +46,8 @@ const selectedDestination = ref(null);
 const form = ref({
     destination_type: "warehouse",
     destination_id: null,
+    source_type: "facility",
+    source_id: props.facilityID,
     transfer_date: moment().format("YYYY-MM-DD"),
     transferID: props.transferID,
     transfer_type: "",
@@ -88,6 +94,7 @@ watch(destinationType, (newValue) => {
 
 const submit = async () => {
     loading.value = true;
+    console.log(form.value);
 
     await axios
         .post(route("transfers.store"), form.value)

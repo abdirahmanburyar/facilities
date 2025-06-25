@@ -570,12 +570,14 @@ class TransferController extends Controller
         })
         ->select('id','name')
         ->get();
+        $facilityID = auth()->user()->facility_id;
         
         return inertia('Transfer/Create', [
             'warehouses' => $warehouses,
             'facilities' => $facilities,
             'transferID' => $transferID,
-            'inventories' => $inventories
+            'inventories' => $inventories,
+            'facilityID' => $facilityID
         ]);
     }
     
