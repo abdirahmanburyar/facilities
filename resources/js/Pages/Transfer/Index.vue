@@ -247,7 +247,7 @@
                                         :href="
                                             route('transfers.show', transfer.id)
                                         "
-                                        class="hover:underline"
+                                        class="hover:underline text-blue-500"
                                     >
                                         {{ transfer.transferID }}
                                     </Link>
