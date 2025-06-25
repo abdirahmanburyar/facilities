@@ -415,25 +415,26 @@ class TransferController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
+                'source_type' => 'required|in:warehouse,facility',
+                'source_id' => 'required|integer',
                 'destination_type' => 'required|in:warehouse,facility',
                 'destination_id' => 'required|integer',
                 'transfer_date' => 'required|date',
-                'transfer_type' => 'required',
                 'transferID' => 'required',
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|integer',
                 'items.*.quantity' => 'required|integer|min:1',
-                'notes' => 'nullable|string|max:500'
+                'notes' => 'nullable|string',
+                'transfer_type' => 'required|string'
             ]);
     
             $transferData = [
                 'transferID' => $request->transferID,
                 'transfer_date' => $request->transfer_date,
-                'from_facility_id' => auth()->user()->facility_id,
+                'from_facility_id' => $request->source_type === 'facility' ? $request->source_id : null,
                 'to_warehouse_id' => $request->destination_type === 'warehouse' ? $request->destination_id : null,
                 'to_facility_id' => $request->destination_type === 'facility' ? $request->destination_id : null,
                 'transfer_type' => $request->transfer_type,
-                'status' => 'pending',
                 'created_by' => auth()->id(),
             ];
     
@@ -441,8 +442,8 @@ class TransferController extends Controller
     
             foreach ($request->items as $item) {
                 $remainingQty = $item['quantity'];
-                $sourceId = auth()->user()->facility_id;
-
+                $sourceId = $request->source_id;
+                
                 $inventories = FacilityInventoryItem::where('product_id', $item['product_id'])
                     ->whereHas('inventory', function($query) use ($sourceId) {
                         $query->where('facility_id', $sourceId);
@@ -451,71 +452,78 @@ class TransferController extends Controller
                     ->where('expiry_date', '>', \Carbon\Carbon::now())
                     ->orderBy('expiry_date', 'asc')
                     ->get();
+                logger()->info($inventories);
+                // // Calculate total quantity on hand for this product (excluding expired)
+                // $warehouseQuantity = InventoryItem::where('product_id', $item['product_id'])
+                //     ->where('quantity', '>', 0)
+                //     ->where('expiry_date', '>', \Carbon\Carbon::now())
+                //     ->sum('quantity');
+
+                // $facilityQuantity = FacilityInventoryItem::where('product_id', $item['product_id'])
+                //     ->where('quantity', '>', 0)
+                //     ->where('expiry_date', '>', \Carbon\Carbon::now())
+                //     ->sum('quantity');
+
+                // $totalQuantityOnHand = (int) $warehouseQuantity ?? (int) $facilityQuantity;
 
                 // Create transfer item for this product
-                $transferItem = $transfer->items()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'], // Total requested quantity
-                    'quantity_to_release' => $item['quantity'],
-                    'quantity_per_unit' => $inventories->sum('quantity') // Save total quantity on hand at time of transfer creation
-                ]);
+                // $transferItem = $transfer->items()->create([
+                //     'product_id' => $item['product_id'],
+                //     'quantity' => $item['quantity'], // Total requested quantity
+                //     'quantity_to_release' => $item['quantity'],
+                //     'quantity_per_unit' => $totalQuantityOnHand // Save total quantity on hand at time of transfer creation
+                // ]);
 
                 // Process each inventory item to fulfill the transfer quantity
-                foreach ($inventories as $inventory) {
-                    if ($remainingQty <= 0) break;
+                // foreach ($inventories as $inventory) {
+                //     if ($remainingQty <= 0) break;
 
-                    $deductQty = min($remainingQty, $inventory->quantity);
+                //     $deductQty = min($remainingQty, $inventory->quantity);
                     
-                    // Create inventory allocation record for detailed tracking
-                    $transferItem->inventory_allocations()->create([
-                        'product_id' => $item['product_id'],
-                        'warehouse_id' => $request->destination_type === 'warehouse' ? $request->destination_id : null,
-                        'location' => $inventory->location ?? null,
-                        'batch_number' => $inventory->batch_number ?? null,
-                        'expiry_date' => $inventory->expiry_date ?? null,
-                        'allocated_quantity' => $deductQty,
-                        'allocation_type' => 'transfer',
-                        'unit_cost' => $inventory->unit_cost ?? 0,
-                        'total_cost' => $deductQty * ($inventory->unit_cost ?? 0),
-                    ]);
+                //     // Create inventory allocation record for detailed tracking
+                //     $transferItem->inventory_allocations()->create([
+                //         'product_id' => $item['product_id'],
+                //         'warehouse_id' => $request->source_type === 'warehouse' ? $sourceId : null,
+                //         'location' => $inventory->location,
+                //         'batch_number' => $inventory->batch_number,
+                //         'expiry_date' => $inventory->expiry_date,
+                //         'allocated_quantity' => $deductQty,
+                //         'uom' => $inventory->uom,
+                //         'barcode' => $inventory->barcode,
+                //         'allocation_type' => 'transfer',
+                //         'unit_cost' => $inventory->unit_cost ?? 0,
+                //         'total_cost' => $deductQty * ($inventory->unit_cost ?? 0),
+                //     ]);
 
-                    // Deduct from source inventory
-                    $inventory->quantity -= $deductQty;
-                    $inventory->save();
+                //     // Deduct from source inventory
+                //     $inventory->quantity -= $deductQty;
+                //     $inventory->save();
 
-                    // Update remaining quantity needed
-                    $remainingQty -= $deductQty;
-                }
-
-                logger()->info($remainingQty);
+                //     // Update remaining quantity needed
+                //     $remainingQty -= $deductQty;
+                // }
         
-                // Check if we couldn't fulfill the complete request
-                if ($remainingQty > 0) {
-                    DB::rollBack();
-                    return response()->json("Not enough stock to fulfill {$item['quantity']} units for Item: {$item['product']['name']}", 400);
-                }
             }
     
-            $transfer->load(['fromWarehouse', 'toWarehouse', 'fromFacility', 'toFacility', 'items.product']);
+            // $transfer->load(['fromWarehouse', 'toWarehouse', 'fromFacility', 'toFacility', 'items.product']);
     
-            if ($transfer->to_warehouse_id && $transfer->toWarehouse?->manager_email) {
-                Notification::route('mail', $transfer->toWarehouse->manager_email)
-                    ->notify(new TransferCreated($transfer));
-            } elseif ($transfer->to_facility_id && $transfer->toFacility?->email) {
-                Notification::route('mail', $transfer->toFacility->email)
-                    ->notify(new TransferCreated($transfer));
-            }
+            // if ($transfer->to_warehouse_id && $transfer->toWarehouse?->manager_email) {
+            //     Notification::route('mail', $transfer->toWarehouse->manager_email)
+            //         ->notify(new TransferCreated($transfer));
+            // } elseif ($transfer->to_facility_id && $transfer->toFacility?->email) {
+            //     Notification::route('mail', $transfer->toFacility->email)
+            //         ->notify(new TransferCreated($transfer));
+            // }
     
             DB::commit();
             return response()->json('Transfer created successfully', 200);
     
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             logger()->error($e);
             return response()->json('Failed to create transfer: ' . $e->getMessage(), 500);
         }
     }
-
     
     public function dispatchInfo(Request $request){
         
