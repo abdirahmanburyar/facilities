@@ -113,7 +113,7 @@ class ExpiredController extends Controller
         try {
             // Validate the request
             $validated = $request->validate([
-                'id' => 'required|exists:inventory_items,id',
+                'id' => 'required|exists:facility_inventory_items,id',
                 'product_id' => 'required|exists:products,id',
                 'quantity' => 'required|integer|min:1',
                 'note' => 'nullable|string|max:255',
@@ -152,6 +152,7 @@ class ExpiredController extends Controller
                 }
             }
             
+            $facility = Facility::find(auth()->user()->facility_id);
             // Create a new liquidation record
             $disposal = Disposal::create([
                 'product_id' => $request->product_id,
@@ -166,6 +167,7 @@ class ExpiredController extends Controller
                 'tota_cost' => ($inventory->unit_cost ?? 0) * $request->quantity,  
                 'expire_date' => $inventory->expiry_date,
                 'batch_number' => $inventory->batch_number,
+                'facility' => $facility->name,
                 'uom' => $inventory->uom,
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
             ]);
