@@ -1,6 +1,9 @@
 <template>
-    <AuthenticatedLayout title="Tracks Your Orders" description="Keeping Essenticals Ready, Every Time"
-        img="/assets/images/orders.png">
+ <AuthenticatedLayout
+        title="Tracks Your Orders"
+        description="Keeping Essentials Ready, Every Time"
+        img="/assets/images/orders.png"
+    >
         <!-- Order Header -->
         <div v-if="error">
             {{ error }}

@@ -1,5 +1,9 @@
 <template>
-    <AuthenticatedLayout>
+     <AuthenticatedLayout
+        title="Tracks Your Orders"
+        description="Create a new order"
+        img="/assets/images/orders.png"
+    >
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 Create Order
