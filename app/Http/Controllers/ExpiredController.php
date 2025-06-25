@@ -25,8 +25,7 @@ class ExpiredController extends Controller
         $inventories = FacilityInventory::query()
             ->select('facility_inventories.*', 'products.name as product_name')
             ->join('products', 'products.id', '=', 'facility_inventories.product_id')
-            ->where('quantity', '>', 0)
-            ->where(function($query) use ($now, $oneYearFromNow) {
+            ->whereHas('items', function($query) use ($now, $oneYearFromNow) {
                 $query->where('expiry_date', '<=', $oneYearFromNow) // Items expiring within next year
                       ->orWhere('expiry_date', '<', $now); // Already expired items
             })
