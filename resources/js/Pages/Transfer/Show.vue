@@ -2538,24 +2538,16 @@ const canApprove = computed(() => {
 
 const canDispatch = computed(() => {
     const user = page.props.auth.user;
-    return (
-        user.warehouse_id === props.transfer.from_warehouse_id ||
-        user.facility_id === props.transfer.from_facility_id
-    );
+    return user.facility_id === props.transfer.from_facility_id && user.can.transfer_dispatch;
 });
 
 const canReceive = computed(() => {
     const auth = page.props.auth;
-    return (
-        (auth.user.warehouse_id === props.transfer.to_warehouse_id ||
-            auth.user.facility_id === props.transfer.to_facility_id) &&
-        auth.can.transfer_receive
-    );
+    return auth.user.facility_id == props.transfer.to_facility_id && auth.can.transfer_receive;
 });
 
 // Function to change transfer status
 const changeStatus = (transferId, newStatus, type) => {
-    console.log(transferId, newStatus, type);
 
     // Get action name for better messaging
     const actionMap = {
