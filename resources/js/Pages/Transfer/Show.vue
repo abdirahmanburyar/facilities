@@ -2545,10 +2545,10 @@ const canApprove = computed(() => {
 });
 
 const canDispatch = computed(() => {
-    const user = page.props.auth.user;
+    const auth = page.props.auth;
     return (
-        user.facility_id === props.transfer.from_facility_id &&
-        user.can.transfer_dispatch
+        auth.user.facility_id === props.transfer.from_facility_id &&
+        auth.can.transfer_dispatch
     );
 });
 

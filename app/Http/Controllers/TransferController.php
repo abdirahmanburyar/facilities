@@ -42,7 +42,6 @@ class TransferController extends Controller
                 'received_quantity' => 'required|min:1',
             ]);
             $transferItem = TransferItem::find($request->transfer_item_id);
-            logger()->info($transferItem);
 
             if(!$transferItem) return response()->json("Transfer item not exist", 500);
             if((int) $transferItem->received_quantity > (int) $transferItem->quantity) return response()->json("Received quantity can be exceed the original quantity", 500);
@@ -180,7 +179,6 @@ class TransferController extends Controller
                     // Debug information for this item
                     
                     foreach ($item->inventory_allocations as $allocation) {
-                        logger()->info($allocation);
                         // Calculate total back order quantity for this allocation
                         if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
                             DB::rollback();
@@ -524,7 +522,6 @@ class TransferController extends Controller
                     'transfer_id',
                     'status'
                 ]);
-                logger()->info($request->all());
                 $transfer = Transfer::with('dispatchInfo')->where('id',$request->transfer_id)->first();
                 $transfer->dispatchInfo()->create([
                     'transfer_id' => $request->transfer_id,
@@ -1519,7 +1516,6 @@ class TransferController extends Controller
                     // Debug information for this item
                     
                     foreach ($item->inventory_allocations as $allocation) {
-                        logger()->info($allocation);
                         // Calculate total back order quantity for this allocation
                         if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
                             DB::rollback();
