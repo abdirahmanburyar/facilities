@@ -884,6 +884,10 @@
                                                     item.quantity_to_release ||
                                                     0
                                                 "
+                                                :readonly="
+                                                    props.transfer.to_facility_id ==
+                                                    $page.props.auth?.user?.facility_id
+                                                "
                                                 min="0"
                                                 @input="
                                                     validateReceivedQuantity(
