@@ -29,11 +29,11 @@ class ExpiredController extends Controller
                 $query->where('expiry_date', '<=', $oneYearFromNow) // Items expiring within next year
                       ->orWhere('expiry_date', '<', $now); // Already expired items
             })
-            ->orderBy('expiry_date', 'asc')
+            ->orderBy('items.expiry_date', 'asc')
             ->get()
             ->map(function($inventory) use ($now) {
                 // Calculate days until expiry
-                $expiryDate = Carbon::parse($inventory->expiry_date);
+                $expiryDate = Carbon::parse($inventory->items->first()->expiry_date);
                 $daysUntilExpiry = ceil($now->floatDiffInDays($expiryDate, false));
                 
                 $inventory->expired = $expiryDate < $now;
