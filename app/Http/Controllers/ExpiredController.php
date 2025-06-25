@@ -23,27 +23,32 @@ class ExpiredController extends Controller
         $oneYearFromNow = $now->copy()->addYear();
 
         $inventories = FacilityInventory::query()
-            ->select('facility_inventories.*', 'products.name as product_name')
-            ->join('products', 'products.id', '=', 'facility_inventories.product_id')
-            ->whereHas('items', function($query) use ($now, $oneYearFromNow) {
-                $query->where('expiry_date', '<=', $oneYearFromNow) // Items expiring within next year
-                      ->orWhere('expiry_date', '<', $now); // Already expired items
-            })
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function($inventory) use ($now) {
-                // Calculate days until expiry
-                $expiryDate = Carbon::parse($inventory->items->first()->expiry_date);
+        ->select('facility_inventories.*', 'products.name as product_name')
+        ->join('products', 'products.id', '=', 'facility_inventories.product_id')
+        ->whereHas('items', function($query) use ($now, $oneYearFromNow) {
+            $query->where('expiry_date', '<=', $oneYearFromNow)
+                  ->orWhere('expiry_date', '<', $now);
+        })
+        ->with(['items' => function($query) {
+            $query->orderBy('expiry_date', 'asc');
+        }])
+        ->orderBy('facility_inventories.created_at', 'asc')
+        ->get()
+        ->map(function($inventory) use ($now) {
+            $item = $inventory->items->first(); // Now sorted by soonest expiry
+    
+            if ($item) {
+                $expiryDate = Carbon::parse($item->expiry_date);
                 $daysUntilExpiry = ceil($now->floatDiffInDays($expiryDate, false));
-                
+    
                 $inventory->expired = $expiryDate < $now;
                 $inventory->days_until_expiry = $daysUntilExpiry;
                 $inventory->disposed = (bool) $inventory->disposed;
-                
-                // Only mark as expiring soon if not expired and within 6 months
                 $inventory->expiring_soon = !$inventory->expired && $daysUntilExpiry > 0 && $daysUntilExpiry <= 180;
-                return $inventory;
-            });
+            }
+    
+            return $inventory;
+        });
 
         return inertia('Expired/Index', [
             'inventories' => $inventories,
