@@ -51,8 +51,12 @@ class InventoryController extends Controller
             ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
             ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level'));
 
-        if ($search = $request->search) {
-            $query->whereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%"));
+        if ($search = $request->search) {   
+            $query->whereHas('items', function($q) use ($search) {
+                $q->where('barcode', 'like', "%{$search}%")
+                    ->orWhere('batch_number', 'like', "%{$search}%");
+            })
+                ->orWhereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%"));
         }
 
         if ($request->filled('product_id')) {

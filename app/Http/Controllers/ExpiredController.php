@@ -29,21 +29,19 @@ class ExpiredController extends Controller
         $query->with(['product.dosage:id,name', 'product.category:id,name']);
     
         $query->where('quantity', '>', 0)
-              ->where(function($q) use ($now, $oneYearFromNow) {
-                  $q->where('expiry_date', '<=', $oneYearFromNow)
-                    ->orWhere('expiry_date', '<', $now);
-              });
+            ->where(function($q) use ($now, $oneYearFromNow) {
+                $q->where('expiry_date', '<=', $oneYearFromNow)
+                ->orWhere('expiry_date', '<', $now);
+            });
     
         // Filters
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('barcode', 'like', "%{$search}%")
+            $query->where('barcode', 'like', "%{$search}%")
                   ->orWhere('batch_number', 'like', "%{$search}%")
                   ->orWhereHas('product', function ($prodQ) use ($search) {
                       $prodQ->where('name', 'like', "%{$search}%");
                   });
-            });
         }
     
         if ($request->filled('product_id')) {
