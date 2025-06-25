@@ -38,19 +38,13 @@ const destinationType = ref("warehouse");
 const loading = ref(false);
 const selectedSource = ref(null);
 const selectedDestination = ref(null);
-const selectedInventory = ref(null);
-const filteredInventories = ref([]);
-const availableInventories = ref([]);
-const searchQuery = ref("");
-const loadingInventories = ref(false);
 
 const form = ref({
-    source_type: "warehouse", // Default source type is warehouse since it's an expired item
-    source_id: null,
     destination_type: "warehouse",
     destination_id: null,
     transfer_date: moment().format("YYYY-MM-DD"),
     transferID: props.transferID,
+    transfer_type: "",
     items: [
         {
             id: null,
@@ -64,12 +58,6 @@ const form = ref({
 });
 
 const errors = ref({});
-
-const sourceOptions = computed(() => {
-    return sourceType.value === "warehouse"
-        ? props.warehouses
-        : props.facilities;
-});
 
 const destinationOptions = computed(() => {
     return destinationType.value === "warehouse"
@@ -87,189 +75,9 @@ const filteredDestinationOptions = computed(() => {
     return destinationOptions.value;
 });
 
-
 const handleDestinationSelect = (selected) => {
     form.value.destination_id = selected ? selected.id : null;
 };
-
-const fetchInventories = async () => {
-    // If no source selected, reset and exit
-    if (!selectedSource.value || !form.value.source_id) {
-        availableInventories.value = [];
-        filteredInventories.value = [];
-        return;
-    }
-
-    // Set loading state
-    loadingInventories.value = true;
-    filteredInventories.value = [];
-    searchQuery.value = "";
-
-    // Show Swal loading counter
-    let timerInterval;
-    const swalLoading = Swal.fire({
-        title: "Loading Inventory",
-        html: "Fetching inventory items... <b></b>",
-        timer: 30000, // 30 seconds max timeout
-        timerProgressBar: true,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-            const timer = Swal.getPopup().querySelector("b");
-            timerInterval = setInterval(() => {
-                timer.textContent = `${Math.ceil(Swal.getTimerLeft() / 1000)}s`;
-            }, 100);
-        },
-        willClose: () => {
-            clearInterval(timerInterval);
-        },
-    });
-
-    try {
-        // Use GET request to fetch available inventories
-        const response = await axios.get(route("transfers.getInventories"), {
-            params: {
-                source_type: sourceType.value,
-                source_id: form.value.source_id,
-            },
-        });
-        
-        console.log("[SUCCESS] Fetch inventories response:", response.data);
-        swalLoading.close();
-        availableInventories.value = response.data;
-        filteredInventories.value = availableInventories.value;
-        loadingInventories.value = false;
-        
-    } catch (error) {
-        console.error("[ERROR] Fetch inventories failed:", error);
-        console.error("[ERROR] Full error object:", error.response);
-        
-        // Close loading dialog first
-        swalLoading.close();
-        
-        // Reset states
-        loadingInventories.value = false;
-        availableInventories.value = [];
-        filteredInventories.value = [];
-        
-        // Add small delay before showing error dialog to avoid timing conflicts
-        setTimeout(() => {
-            let errorMessage = "Failed to fetch inventories";
-            
-            if (error.response) {
-                console.log("[DEBUG] Error response status:", error.response.status);
-                console.log("[DEBUG] Error response data:", error.response.data);
-                
-                if (typeof error.response.data === 'string') {
-                    errorMessage = error.response.data;
-                } else if (error.response.data && error.response.data.message) {
-                    errorMessage = error.response.data.message;
-                } else if (error.response.data && error.response.data.error) {
-                    errorMessage = error.response.data.error;
-                } else {
-                    errorMessage = `Server error (${error.response.status})`;
-                }
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            console.log("[DEBUG] Final error message:", errorMessage);
-            
-            Swal.fire({
-                title: "Error!",
-                text: errorMessage,
-                icon: "error",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 5000,
-            });
-        }, 100); // 100ms delay
-    }
-};
-
-const validateForm = () => {
-    errors.value = {};
-    let isValid = true;
-
-    // Validate source and destination
-    if (!form.value.source_id) {
-        errors.value.source_id = "Please select a source.";
-        isValid = false;
-    }
-
-    if (!form.value.destination_id) {
-        errors.value.destination_id = "Please select a destination.";
-        isValid = false;
-    }
-
-    // Check if source and destination are the same
-    if (
-        form.value.source_id === form.value.destination_id &&
-        form.value.source_type === form.value.destination_type
-    ) {
-        errors.value.destination_id =
-            "Source and destination cannot be the same.";
-        isValid = false;
-    }
-
-    // Validate that all items are properly filled
-    let hasValidItems = false;
-
-    form.value.items.forEach((item, index) => {
-        // Check if inventory item is selected
-        if (!item.inventory_id) {
-            errors.value[`item_${index}_inventory`] =
-                "Please select an inventory item.";
-            isValid = false;
-        }
-
-        // Check if quantity is valid (must be at least 1)
-        if (item.inventory_id && (!item.quantity || item.quantity < 1)) {
-            errors.value[`item_${index}_quantity`] =
-                "Quantity must be at least 1.";
-            isValid = false;
-        }
-
-        // Check if quantity exceeds available quantity
-        if (item.inventory_id && item.quantity > item.available_quantity) {
-            errors.value[
-                `item_${index}_quantity`
-            ] = `Maximum available quantity is ${item.available_quantity}.`;
-            isValid = false;
-        }
-
-        // Track if we have at least one valid item
-        if (
-            item.inventory_id &&
-            item.quantity >= 1 &&
-            item.quantity <= item.available_quantity
-        ) {
-            hasValidItems = true;
-        }
-    });
-
-    // Ensure at least one valid item exists
-    if (!hasValidItems) {
-        errors.value.items =
-            "At least one item must be selected with a valid quantity.";
-        isValid = false;
-    }
-
-    return isValid;
-};
-
-// Watch for changes in source type and update form
-watch(sourceType, (newValue) => {
-    form.value.source_type = newValue;
-    form.value.source_id = null;
-    selectedSource.value = null;
-    selectedInventory.value = null;
-    form.value.inventory_id = null;
-    availableInventories.value = [];
-    filteredInventories.value = [];
-});
 
 // Watch for changes in destination type and update form
 watch(destinationType, (newValue) => {
@@ -281,7 +89,6 @@ watch(destinationType, (newValue) => {
 const submit = async () => {
     loading.value = true;
 
-    console.log(form.value);
     await axios
         .post(route("transfers.store"), form.value)
         .then((response) => {
@@ -316,12 +123,10 @@ async function handleProductSelect(index, selected) {
         await axios
             .post(route("transfers.inventory"), {
                 product_id: selected.id,
-                source_type: sourceType.value,
-                source_id: form.value.source_id,
             })
             .then((response) => {
-                isLoading.value[index] = false;
                 console.log(response.data);
+                isLoading.value[index] = false;
 
                 item.details = response.data;
                 item.available_quantity = response.data?.reduce(
@@ -335,13 +140,13 @@ async function handleProductSelect(index, selected) {
             .catch((error) => {
                 isLoading.value[index] = false;
                 console.log(error);
-                
+
                 // Clear product fields on error
                 item.product_id = null;
                 item.product = null;
                 item.details = [];
                 item.available_quantity = 0;
-                
+
                 Swal.fire({
                     title: "Error!",
                     text: error.response.data,
@@ -349,7 +154,7 @@ async function handleProductSelect(index, selected) {
                     position: "top-end",
                     showConfirmButton: false,
                     timer: 5000,
-                })
+                });
             });
     }
 }
@@ -361,7 +166,7 @@ function addNewItem() {
         product: null,
         available_quantity: 0,
         quantity: 0,
-        details: []
+        details: [],
     });
 }
 
@@ -397,94 +202,46 @@ function formatDate(date) {
 </script>
 
 <template>
-    <AuthenticatedLayout title="Transfer Item">
+    <AuthenticatedLayout
+        title="Transfer Item"
+        description="Transfer Item"
+        img="/assets/images/transfer.png"
+    >
         <div class="mb-5">
             <div class="p-6 text-gray-900">
-                <h2 class="text-2xl font-semibold mb-6">Transfer Item</h2>
-                <div class="mb-4">
-                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg
-                                    class="h-5 w-5 text-blue-400"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-blue-700">
-                                    Select source and destination locations,
-                                    then choose inventory items to transfer. The
-                                    quantity must not exceed available quantity.
-                                </p>
-                            </div>
-                        </div>
+                <div class="flex justify-between mb-6">
+                    <h2 class="text-xs">Transfer Item</h2>
+                    <div class="flex flex-col">
+                        Transfer ID: {{ props.transferID }}
                     </div>
                 </div>
                 <form @submit.prevent="submit" class="space-y-6">
-                    <div class="w-[300px]">
-                        <div class="flex flex-col">
-                            Transfer ID: {{ props.transferID }}
+                    <div class="flex gap-2">
+                        <div>
+                            <div class="flex flex-col">
+                                <label for="transfer_date">Transfer Date</label>
+                                <input
+                                    type="date"
+                                    v-model="form.transfer_date"
+                                    class="form-input"
+                                />
+                            </div>
                         </div>
                         <div class="flex flex-col">
-                            <label for="transfer_date">Transfer Date</label>
-                            <input
-                                type="date"
-                                v-model="form.transfer_date"
-                                class="form-input"
-                            />
+                            <label for="transfer_type">Transfer Type</label>
+                            <textarea
+                                name="transfer_type"
+                                id="transfer_type"
+                                v-model="form.transfer_type"
+                                class="form-input w-[300px]"
+                                placeholder="Enter transfer type [Soon to expire, Replenishment, ...]"
+                            ></textarea>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Source Type Selection -->
-                        
-                        <!-- Source Selection -->
                         <div>
-                            <InputLabel
-                                :value="`Select Source ${
-                                    sourceType === 'warehouse'
-                                        ? 'Warehouse'
-                                        : 'Facility'
-                                }`"
-                            />
-                            <Multiselect
-                                v-model="selectedSource"
-                                :options="sourceOptions"
-                                :searchable="true"
-                                :close-on-select="true"
-                                :show-labels="false"
-                                :allow-empty="true"
-                                :placeholder="`Select source ${
-                                    sourceType === 'warehouse'
-                                        ? 'warehouse'
-                                        : 'facility'
-                                }`"
-                                track-by="id"
-                                label="name"
-                                @select="handleSourceSelect"
-                                :class="{ 'border-red-500': errors.source_id }"
-                                @open="errors.source_id = null"
-                            >
-                                <template v-slot:option="{ option }">
-                                    <span>{{ option.name }}</span>
-                                </template>
-                            </Multiselect>
-                            <InputError
-                                :message="errors.source_id"
-                                class="mt-2"
-                            />
-                        </div>
-
-                        <!-- Destination Type Selection -->
-                        <div>
-                            <InputLabel value="Transfer To" />
+                            <InputLabel value="Transfer From" />
                             <div class="mt-2 space-x-4">
                                 <label class="inline-flex items-center">
                                     <input
@@ -554,27 +311,27 @@ function formatDate(date) {
                             <thead class="w-full bg-gray-50">
                                 <tr>
                                     <th
-                                        class="w-[400px] px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                                        class="w-[400px] text-left text-xs font-medium text-black border border-black capitalize"
                                     >
                                         Item
                                     </th>
                                     <th
-                                        class="w-[300px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border border-black tracking-wider"
+                                        class="w-[300px] text-left text-xs font-medium text-black capitalize border border-black tracking-wider"
                                     >
                                         Item Information
                                     </th>
                                     <th
-                                        class="w-[100px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border border-black tracking-wider"
+                                        class="w-[200px] text-left text-xs font-medium text-black capitalize border border-black tracking-wider"
                                     >
                                         Available quantity
                                     </th>
                                     <th
-                                        class="w-[200px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border border-black tracking-wider"
+                                        class="w-[200px] text-left text-xs font-medium text-black capitalize border border-black tracking-wider"
                                     >
                                         Quantity to release
                                     </th>
                                     <th
-                                        class="w-[70px] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border border-black tracking-wider"
+                                        class="w-[70px] text-left text-xs font-medium text-black capitalize border border-black tracking-wider"
                                     >
                                         Actions
                                     </th>
@@ -587,7 +344,7 @@ function formatDate(date) {
                                     :key="index"
                                     class="hover:bg-gray-50"
                                 >
-                                    <td class="px-3 py-2 border border-black">
+                                    <td class="border border-black">
                                         <Multiselect
                                             v-model="item.product"
                                             :value="item.product_id"
@@ -608,37 +365,32 @@ function formatDate(date) {
                                         />
                                     </td>
                                     <td
-                                        class="whitespace-nowrap border border-black text-sm text-gray-500"
+                                        class="whitespace-nowrap px-1 py-1 border border-black text-sm text-gray-500"
                                     >
                                         <table
-                                            class="w-full text-xs border border-gray-300"
+                                            class="w-full text-xs border border-black"
                                         >
                                             <thead class="bg-gray-50">
                                                 <tr class="text-gray-600">
                                                     <th
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         UoM
                                                     </th>
                                                     <th
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         QTY
                                                     </th>
                                                     <th
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         Batch
                                                     </th>
                                                     <th
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         Expiry
-                                                    </th>
-                                                    <th
-                                                        class="border border-gray-300"
-                                                    >
-                                                        Location
                                                     </th>
                                                 </tr>
                                             </thead>
@@ -649,24 +401,24 @@ function formatDate(date) {
                                                     class="bg-white even:bg-gray-50"
                                                 >
                                                     <td
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         {{ detail.uom }}
                                                     </td>
                                                     <td
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         {{ detail.quantity }}
                                                     </td>
                                                     <td
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         {{
                                                             detail.batch_number
                                                         }}
                                                     </td>
                                                     <td
-                                                        class="border border-gray-300"
+                                                        class="text-xs border border-black"
                                                     >
                                                         {{
                                                             formatDate(
@@ -674,42 +426,18 @@ function formatDate(date) {
                                                             )
                                                         }}
                                                     </td>
-                                                    <td
-                                                        class="border border-gray-300"
-                                                    >
-                                                        <div
-                                                            class="text-xs flex flex-col space-y-0.5"
-                                                        >
-                                                            <span
-                                                                class="text-xs"
-                                                                >WH:
-                                                                {{
-                                                                    detail
-                                                                        .warehouse
-                                                                        ?.name
-                                                                }}</span
-                                                            >
-                                                            <span
-                                                                class="text-xs"
-                                                                >LC:
-                                                                {{
-                                                                    detail.location
-                                                                }}</span
-                                                            >
-                                                        </div>
-                                                    </td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </td>
 
                                     <td
-                                        class="whitespace-nowrap border border-black text-center text-sm text-black"
+                                        class="whitespace-nowrap px-1 py-1 border border-black text-center text-sm text-black"
                                     >
                                         {{ item.available_quantity }}
                                     </td>
                                     <td
-                                        class="whitespace-nowrap border border-black text-sm text-black"
+                                        class="whitespace-nowrap px-1 py-1 border border-black text-sm text-black"
                                     >
                                         <input
                                             type="text"
@@ -734,7 +462,7 @@ function formatDate(date) {
                                         />
                                     </td>
                                     <td
-                                        class="whitespace-nowrap border border-black text-sm text-gray-500"
+                                        class="whitespace-nowrap px-1 py-1 border border-black text-sm text-gray-500"
                                     >
                                         <button
                                             type="button"
@@ -764,7 +492,7 @@ function formatDate(date) {
                     </div>
 
                     <div
-                        class="flex items-center justify-between space-x-4 mb-4"
+                        class="flex items-center px-1 py-1 justify-between space-x-4 mb-4"
                     >
                         <button
                             type="button"

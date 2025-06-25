@@ -29,6 +29,7 @@ use App\Events\TransferStatusChanged;
 use App\Events\InventoryUpdated;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\TransferResource;
+
 use App\Services\FacilityInventoryMovementService;
 
 class TransferController extends Controller
@@ -404,11 +405,10 @@ class TransferController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'source_type' => 'required|in:warehouse,facility',
-                'source_id' => 'required|integer',
                 'destination_type' => 'required|in:warehouse,facility',
                 'destination_id' => 'required|integer',
                 'transfer_date' => 'required|date',
+                'transfer_type' => 'required',
                 'transferID' => 'required',
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|integer',
@@ -419,10 +419,11 @@ class TransferController extends Controller
             $transferData = [
                 'transferID' => $request->transferID,
                 'transfer_date' => $request->transfer_date,
-                'from_warehouse_id' => $request->source_type === 'warehouse' ? $request->source_id : null,
-                'from_facility_id' => $request->source_type === 'facility' ? $request->source_id : null,
+                'from_facility_id' => auth()->user()->facility_id,
                 'to_warehouse_id' => $request->destination_type === 'warehouse' ? $request->destination_id : null,
                 'to_facility_id' => $request->destination_type === 'facility' ? $request->destination_id : null,
+                'transfer_type' => $request->transfer_type,
+                'status' => 'pending',
                 'created_by' => auth()->id(),
             ];
     
@@ -430,46 +431,23 @@ class TransferController extends Controller
     
             foreach ($request->items as $item) {
                 $remainingQty = $item['quantity'];
-                $sourceId = $request->source_id;
+                $sourceId = auth()->user()->facility_id;
 
-                if ($request->source_type === 'warehouse') {
-                    $inventories = InventoryItem::where('product_id', $item['product_id'])
-                        ->where('warehouse_id', $sourceId)
-                        ->with('product:id,name')
-                        ->where('quantity', '>', 0)
-                        ->where('expiry_date', '>', \Carbon\Carbon::now())
-                        ->orderBy('expiry_date', 'asc')
-                        ->get();
-                } else {
-                    $inventories = FacilityInventoryItem::where('product_id', $item['product_id'])
-                        ->whereHas('inventory', function($query) use ($request) {
-                            $query->where('facility_id', $request->source_id);
-                        })
-                        ->where('quantity', '>', 0)
-                        ->where('expiry_date', '>', \Carbon\Carbon::now())
-                        ->orderBy('expiry_date', 'asc')
-                        ->get();
-                }
-
-                // Calculate total quantity on hand for this product (excluding expired)
-                $warehouseQuantity = InventoryItem::where('product_id', $item['product_id'])
+                $inventories = FacilityInventoryItem::where('product_id', $item['product_id'])
+                    ->whereHas('inventory', function($query) use ($sourceId) {
+                        $query->where('facility_id', $sourceId);
+                    })
                     ->where('quantity', '>', 0)
                     ->where('expiry_date', '>', \Carbon\Carbon::now())
-                    ->sum('quantity');
-
-                $facilityQuantity = FacilityInventoryItem::where('product_id', $item['product_id'])
-                    ->where('quantity', '>', 0)
-                    ->where('expiry_date', '>', \Carbon\Carbon::now())
-                    ->sum('quantity');
-
-                $totalQuantityOnHand = $warehouseQuantity + $facilityQuantity;
+                    ->orderBy('expiry_date', 'asc')
+                    ->get();
 
                 // Create transfer item for this product
                 $transferItem = $transfer->items()->create([
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'], // Total requested quantity
                     'quantity_to_release' => $item['quantity'],
-                    'quantity_per_unit' => $totalQuantityOnHand // Save total quantity on hand at time of transfer creation
+                    'quantity_per_unit' => $inventories->sum('quantity') // Save total quantity on hand at time of transfer creation
                 ]);
 
                 // Process each inventory item to fulfill the transfer quantity
@@ -481,7 +459,8 @@ class TransferController extends Controller
                     // Create inventory allocation record for detailed tracking
                     $transferItem->inventory_allocations()->create([
                         'product_id' => $item['product_id'],
-                        'warehouse_id' => $request->source_type === 'warehouse' ? $sourceId : null,
+                        'warehouse_id' => $request->destination_type === 'warehouse' ? $request->destination_id : null,
+                        'location' => $inventory->location ?? null,
                         'batch_number' => $inventory->batch_number ?? null,
                         'expiry_date' => $inventory->expiry_date ?? null,
                         'allocated_quantity' => $deductQty,
@@ -497,6 +476,8 @@ class TransferController extends Controller
                     // Update remaining quantity needed
                     $remainingQty -= $deductQty;
                 }
+
+                logger()->info($remainingQty);
         
                 // Check if we couldn't fulfill the complete request
                 if ($remainingQty > 0) {
@@ -623,40 +604,26 @@ class TransferController extends Controller
     // get transfer source imventory
     public function getSourceInventoryDetail(Request $request)
     {
+        $request->validate([
+            'product_id' => 'required|integer',
+        ]);
+        
         try {
             return DB::transaction(function() use ($request){
-                $request->validate([
-                    'source_type' => 'required|in:warehouse,facility',
-                    'source_id' => 'required|integer',
-                    'product_id' => 'required|integer',
-                ]);
-                
                 // Get current date for expiry comparison
                 $currentDate = Carbon::now()->toDateString();
                 
-                if ($request->source_type === 'warehouse') {
-                    $inventory = InventoryItem::where('product_id', $request->product_id)
-                        ->where('warehouse_id', $request->source_id)
-                        ->where('quantity', '>', 0)
-                        ->where(function($query) use ($currentDate) {
-                            $query->whereNull('expiry_date')
-                                  ->orWhere('expiry_date', '>=', $currentDate);
-                        })
-                        ->with('warehouse:id,name','product:id,name')
-                        ->get();
-                } else {
-                    $inventory = FacilityInventoryItem::where('product_id', $request->product_id)
-                        ->whereHas('inventory', function($query) use ($request) {
-                            $query->where('facility_id', $request->source_id);
-                        })
-                        ->where('quantity', '>', 0)
-                        ->where(function($query) use ($currentDate) {
-                            $query->whereNull('expiry_date')
-                                  ->orWhere('expiry_date', '>=', $currentDate);
-                        })
-                        ->with('product:id,name')
-                        ->get();
-                }
+                $inventory = FacilityInventoryItem::where('product_id', $request->product_id)
+                    ->whereHas('inventory', function($query) {
+                        $query->where('facility_id', auth()->user()->facility_id);
+                    })
+                    ->where('quantity', '>', 0)
+                    ->where(function($query) use ($currentDate) {
+                        $query->whereNull('expiry_date')
+                                ->orWhere('expiry_date', '>=', $currentDate);
+                    })
+                    ->with('product:id,name')
+                    ->get();
                 
                 // Check if no valid inventory items are available
                 if ($inventory->isEmpty()) {
@@ -1088,34 +1055,18 @@ class TransferController extends Controller
      */
     public function getInventories(Request $request)
     {
-        $request->validate([
-            'source_type' => 'required|in:warehouse,facility',
-            'source_id' => 'required|integer',
-        ]);
-        
         try {
-            if ($request->source_type === 'warehouse') {
-                // Get warehouse inventories directly with DB query
-                $products = Product::whereHas('inventories.items', function($query) use ($request) {
-                    $query->where('warehouse_id', $request->source_id);
-                })
-                    ->select('id','name')                   
-                    ->get();
+            // Get facility inventories directly with DB query
+            $products = Product::whereHas('inventory', function($query) {
+                $query->where('facility_id', auth()->user()->facility_id)
+                      ->whereHas('items', function($subQuery) {
+                          $subQuery->where('quantity', '>', 0);
+                      });
+            })
+                ->select('id','name')
+                ->get();
                 
-                return response()->json($products, 200);
-            } else {
-                // Get facility inventories directly with DB query
-                $products = Product::whereHas('inventory', function($query) use ($request) {
-                    $query->where('facility_id', $request->source_id)
-                          ->whereHas('items', function($subQuery) {
-                              $subQuery->where('quantity', '>', 0);
-                          });
-                })
-                    ->select('id','name')
-                    ->get();
-                
-                return response()->json($products, 200);
-            }
+            return response()->json($products, 200);
         } catch (\Throwable $th) {
             logger()->info($th->getMessage());
             return response()->json($th->getMessage(), 500);

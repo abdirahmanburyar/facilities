@@ -11,7 +11,7 @@ class InventoryAllocation extends Model
         'transfer_item_id',
         'product_id',
         'warehouse_id',
-        'location_id',
+        'location',
         'batch_number',
         'expiry_date',
         'allocated_quantity',

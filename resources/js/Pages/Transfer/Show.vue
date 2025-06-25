@@ -778,7 +778,7 @@
                                                     allocation.expiry_date
                                                         ? moment(
                                                               allocation.expiry_date
-                                                          ).format("MMM YYYY")
+                                                          ).format("DD/MM/YYYY")
                                                         : "N/A"
                                                 }}
                                             </span>
