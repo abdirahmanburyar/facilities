@@ -773,21 +773,17 @@ class OrderController extends Controller
             for ($i = 1; $i <= 4; $i++) {
                 $months[] = Carbon::now()->subMonths($i)->format('Y-m');
             }
-    
-            // // Get report IDs for those months and facility
-            $reportIds = DB::table('monthly_consumption_reports')
-                ->where('facility_id', $facility->id)
-                ->whereIn('month_year', $months)
-                ->pluck('id');
-    
-            // Total consumption over last 4 months for the product
-            $totalConsumption = DB::table('monthly_consumption_items')
-                ->whereIn('parent_id', $reportIds)
-                ->where('product_id', $productId)
-                ->sum('quantity');
+
+            $totalConsumption = DB::table('monthly_consumption_items as mci')
+                ->join('monthly_consumption_reports as mcr', 'mci.parent_id', '=', 'mcr.id')
+                ->where('mcr.facility_id', $facility->id)
+                ->whereIn('mcr.month_year', $months)
+                ->where('mci.product_id', $productId)
+                ->sum('mci.quantity');
+
     
             // Average Monthly Consumption (AMC) = total / 4 months
-            $amc = $totalConsumption / 4;
+            $amc = $totalConsumption / 3;
     
             // Determine days since last received order update, fallback to quarter start if none
             $lastReceivedOrder = Order::where('facility_id', $facility->id)
