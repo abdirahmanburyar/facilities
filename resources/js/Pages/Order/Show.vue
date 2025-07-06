@@ -349,7 +349,7 @@
                             </div>
                         </td>
                         <td class="px-3 py-3 text-sm text-gray-900 border border-black">
-                            {{ item.no_of_days }}/30
+                            {{ item.no_of_days }}
                         </td>
                         <td class="px-3 py-3 text-lg text-center text-black border border-black">
                             {{ item.quantity }}

@@ -150,7 +150,6 @@ class OrderController extends Controller
                 'items.*.product_id.required' => 'Item is required',
             ]);
             return DB::transaction(function () use ($request) {
-                logger()->info($request->all());
                 // Generate order number
                 $orderNumber = $this->generateOrderNumber();
 
@@ -175,7 +174,7 @@ class OrderController extends Controller
                         'product_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
                         'quantity_on_order' => $item['quantity_on_order'],
-                        'quantity_to_release' => (int) $item['quantity'] - (int) $item['quantity_on_order'],
+                        'quantity_to_release' => 0, // Initialize to 0, will be updated as inventory is allocated
                         'no_of_days' => $item['no_of_days'],
                         'days' => $item['no_of_days'],
                         'status' => 'pending',
@@ -220,6 +219,10 @@ class OrderController extends Controller
                         // Update inventory quantity
                         $inventory->quantity -= $quantityToAllocate;
                         $inventory->save();
+
+                        // Update order items quantity to release with actual allocated quantity
+                        $orderItem->quantity_to_release += $quantityToAllocate;
+                        $orderItem->save();
 
                         $remainingQuantity -= $quantityToAllocate;
                     }

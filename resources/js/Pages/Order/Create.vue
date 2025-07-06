@@ -333,6 +333,8 @@ const isSubmitting = ref(false);
 const submitOrder = async () => {
     isSubmitting.value = true;
 
+    console.log(form.value);
+
     await axios
         .post(route("orders.store"), form.value)
         .then((response) => {
