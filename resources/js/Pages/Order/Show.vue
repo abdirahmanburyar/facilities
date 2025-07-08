@@ -127,7 +127,15 @@
             </div>
 
             <!-- Status Stage Timeline -->
-            <div class="col-span-2 mb-6">
+             <div v-if="props.order.status == 'rejected'">
+                <div class="flex flex-col items-center">
+                    <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10 bg-white border-red-500">
+                        <img src="/assets/images/rejected.png" class="w-7 h-7" alt="Rejected" />
+                    </div>
+                    <h1 class="mt-3 text-2xl text-red-600 font-bold ">Rejected</h1>
+                </div>
+             </div>
+            <div v-else class="col-span-2 mb-6">
                 <div class="relative">
                     <!-- Timeline Track Background -->
                     <div class="absolute top-7 left-0 right-0 h-2 bg-gray-200 z-0"></div>
@@ -294,199 +302,256 @@
             </div>
 
             <!-- Order Items Table -->
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Order Items</h2>
-
+            <h2 class="text-xs text-gray-900 mb-4">Order Items</h2>
+            
+            <!-- Receive Instructions -->
+            <div v-if="props.order.status === 'delivered'" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">Receive Items</h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>Enter the actual quantity received for each item. The received quantity cannot exceed the quantity to release.</p>
+                            <p class="mt-1">Once all items are fully received, you can mark the order as received.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- All Items Received Message -->
+            <div v-if="props.order.status === 'delivered' && allItemsFullyReceived" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-green-800">All Items Received</h3>
+                        <div class="mt-2 text-sm text-green-700">
+                            <p>All items have been fully received. You can now mark the order as received.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <table class="min-w-full border border-black border-collapse">
                 <thead class="bg-blue-500">
                     <tr class="bg-gray-50">
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black">
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
                             Item
                         </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black">
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
                             Category
                         </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black">
-                            AMC
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                            UoM
                         </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black">
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                            Facility Inventory Data
+                        </th>
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
                             No. of Days
                         </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black">
+                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
                             Ordered Quantity
                         </th>
-                        <th class="w-[150px] px-2 py-2 text-left text-xs text-black capitalize border border-black">
+                        <th class="w-[150px] px-2 py-2 text-left text-xs text-black capitalize border border-black"
+                            rowspan="2">
                             Quantity to release
                         </th>
-                        <th class="px-2 py-2 text-center text-xs text-black capitalize border border-black">
+                        <th class="px-2 py-2 text-center text-xs text-black capitalize border border-black" colspan="4">
                             Item Detail
+                        </th>
+                    </tr>
+                    <tr class="bg-gray-50">
+                        <th class="px-2 py-1 text-xs border border-black text-left">
+                            QTY
+                        </th>
+                        <th class="px-2 py-1 text-xs border border-black text-left">
+                            Batch Number
+                        </th>
+                        <th class="px-2 py-1 text-xs border border-black text-left">
+                            Expiry Date
+                        </th>
+                        <th class="px-2 py-1 text-xs border border-black text-left w-32">
+                            Location
                         </th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    <tr v-for="(item, index) in form" :key="item.id"
-                        class="hover:bg-gray-50 transition-colors duration-150">
-                        <td class="px-3 py-3 text-xs text-gray-900 border border-black">
-                            {{ item.product?.name }}
-                        </td>
-                        <td class="px-3 py-3 text-xs text-gray-900 border border-black">
-                            {{ item.product?.category?.name }}
-                        </td>
-                        <td class="px-3 py-3 text-xs text-gray-900 border border-black">
-                            <div class="flex flex-col space-y-1 text-xs">
-                                <div class="flex">
-                                    <span class="font-medium w-12">SOH:</span>
-                                    <span>{{ item.soh }}</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-medium w-12">AMC:</span>
-                                    <span>{{ item.amc || 0 }}</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-medium w-12">QOO:</span>
-                                    <span>{{ item.quantity_on_order }}</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-3 py-3 text-sm text-gray-900 border border-black">
-                            {{ item.no_of_days }}
-                        </td>
-                        <td class="px-3 py-3 text-lg text-center text-black border border-black">
-                            {{ item.quantity }}
-                        </td>
-                        <td class="px-3 py-3 text-xs text-gray-900 border border-black">
-                            <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
-                                class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
-                            <div>
-                                <label>Received Quantity</label>
-                                <input type="text" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
-                                    @keyup.enter="receivedQty(item, index)"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
-                                <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
-                                <!-- " @input.keyup="validateReceivedQuantity(item)" -->
-                            </div>
-                            <button
-                                v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
-                                @click="openBackOrderModal(item)"
-                                class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
-                                Back Order
-                            </button>
-                            <label for="days">No. of Days</label>
-                            <input type="number" placeholder="0" v-model="item.days" readonly
-                                class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
-                            <button @click="showBackOrderModal(item)" v-if="
-                                item.inventory_allocations &&
-                                item.inventory_allocations.some(
-                                    (a) => a.back_order?.length > 0
-                                )
-                            " class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1">
-                                Show Back Order
-                            </button>
-                        </td>
-                        <td class="text-xs text-gray-900 border border-black">
-                            <table class="min-w-full border border-black">
-                                <thead>
-                                    <tr>
-                                        <th class="text-xs border border-black px-2 py-1">
-                                            QTY
-                                        </th>
-                                        <th class="text-xs border border-black px-2 py-1">
-                                            Uom
-                                        </th>
-                                        <th class="text-xs border border-black px-2 py-1">
-                                            Batch Number
-                                        </th>
-                                        <th class="text-xs border border-black px-2 py-1">
-                                            Expiry Date
-                                        </th>
-                                        <th class="text-xs border border-black px-2 py-1">
-                                            S. Location
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white">
-                                    <tr v-for="inv in item.inventory_allocations" :key="inv.id"
-                                        class="hover:bg-gray-100">
-                                        <td class="px-2 py-1 text-xs border border-black">
-                                            {{ inv.allocated_quantity }}
-                                        </td>
-                                        <td class="px-2 py-1 text-xs border border-black">
-                                            {{ inv.uom }}
-                                        </td>
-                                        <td class="px-2 py-1 text-xs border border-black">
-                                            {{ inv.batch_number }}
-                                        </td>
-                                        <td class="px-2 py-1 text-xs border border-black">
-                                            {{
-                                                moment(inv.expiry_date).format(
-                                                    "DD/MM/YYYY"
-                                                )
-                                            }}
-                                        </td>
-                                        <td class="px-2 py-1 text-xs border border-black">
-                                            <div class="flex flex-col">
-                                                <span>WH:
-                                                    {{ inv.warehouse?.name }}</span>
-                                                <span>LC:
-                                                    {{
-                                                        inv.location?.location
-                                                    }}</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <!-- Debug Info -->
+                    <tr v-if="form.length === 0">
+                        <td colspan="11" class="px-3 py-3 text-center text-gray-500">
+                            No items found. Form length: {{ form.length }}, Order items: {{ props.order.items?.length || 0 }}
                         </td>
                     </tr>
+                    
+                    <template v-for="(item, index) in form" :key="item.id">
+                        <!-- Show allocations if they exist, otherwise show one row with main item data -->
+                        <tr v-for="(inv, invIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])"
+                            :key="`${item.id}-${inv.id || invIndex}`"
+                            class="hover:bg-gray-50 transition-colors duration-150">
+                            <!-- Show item details only on first row for this item -->
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                {{ item.product?.name }}
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                {{ item.product?.category?.name }}
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                {{ item.inventory_allocations?.[0]?.uom || item.uom || 'N/A' }}
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                <div class="flex flex-col space-y-1 text-xs">
+                                    <div class="flex">
+                                        <span class="font-medium text-xs w-12">SOH:</span>
+                                        <span>{{ item.soh }}</span>
+                                    </div>
+                                    <div class="flex">
+                                        <span class="font-medium text-xs w-12">AMC:</span>
+                                        <span>{{ item.amc || 0 }}</span>
+                                    </div>
+                                    <div class="flex">
+                                        <span class="font-medium text-xs w-12">QOO:</span>
+                                        <span>{{ item.quantity_on_order }}</span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                {{ item.no_of_days }}
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-center text-black border border-black align-top">
+                                {{ item.quantity }}
+                            </td>
+
+                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
+                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
+                                    class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                <div>
+                                    <label>Received Quantity</label>
+                                    <input type="number" min="0" :max="item.quantity_to_release" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
+                                        @input="handleReceivedQuantityInput(item, index)"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
+                                    <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
+                                    <span class="text-xs text-red-500" v-if="item.received_quantity > item.quantity_to_release">Cannot exceed quantity to release</span>
+                                    <span class="text-xs text-gray-600">Remaining: {{ getRemainingQuantity(item) }}</span>
+                                    <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
+                                </div>
+                                <button
+                                    v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
+                                    @click="openBackOrderModal(item)"
+                                    class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
+                                    Back Order
+                                </button>
+                                <label for="days">No. of Days</label>
+                                <input type="number" placeholder="0" v-model="item.days" readonly
+                                    class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                <button @click="showBackOrderModal(item)" v-if="
+                                    item.inventory_allocations &&
+                                    item.inventory_allocations.some(
+                                        (a) => a.back_order?.length > 0
+                                    )
+                                " class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1">
+                                    Show Back Order
+                                </button>
+                            </td>
+
+                            <!-- Item Details Columns -->
+                            <!-- Quantity -->
+                            <td class="px-2 py-1 text-xs border border-black text-left">
+                                {{ inv.allocated_quantity || '' }}
+                            </td>
+
+                            <!-- Batch Number -->
+                            <td class="px-2 py-1 text-xs border border-black text-left">
+                                {{ inv.batch_number || '' }}
+                            </td>
+
+                            <!-- Expiry Date -->
+                            <td class="px-2 py-1 text-xs border border-black text-left">
+                                {{ inv.expiry_date ? moment(inv.expiry_date).format("DD/MM/YYYY") : '' }}
+                            </td>
+
+                            <!-- Location -->
+                            <td class="px-2 py-1 text-xs border border-black text-left w-32">
+                                <div class="flex flex-col text-xs">
+                                    <span v-if="inv.warehouse?.name">WH: {{ inv.warehouse.name }}</span>
+                                    <span v-if="inv.location?.location">LC: {{ inv.location.location }}</span>
+                                    <span v-if="!inv.warehouse?.name && !inv.location?.location">{{ inv.location || '' }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
                 </tbody>
             </table>
-
             <!-- dispatch information -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
-                <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="bg-white rounded-lg shadow-lg">
-                    <div class="p-5">
-                        <!-- Header -->
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                Order #{{ dispatch.order_id }}
-                            </h3>
-                            <span class="text-sm text-gray-500">
-                                {{
-                                    new Date(
-                                        dispatch.created_at
-                                    ).toLocaleDateString()
-                                }}
-                            </span>
-                        </div>
+            <div v-if="props.order.dispatch?.length > 0" class="mt-8 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        Dispatch Note (Driver Handover Log)
+                    </h2>
+                </div>
 
-                        <!-- Driver Info -->
-                        <div class="text-sm text-gray-600 space-y-1 mb-4">
-                            <p>
-                                <span class="font-medium text-gray-700">Driver:</span>
-                                {{ dispatch.driver_name }}
-                            </p>
-                            <p>
-                                <span class="font-medium text-gray-700">Phone:</span>
-                                {{ dispatch.driver_number }}
-                            </p>
-                            <p>
-                                <span class="font-medium text-gray-700">Plate #:</span>
-                                {{ dispatch.plate_number }}
-                            </p>
-                        </div>
+                <div class="bg-white rounded-lg shadow-lg divide-y divide-gray-200">
+                    <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Driver & Company Info -->
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">Driver Information</h3>
+                                    <div class="mt-2 space-y-2">
+                                        <div class="flex items-center">
+                                            <span class="text-sm text-gray-900">{{ dispatch.driver_name || 'N/A' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-sm text-gray-600">Phone: {{ dispatch.driver_number || 'N/A' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-sm text-gray-600">Plate: {{ dispatch.plate_number || 'N/A' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <!-- Dispatch Details -->
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm">
-                                <span class="text-gray-500">Cartons</span>
-                                <div class="font-semibold text-gray-800">
-                                    {{ dispatch.no_of_cartoons }}
+                            <!-- Dispatch Details -->
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-500">Dispatch Details</h3>
+                                    <div class="mt-2 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600">Cartons:</span>
+                                            <span class="text-sm font-semibold text-gray-800">{{ dispatch.no_of_cartoons || 0 }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600">Date:</span>
+                                            <span class="text-sm text-gray-800">{{ dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString() : 'N/A' }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- approval actions -->
             <div class="mt-8 mb-6 px-6 py-6 bg-white rounded-lg shadow-sm">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">
                     Order Status Actions
@@ -961,16 +1026,16 @@
                                         <tr v-for="(row, rowIndex) in getBatchBackOrders(allocation.id)" :key="rowIndex"
                                             class="hover:bg-gray-50">
                                             <td class="px-2 py-1">
-                                                <select v-model="row.type"
+                                                <select v-model="row.status"
                                                     class="text-sm w-full border-gray-300 rounded-md shadow-sm"
                                                     :disabled="props.order.status == 'received'">
-                                                    <option v-for="type in [
+                                                    <option v-for="status in [
                                                         'Missing',
                                                         'Damaged',
                                                         'Expired',
                                                         'Lost',
-                                                    ]" :key="type" :value="type">
-                                                        {{ type }}
+                                                    ]" :key="status" :value="status">
+                                                        {{ status }}
                                                     </option>
                                                 </select>
                                                 <span>{{ row.finalized }}</span>
@@ -1063,7 +1128,7 @@
                                 {{
                                     isSaving
                                         ? "Saving..."
-                                        : "Save Back Orders and Exit"
+                                        : "Save Differences and Exit"
                                 }}
                             </button>
                             <button :disabled="isSaving" @click="attemptCloseModal"
@@ -1079,7 +1144,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, toRefs, h, watch } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, toRefs, h, watch } from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
@@ -1093,6 +1158,9 @@ import {
 import Swal from "sweetalert2";
 import axios from "axios";
 import moment from "moment";
+import { useToast } from "vue-toastification";
+
+const toast = useToast();
 
 const props = defineProps({
     order: {
@@ -1139,9 +1207,9 @@ const totalBatchBackOrderQuantity = computed(() => {
 });
 
 const totalExistingDifferences = computed(() => {
-    if (!selectedItem.value || !selectedItem.value.backorders) return 0;
-    return selectedItem.value.backorders.reduce(
-        (total, bo) => total + Number(bo.quantity || 0),
+    if (!selectedItem.value || !selectedItem.value.differences) return 0;
+    return selectedItem.value.differences.reduce(
+        (total, diff) => total + Number(diff.quantity || 0),
         0
     );
 });
@@ -1158,7 +1226,7 @@ const isValidForSave = computed(() => {
 
     // Check if all back orders have valid data
     const allValid = Object.values(batchBackOrders.value).every((rows) => {
-        return rows.every((row) => row.quantity > 0 && row.type);
+        return rows.every((row) => row.quantity > 0 && row.status);
     });
 
     // Check if total matches the missing quantity
@@ -1174,134 +1242,75 @@ const openBackOrderModal = (item) => {
     batchBackOrders.value = {};
     showIncompleteBackOrderModal.value = false;
 
-    // If there's no difference between quantity_to_release and received_quantity, no need for back orders
+    // If there's no difference between quantity_to_release and received_quantity, no need for differences
     if (
         item.quantity_to_release <= (item.received_quantity || 0) &&
-        (!item.backorders || item.backorders.length === 0)
+        (!item.differences || item.differences.length === 0)
     ) {
-        Swal.fire({
-            title: "No Back Order Needed",
-            text: "All quantities have been received. No back order is necessary.",
-            icon: "info",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-        });
+        toast.info("All quantities have been received. No differences to report.");
         return;
     }
 
-    // Check for back orders in different places and load them
-    let hasExistingBackOrders = false;
-
-    // 1. Check item.backorders (top-level back orders)
-    if (item.backorders && item.backorders.length > 0) {
-        hasExistingBackOrders = true;
-        // Group back orders by inventory allocation
-        item.backorders.forEach((backorder) => {
-            const allocationId = backorder.inventory_allocation_id;
+    // Only use PackingListDifference (item.differences)
+    if (item.differences && item.differences.length > 0) {
+        item.differences.forEach((difference) => {
+            const allocationId = difference.inventory_allocation_id;
             if (!batchBackOrders.value[allocationId]) {
                 batchBackOrders.value[allocationId] = [];
             }
-
-            // Find the corresponding allocation for this back order
+            // Find the corresponding allocation for this difference
             const allocation = item.inventory_allocations.find(
                 (alloc) => alloc.id === parseInt(allocationId)
             );
-
-            // Add the back order with its ID for tracking
             batchBackOrders.value[allocationId].push({
-                id: backorder.id, // Store the ID for editing/deleting
+                id: difference.id, // Store the ID for editing/deleting
                 inventory_allocation_id: allocationId,
-                quantity: backorder.quantity,
-                type: backorder.type || "Missing", // Use type instead of status
-                notes: backorder.notes,
+                quantity: difference.quantity,
+                status: difference.status || "Missing",
+                notes: difference.notes,
                 batch_number: allocation?.batch_number || "",
                 barcode: allocation?.barcode || "",
-                isExisting: true, // Flag to indicate this is an existing back order
+                isExisting: true, // Flag to indicate this is an existing difference
             });
         });
     }
 
-    // 2. Check inventory_allocations.backorders (nested back orders)
-    if (item.inventory_allocations && item.inventory_allocations.length > 0) {
-        item.inventory_allocations.forEach((allocation) => {
-            if (allocation.backorders && allocation.backorders.length > 0) {
-                hasExistingBackOrders = true;
-
-                // Make sure we have an array for this allocation
-                if (!batchBackOrders.value[allocation.id]) {
-                    batchBackOrders.value[allocation.id] = [];
-                }
-
-                // Add each back order from this allocation
-                allocation.backorders.forEach((backorder) => {
-                    // Check if we already added this back order (to avoid duplicates)
-                    const alreadyAdded = batchBackOrders.value[
-                        allocation.id
-                    ].some((bo) => bo.id === backorder.id);
-
-                    if (!alreadyAdded) {
-                        batchBackOrders.value[allocation.id].push({
-                            id: backorder.id,
-                            inventory_allocation_id: allocation.id,
-                            quantity: backorder.quantity,
-                            type: backorder.type || "Missing", // Use type instead of status
-                            notes: backorder.notes,
-                            batch_number: allocation.batch_number || "",
-                            barcode: allocation.barcode || "",
-                            isExisting: true,
-                        });
-                    }
-                });
-            }
-        });
-    }
-    // If no existing back orders or we still need more, pre-populate based on inventory allocations
-    else if (
+    // If no existing differences, pre-populate based on inventory allocations
+    if (
+        (!item.differences || item.differences.length === 0) &&
         item.inventory_allocations &&
         item.inventory_allocations.length > 0
     ) {
-        // Calculate total missing quantity
-        const missingQty =
-            item.quantity_to_release - (item.received_quantity || 0);
+        const missingQty = item.quantity_to_release - (item.received_quantity || 0);
         let remainingToAllocate = missingQty;
-
-        // Distribute missing quantity across allocations proportionally
         item.inventory_allocations.forEach((allocation) => {
             if (remainingToAllocate > 0) {
-                // Calculate how much to allocate to this batch (proportional to its size)
-                const allocationRatio =
-                    allocation.allocated_quantity / item.quantity_to_release;
+                const allocationRatio = allocation.allocated_quantity / item.quantity_to_release;
                 let batchMissingQty = Math.min(
-                    Math.round(missingQty * allocationRatio), // Proportional amount
-                    allocation.allocated_quantity, // Cannot exceed allocation
-                    remainingToAllocate // Cannot exceed what's left to allocate
+                    Math.round(missingQty * allocationRatio),
+                    allocation.allocated_quantity,
+                    remainingToAllocate
                 );
-
                 if (batchMissingQty > 0) {
-                    // Add a back order for this allocation
-                    const backOrders = getBatchBackOrders(allocation.id);
-                    backOrders.push({
+                    const differences = getBatchBackOrders(allocation.id);
+                    differences.push({
                         inventory_allocation_id: allocation.id,
                         quantity: batchMissingQty,
-                        type: "Missing",
+                        status: "Missing",
                         notes: "",
                         batch_number: allocation.batch_number,
                         barcode: allocation.barcode,
-                        isExisting: false, // Flag to indicate this is a new back order
+                        isExisting: false,
                     });
-
                     remainingToAllocate -= batchMissingQty;
                 }
             }
         });
     }
-
     showBackOrderModal.value = true;
 };
 
-// Get back orders for a specific batch
+// Get differences for a specific batch
 const getBatchBackOrders = (allocationId) => {
     if (!batchBackOrders.value[allocationId]) {
         batchBackOrders.value[allocationId] = [];
@@ -1325,30 +1334,30 @@ const canAddMoreToAllocation = (allocation) => {
     // Get current back orders for this allocation
     const currentBackOrders = getBatchBackOrders(allocation.id);
 
-    // Calculate total quantity already back-ordered for this allocation
+    // Calculate total quantity already recorded as differences for this allocation
     const totalBackOrdered = currentBackOrders.reduce(
-        (sum, bo) => sum + Number(bo.quantity || 0),
+        (sum, diff) => sum + Number(diff.quantity || 0),
         0
     );
 
-    // Calculate remaining quantity to back order overall
+    // Calculate remaining quantity to record as differences overall
     const remainingOverall =
         missingQuantity.value - totalBatchBackOrderQuantity.value;
 
-    // Can add more if there's still quantity available in this allocation AND we need more back orders overall
+    // Can add more if there's still quantity available in this allocation AND we need more differences overall
     return (
         totalBackOrdered < allocation.allocated_quantity && remainingOverall > 0
     );
 };
 
-// Add a back order for a specific batch
+// Add a difference for a specific batch
 const addBatchBackOrder = (allocation) => {
-    const currentBackOrders = getBatchBackOrders(allocation.id);
+    const currentDifferences = getBatchBackOrders(allocation.id);
 
     // Calculate total missing quantity (difference between quantity_to_release and received_quantity)
     const totalMissingQuantity = missingQuantity.value;
 
-    // Calculate how much has already been allocated in all back orders
+    // Calculate how much has already been allocated in all differences
     const totalAlreadyAllocated = totalBatchBackOrderQuantity.value;
 
     // Calculate how much is still remaining to allocate
@@ -1358,7 +1367,7 @@ const addBatchBackOrder = (allocation) => {
     if (remainingToAllocate <= 0) {
         Swal.fire({
             title: "Cannot Add Issue",
-            text: "All missing quantity has already been allocated to back orders.",
+            text: "All missing quantity has already been allocated to differences.",
             icon: "warning",
             toast: true,
             position: "top-end",
@@ -1368,9 +1377,9 @@ const addBatchBackOrder = (allocation) => {
         return;
     }
 
-    // Add a new back order row for this batch with a default quantity of the remaining to allocate
+    // Add a new difference row for this batch with a default quantity of the remaining to allocate
     // (user can adjust this as needed)
-    currentBackOrders.push({
+    currentDifferences.push({
         inventory_allocation_id: allocation.id,
         quantity: remainingToAllocate,
         status: "Missing",
@@ -1385,26 +1394,17 @@ onMounted(() => {
         message.value = "";
     }, 2000);
 });
-// Remove a back order for a specific batch
+// Remove a difference for a specific batch
 const removeBatchBackOrder = async (row, index) => {
     message.value = "";
     if (batchBackOrders.value[row.inventory_allocation_id]) {
         batchBackOrders.value[row.inventory_allocation_id].splice(index, 1);
-        await axios
-            .post(route("orders.remove-back-order"), {
-                id: row.id,
-            })
-            .then((response) => {
-                message.value = response.data;
-            })
-            .catch((error) => {
-                message.value = error.response.data;
-                console.log(error.response.data);
-            });
+        // Note: We'll handle deletion through the main save function now
+        // since we're using the new differences pattern
     }
 };
 
-// Validate back order quantity for a specific batch
+// Validate difference quantity for a specific batch
 const validateBatchBackOrderQuantity = (row, allocation) => {
     // Ensure quantity is a number and within valid range
     const qty = Number(row.quantity);
@@ -1413,27 +1413,27 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
         return;
     }
 
-    // Get all back orders for this allocation
-    const allocationBackOrders = getBatchBackOrders(allocation.id);
+    // Get all differences for this allocation
+    const allocationDifferences = getBatchBackOrders(allocation.id);
 
-    // Calculate total back ordered for this allocation except this row
-    const totalOtherRowsInAllocation = allocationBackOrders.reduce(
-        (subtotal, backOrder) => {
+    // Calculate total differences for this allocation except this row
+    const totalOtherRowsInAllocation = allocationDifferences.reduce(
+        (subtotal, difference) => {
             // Skip the current row being validated
-            if (backOrder === row) return subtotal;
-            return subtotal + Number(backOrder.quantity || 0);
+            if (difference === row) return subtotal;
+            return subtotal + Number(difference.quantity || 0);
         }, 0
     );
 
-    // Calculate total back ordered for all allocations except this row
+    // Calculate total differences for all allocations except this row
     const totalOtherRows = Object.values(batchBackOrders.value).reduce(
         (total, rows) => {
             return (
                 total +
-                rows.reduce((subtotal, backOrder) => {
+                rows.reduce((subtotal, difference) => {
                     // Skip the current row being validated
-                    if (backOrder === row) return subtotal;
-                    return subtotal + Number(backOrder.quantity || 0);
+                    if (difference === row) return subtotal;
+                    return subtotal + Number(difference.quantity || 0);
                 }, 0)
             );
         },
@@ -1472,114 +1472,87 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
 const message = ref('');
 const saveBackOrders = async () => {
     message.value = "";
-    // Check if there's a mismatch between back order quantity and missing quantity
     if (totalBatchBackOrderQuantity.value !== missingQuantity.value) {
         Swal.fire({
             title: "Cannot Save",
-            text: `The total back order quantity (${totalBatchBackOrderQuantity.value}) must exactly match the missing quantity (${missingQuantity.value}).`,
+            text: `The total difference quantity (${totalBatchBackOrderQuantity.value}) must exactly match the missing quantity (${missingQuantity.value}).`,
             icon: "error",
             confirmButtonText: "OK",
         });
         return;
     }
-
-    // Check if all back orders have valid data
     const allValid = Object.values(batchBackOrders.value).every((rows) => {
-        return rows.every((row) => row.quantity > 0 && row.type);
+        return rows.every((row) => row.quantity > 0 && row.status);
     });
-
     if (!allValid) {
         Swal.fire({
             title: "Invalid Data",
-            text: "All back orders must have a quantity greater than 0 and a valid issue type.",
+            text: "All differences must have a quantity greater than 0 and a valid status.",
             icon: "error",
             confirmButtonText: "OK",
         });
         return;
     }
-
     isSaving.value = true;
-
     // Prepare data for API
-    const backOrderData = {
+    const differenceData = {
         order_item_id: selectedItem.value.id,
         received_quantity: selectedItem.value.received_quantity || 0,
-        backorders: [],
-        deleted_backorders: [],
+        differences: [],
+        deleted_differences: [],
     };
-
-    // Process each back order row
     Object.entries(batchBackOrders.value).forEach(([allocationId, rows]) => {
         rows.forEach((row) => {
-            // If this is an existing back order, include its ID
+            // Only send the fields the backend expects
             if (row.isExisting && row.id) {
-                backOrderData.backorders.push({
-                    id: row.id, // Include ID for updating
+                differenceData.differences.push({
+                    id: row.id,
                     inventory_allocation_id: allocationId,
                     quantity: row.quantity,
-                    type: row.type,
+                    status: row.status,
                     notes: row.notes || null,
                 });
             } else {
-                // New back order
-                backOrderData.backorders.push({
+                differenceData.differences.push({
                     inventory_allocation_id: allocationId,
                     quantity: row.quantity,
-                    type: row.type,
+                    status: row.status,
                     notes: row.notes || null,
                 });
             }
         });
     });
-
-    // Check for deleted back orders
-    if (selectedItem.value.backorders) {
-        // Find IDs of existing back orders that are no longer in the batchBackOrders
-        const currentBackOrderIds = Object.values(batchBackOrders.value)
+    // Find deleted differences
+    if (selectedItem.value.differences) {
+        const currentDifferenceIds = Object.values(batchBackOrders.value)
             .flat()
             .filter((row) => row.isExisting && row.id)
             .map((row) => row.id);
-
-        // Find back orders that have been removed
-        const deletedBackOrders = selectedItem.value.backorders
-            .filter((bo) => !currentBackOrderIds.includes(bo.id))
-            .map((bo) => bo.id);
-
-        backOrderData.deleted_backorders = deletedBackOrders;
+        const deletedDifferences = selectedItem.value.differences
+            .filter((diff) => !currentDifferenceIds.includes(diff.id))
+            .map((diff) => diff.id);
+        differenceData.deleted_differences = deletedDifferences;
     }
-
     await axios
-        .post(route("orders.backorder"), backOrderData)
+        .post(route("orders.backorder"), differenceData)
         .then((response) => {
             isSaving.value = false;
             showBackOrderModal.value = false;
-
-            Swal.fire({
-                title: "Success!",
-                text: response.data,
-                icon: "success",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 3000,
-            }).then(() => {
-                // Close modal and reload page to show updated data
-                // Use Inertia to visit the current page with fresh data
-                router.visit(
-                    route("orders.show", props.order.id),
-                    {},
-                    {
-                        preserveScroll: true,
-                        preserveState: false, // Don't preserve state to ensure fresh data
-                        replace: true, // Replace current history entry instead of adding a new one
-                    }
-                );
-            });
+            toast.success(response.data || "Differences saved successfully");
+            router.visit(
+                route("orders.show", props.order.id),
+                {},
+                {
+                    preserveScroll: true,
+                    preserveState: false,
+                    replace: true,
+                }
+            );
         })
         .catch((error) => {
             console.log(error.response);
-            message.value = error.response?.data;
             isSaving.value = false;
+            toast.error(error.response?.data || "Failed to save differences");
         });
 };
 
@@ -1599,9 +1572,12 @@ const attemptCloseModal = () => {
 
 const statusClasses = {
     pending: "bg-yellow-100 text-yellow-800 rounded-full font-bold",
+    reviewed: "bg-amber-100 text-amber-800 rounded-full font-bold",
     approved: "bg-green-100 text-green-800 rounded-full font-bold",
+    rejected: "bg-red-100 text-red-800 rounded-full font-bold",
     "in process": "bg-blue-100 text-blue-800 rounded-full font-bold",
     dispatched: "bg-purple-100 text-purple-800 rounded-full font-bold",
+    delivered: "bg-indigo-100 text-indigo-800 rounded-full font-bold",
     received:
         "bg-green-100 text-green-800 rounded-full font-bold flex items-center",
     partially_received: "bg-orange-100 text-orange-800 rounded-full font-bold",
@@ -1633,6 +1609,32 @@ const statusOrder = [
 const isType = ref([]);
 const changeStatus = (orderId, newStatus, type) => {
     console.log(orderId, newStatus, type);
+    
+    // Special handling for approve action - check if quantity_to_release is 0
+    if (newStatus === 'approved') {
+        const totalQuantityToRelease = form.value.reduce((total, item) => {
+            return total + (parseFloat(item.quantity_to_release) || 0);
+        }, 0);
+        
+        if (totalQuantityToRelease === 0) {
+            Swal.fire({
+                title: "No Quantity to Release",
+                text: "There is no quantity release for the current order. Do you want to proceed? Proceeding will lead to rejection of the order.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
+                confirmButtonText: "Proceed (Reject Order)",
+                cancelButtonText: "Cancel"
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await performStatusChange(orderId, 'rejected', type);
+                }
+            });
+            return;
+        }
+    }
+    
     Swal.fire({
         title: "Are you sure?",
         text: `Do you want to change the order status to ${newStatus}?`,
@@ -1643,57 +1645,53 @@ const changeStatus = (orderId, newStatus, type) => {
         confirmButtonText: "Yes, change it!",
     }).then(async (result) => {
         if (result.isConfirmed) {
-            // Set loading state
-            isType.value[type] = true;
-
-            await axios
-                .post(route("orders.change-status"), {
-                    order_id: orderId,
-                    status: newStatus
-                })
-                .then((response) => {
-                    isType.value[type] = false;
-                    // Reset loading state
-                    isLoading.value = false;
-                    Swal.fire({
-                        title: "Updated!",
-                        text: response.data,
-                        icon: "success",
-                        toast: true,
-                        position: "top-end",
-                        showConfirmButton: true,
-                        timer: 3000,
-                    }).then(() => {
-                        // Reload the page to show the updated status
-                        router.get(route("orders.show", props.order.id), {}, {
-                            preserveScroll: true,
-                            preserveState: true,
-                            only: [
-                                'orders'
-                            ]
-                        });
-                    });
-                })
-                .catch((error) => {
-                    isType.value[type] = false;
-                    console.log(error.response);
-                    // Reset loading state
-                    isLoading.value = false;
-
-                    Swal.fire({
-                        title: "Error!",
-                        text:
-                            error.response?.data ||
-                            "Failed to update order status",
-                        icon: "error",
-                        toast: true,
-                        position: "top-end",
-                        showConfirmButton: false,
-                        timer: 3000,
-                    });
-                });
+            await performStatusChange(orderId, newStatus, type);
         }
     });
+};
+
+const performStatusChange = async (orderId, newStatus, type) => {
+    // Set loading state
+    isType.value[type] = true;
+
+    await axios
+        .post(route("orders.change-status"), {
+            order_id: orderId,
+            status: newStatus
+        })
+        .then((response) => {
+            isType.value[type] = false;
+            // Reset loading state
+            isLoading.value = false;
+            
+            const successMessage = newStatus === 'rejected' 
+                ? "Order status has been updated to rejected."
+                : response.data;
+                
+            Swal.fire({
+                title: "Updated!",
+                text: successMessage,
+                icon: "success",
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 3000,
+            }).then(() => {
+                // Reload the page to show the updated status
+                router.get(route("orders.show", props.order.id), {}, {
+                    preserveScroll: true,
+                    only: ['orders']
+                });
+            });
+        })
+        .catch((error) => {
+            isType.value[type] = false;
+            console.log(error.response);
+            // Reset loading state
+            isLoading.value = false;
+
+            toast.error(error.response?.data || "Failed to update order status");
+        });
 };
 
 const notSubmitted = ref(false);
@@ -1702,16 +1700,60 @@ const itemsWithZeroReceived = computed(() => {
     return props.order?.items?.some(item => item.received_quantity === 0);
 });
 
+const getRemainingQuantity = (item) => {
+    return Math.max(0, (item.quantity_to_release || 0) - (item.received_quantity || 0));
+};
+
+const allItemsFullyReceived = computed(() => {
+    return props.order?.items?.every(item => 
+        (item.received_quantity || 0) >= (item.quantity_to_release || 0)
+    );
+});
+
 watch(itemsWithZeroReceived, (newVal, oldVal) => {
     console.log('Has item with 0 received_quantity:', newVal);
 });
 
 const isSavingQty = ref([]);
+const updateQuantityTimeouts = ref({});
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+    Object.values(updateQuantityTimeouts.value).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+    });
+});
+
+// Debounced input handler for received quantity
+const handleReceivedQuantityInput = (item, index) => {
+    const timeoutKey = `received-${item.id}-${index}`;
+    
+    if (updateQuantityTimeouts.value[timeoutKey]) {
+        clearTimeout(updateQuantityTimeouts.value[timeoutKey]);
+    }
+    
+    updateQuantityTimeouts.value[timeoutKey] = setTimeout(() => {
+        receivedQty(item, index);
+    }, 500);
+};
+
 async function receivedQty(item, index) {
     isSavingQty.value[index] = true;
-    // console.log(item, index);
-    if (item.quantity_to_release < item.received_quantity) {
+    
+    // Validate received quantity
+    if (item.received_quantity > item.quantity_to_release) {
         item.received_quantity = item.quantity_to_release;
+        toast.error('Received quantity cannot exceed quantity to release');
+        isSavingQty.value[index] = false;
+        return;
+    }
+
+    // Ensure received quantity is not negative
+    if (item.received_quantity < 0) {
+        item.received_quantity = 0;
+        toast.error('Received quantity cannot be negative');
+        isSavingQty.value[index] = false;
+        return;
     }
 
     await axios.post(route('orders.receivedQuantity'), {
@@ -1720,14 +1762,12 @@ async function receivedQty(item, index) {
     })
         .then((response) => {
             isSavingQty.value[index] = false;
-            console.log(response.data);
+            toast.success('Received quantity updated successfully');
         })
         .catch((error) => {
-            console.log(error.response.data);
             isSavingQty.value[index] = false;
-
+            toast.error(error.response?.data || 'Failed to update received quantity');
         });
-    // 'orders.receivedQuantity
 }
 
 </script>

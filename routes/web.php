@@ -118,11 +118,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         // Backorder routes
         Route::controller(BackOrderController::class)->prefix('backorders')->group(function () {
             Route::get('/', 'index')->name('backorders.index');
-            // backorders.liquidate
-            Route::post('/liquidate', 'liquidate')->name('backorders.liquidate');
-            // backorders.dispose
-            Route::post('/dispose', 'dispose')->name('backorders.dispose');
-
             // backorders.received
             Route::post('/received', 'received')->name('backorders.received');
             
@@ -134,6 +129,26 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             // Route::delete('/{backorder}', 'destroy')->name('backorders.destroy');
         });
 
+        // Back Order Management routes (using OrderController)
+        Route::controller(OrderController::class)->prefix('backorders')->group(function () {
+            Route::post('/receive', 'receiveBackOrder')->name('backorders.receive');
+            Route::post('/liquidate', 'liquidateBackOrder')->name('backorders.liquidate');
+            Route::post('/dispose', 'disposeBackOrder')->name('backorders.dispose');
+            Route::post('/{backOrderId}/attachments', 'uploadBackOrderAttachment')->name('backorders.uploadAttachment');
+            Route::delete('/{backOrderId}/attachments', 'deleteBackOrderAttachment')->name('backorders.deleteAttachment');
+            
+            // Test route to verify routing is working
+            Route::get('/test', 'testBackOrderRoute')->name('backorders.test');
+        });
+
+        // Back Order History routes (using OrderController)
+        Route::controller(OrderController::class)->prefix('backorders')->group(function () {
+            Route::get('/history', 'showBackOrder')->name('backorders.index');
+            Route::get('/manage', 'manageBackOrder')->name('backorders.manage');
+            Route::get('/{backOrderId}/histories', 'getBackOrderHistories')->name('backorders.histories');
+            Route::get('/{type}/{id}/get-back-order', 'getBackOrder')->name('backorders.get-back-order');
+        });
+
         // Order Management Routes
         Route::controller(OrderController::class)->prefix('orders')->group(function () {
             Route::get('/', 'index')->name('orders.index');
@@ -141,8 +156,20 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::post('/change-status', 'changeItemStatus')->name('orders.change-status');
             Route::post('/reject', 'rejectOrder');
 
+            // restore order
+            Route::post('/restore-order', 'restoreOrder')->name('orders.restore-order');
+
             Route::get('/create', 'create')->name('orders.create');
             Route::post('/store', 'store')->name('orders.store');
+            Route::get('/{order}/edit', 'edit')->name('orders.edit');
+            Route::put('/{order}', 'update')->name('orders.update');
+            Route::delete('/{order}', 'destroy')->name('orders.destroy');
+            
+            // dispatch info
+            Route::post('/dispatch-info', 'dispatchInfo')->name('orders.dispatch-info');
+            
+            // update quantity
+            Route::post('/update-quantity', 'updateQuantity')->name('orders.update-quantity');
             
             // Inventory check
             Route::post('/check/inventory', 'checkInventory')->name('orders.check-inventory');
@@ -150,6 +177,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             // Back order
             Route::post('/backorder', 'backorder')->name('orders.backorder');
             Route::post('/remove-back-order', 'removeBackOrder')->name('orders.remove-back-order');
+            Route::post('/receive-back-order', 'receiveBackOrder')->name('orders.receive-back-order');
 
             // receivedQuantity
             Route::post('/update-received-quantity', 'receivedQuantity')->name('orders.receivedQuantity');

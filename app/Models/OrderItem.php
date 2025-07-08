@@ -42,10 +42,18 @@ class OrderItem extends Model
     }
     
     /**
-     * Get the back orders for this order item
+     * Get the differences for this order item through inventory allocations
+     */
+    public function differences()
+    {
+        return $this->hasManyThrough(PackingListDifference::class, InventoryAllocation::class, 'order_item_id', 'inventory_allocation_id');
+    }
+
+    /**
+     * Get the back orders for this order item through the parent order
      */
     public function backorders()
     {
-        return $this->hasMany(FacilityBackorder::class, 'order_item_id');
+        return $this->order->backorders();
     }
 }

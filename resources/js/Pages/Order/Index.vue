@@ -1,13 +1,12 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
-import { ref, watch } from "vue";
+import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import Multiselect from "vue-multiselect";
 import "vue-multiselect/dist/vue-multiselect.css";
 import "@/Components/multiselect.css";
 import moment from "moment";
-
-// No longer using bulk actions
+import { TailwindPagination } from "laravel-vue-pagination";
 
 const props = defineProps({
     orders: Object,
@@ -33,11 +32,15 @@ const statusTabs = [
 ];
 
 // Filter states
-const search = ref("");
-const currentStatus = ref(props.filters.currentStatus);
+const search = ref(props.filters.search || "");
+const currentStatus = ref(props.filters.currentStatus || null);
 const orderType = ref(props.filters?.orderType);
 const dateFrom = ref(props.filters?.dateFrom);
 const dateTo = ref(props.filters?.dateTo);
+const per_page = ref(props.filters.per_page || 25);
+
+// Debounce setup
+let searchTimeout = null;
 
 function reloadOrder() {
     const query = {};
@@ -48,6 +51,7 @@ function reloadOrder() {
     if (dateFrom.value) query.dateFrom = dateFrom.value;
     if (dateTo.value) query.dateTo = dateTo.value;
     if (props.filters.page) query.page = props.filters.page;
+    if (per_page.value) query.per_page = per_page.value;
 
     router.get(route("orders.index"), query, {
         preserveScroll: true,
@@ -66,18 +70,39 @@ function handleTabClick(status) {
     reloadOrder();
 }
 
-// Watch for filter changes
+// Watch for filter changes with debouncing for search
+watch(
+    () => search.value,
+    () => {
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        searchTimeout = setTimeout(() => {
+            reloadOrder();
+        }, 500);
+    }
+);
+
+// Watch for other filter changes (no debouncing needed)
 watch(
     [
-        () => search.value,
+        () => currentStatus.value,
         () => orderType.value,
         () => dateFrom.value,
         () => dateTo.value,
+        () => per_page.value,
     ],
     () => {
         reloadOrder();
     }
 );
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+});
 
 const formatDate = (date) => {
     return moment(date).format("DD/MM/YYYY");
@@ -123,7 +148,7 @@ const getPercentage = (key) => {
     <Head title="All Orders" />
     <AuthenticatedLayout
         title="Tracks Your Orders"
-        description="Keeping Essenticals Ready, Every Time"
+        description="Keeping Essentials Ready, Every Time"
         img="/assets/images/orders.png"
     >
         <div class="mb-6">
@@ -147,7 +172,7 @@ const getPercentage = (key) => {
                         <input
                             type="text"
                             v-model="search"
-                            placeholder="Search orders..."
+                            placeholder="Search by Order No"
                             class="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <svg
@@ -214,7 +239,22 @@ const getPercentage = (key) => {
                             >
                         </div>
                     </div>
+
+                    <!-- Per Page Selector -->
+                    <div class="w-full sm:w-auto flex-none min-w-[150px]">
+                        <select
+                            v-model="per_page"
+                            @change="props.filters.page = 1"
+                            class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="10">10 Per page</option>
+                            <option value="25">25 Per page</option>
+                            <option value="50">50 Per page</option>
+                            <option value="100">100 Per page</option>
+                        </select>
+                    </div>
                 </div>
+                
                 <!-- Status Tabs -->
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
@@ -258,39 +298,38 @@ const getPercentage = (key) => {
                                     class="rounded-t-xl"
                                 >
                                     <tr>
-                                        <!-- Checkbox column removed -->
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Order Number
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Facility
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Order Type
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Order Date
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Expected Date
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Handled By
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
                                         >
                                             Status
                                         </th>
@@ -300,7 +339,7 @@ const getPercentage = (key) => {
                                     <tr v-if="orders.data?.length === 0">
                                         <td
                                             colspan="7"
-                                            class="px-2 py-2 text-center text-sm text-black border-b border-grey-500"
+                                            class="px-2 py-2 text-center text-sm text-black border border-black"
                                         >
                                             No orders found
                                         </td>
@@ -308,15 +347,14 @@ const getPercentage = (key) => {
                                     <tr
                                         v-for="order in orders.data"
                                         :key="order.id"
-                                        class="border-b border-grey-500"
+                                        class=""
                                         :class="{
                                             'hover:bg-gray-50': true,
                                             'text-red-500':
                                                 order.status === 'rejected',
                                         }"
                                     >
-                                        <!-- Checkbox cell removed -->
-                                        <td class="px-2 py-2 whitespace-nowrap">
+                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
                                             <div class="text-xs text-gray-900">
                                                 <Link
                                                     :href="
@@ -325,47 +363,41 @@ const getPercentage = (key) => {
                                                             order.id
                                                         )
                                                     "
-                                                    >{{
-                                                        order.order_number
-                                                    }}</Link
+                                                    >{{ order.order_number }}</Link
                                                 >
                                             </div>
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap">
+                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
                                             <div class="text-xs text-gray-900">
                                                 {{ order.facility?.name }}
                                             </div>
                                         </td>
                                         <td
-                                            class="px-2 py-2 whitespace-nowrap text-xs text-black"
+                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
                                         >
                                             {{ order.order_type }}
                                         </td>
 
                                         <td
-                                            class="px-2 py-2 whitespace-nowrap text-xs text-black"
+                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
                                         >
                                             {{ formatDate(order.order_date) }}
                                         </td>
                                         <td
-                                            class="px-2 py-2 whitespace-nowrap text-xs text-black"
+                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
                                         >
-                                            {{
-                                                formatDate(order.expected_date)
-                                            }}
+                                            {{ formatDate(order.expected_date) }}
                                         </td>
                                         <td
-                                            class="px-2 py-2 whitespace-nowrap text-xs text-black"
+                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
                                         >
                                             {{
-                                                order.handledby?.name ||
+                                                order.facility?.handledby?.name ||
                                                 "Not assigned"
                                             }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap">
-                                            <div
-                                                class="flex items-center gap-2"
-                                            >
+                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
+                                            <div class="flex items-center gap-2">
                                                 <!-- Status Progress Icons - Only show actions taken -->
                                                 <div
                                                     class="flex items-center gap-1"
@@ -378,7 +410,7 @@ const getPercentage = (key) => {
                                                         title="Pending"
                                                     />
 
-                                                    <!-- Only show approved if status is approved or further -->
+                                                    <!-- Only show reviewed if status is reviewed or further -->
                                                     <img
                                                         v-if="
                                                             [
@@ -421,7 +453,7 @@ const getPercentage = (key) => {
                                                             order.status ===
                                                             'rejected'
                                                         "
-                                                        src="/assets/images/rejected.svg"
+                                                        src="/assets/images/rejected.png"
                                                         class="w-6 h-6"
                                                         alt="Rejected"
                                                         title="Rejected"
@@ -473,16 +505,14 @@ const getPercentage = (key) => {
                                                         "
                                                         src="/assets/images/delivery.png"
                                                         class="w-6 h-6"
-                                                        alt="Dispatched"
-                                                        title="Dispatched"
+                                                        alt="Delivered"
+                                                        title="Delivered"
                                                     />
 
                                                     <!-- Only show received if status is received -->
                                                     <img
                                                         v-if="
-                                                            [
-                                                                'received',
-                                                            ].includes(
+                                                            ['received'].includes(
                                                                 order.status
                                                             )
                                                         "
@@ -498,24 +528,24 @@ const getPercentage = (key) => {
                                 </tbody>
                             </table>
                         </div>
-                        <TailwindPagination
-                            :data="props.orders"
-                            :limit="2"
-                            @pagination-change-page="getResult"
-                        />
+                        <div class="mt-4 flex justify-end">
+                            <TailwindPagination
+                                :data="props.orders"
+                                :limit="2"
+                                @pagination-change-page="getResult"
+                            />
+                        </div>
                     </div>
                 </div>
                 <!-- Status Statistics -->
-                <div class="lg:col-span-1">
+                <div class="lg:col-span-2">
                     <div class="sticky text-xs top-4 sticky:mt-5">
                         <div class="space-y-8">
                             <!-- Pending -->
                             <div class="relative">
                                 <div class="flex items-center mb-2">
                                     <div class="w-16 h-16 relative mr-4">
-                                        <svg
-                                            class="w-16 h-16 transform -rotate-90"
-                                        >
+                                        <svg class="w-16 h-16 transform -rotate-90">
                                             <circle
                                                 cx="32"
                                                 cy="32"
@@ -532,8 +562,7 @@ const getPercentage = (key) => {
                                                 stroke="#eab308"
                                                 stroke-width="4"
                                                 :stroke-dasharray="`${
-                                                    (stats.pending /
-                                                        props.totalOrders) *
+                                                    (stats.pending / totalOrders) *
                                                     125.6
                                                 } 125.6`"
                                             />
@@ -547,7 +576,7 @@ const getPercentage = (key) => {
                                                     totalOrders > 0
                                                         ? Math.round(
                                                               (stats.pending /
-                                                                  props.totalOrders) *
+                                                                  totalOrders) *
                                                                   100
                                                           )
                                                         : 0
@@ -555,10 +584,9 @@ const getPercentage = (key) => {
                                             >
                                         </div>
                                     </div>
-
                                     <div>
                                         <div
-                                            class="text-xs font-bold text-gray-900"
+                                            class="text-lg font-bold text-gray-900"
                                         >
                                             {{ stats.pending }}
                                         </div>
@@ -568,16 +596,12 @@ const getPercentage = (key) => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="space-y-8">
-                            <!-- Pending -->
+                            <!-- Reviewed -->
                             <div class="relative">
                                 <div class="flex items-center mb-2">
                                     <div class="w-16 h-16 relative mr-4">
-                                        <svg
-                                            class="w-16 h-16 transform -rotate-90"
-                                        >
+                                        <svg class="w-16 h-16 transform -rotate-90">
                                             <circle
                                                 cx="32"
                                                 cy="32"
@@ -591,11 +615,11 @@ const getPercentage = (key) => {
                                                 cy="32"
                                                 r="28"
                                                 fill="none"
-                                                stroke="#eab308"
+                                                stroke="#f59e0b"
                                                 stroke-width="4"
                                                 :stroke-dasharray="`${
                                                     (stats.reviewed /
-                                                        props.totalOrders) *
+                                                        totalOrders) *
                                                     125.6
                                                 } 125.6`"
                                             />
@@ -604,12 +628,12 @@ const getPercentage = (key) => {
                                             class="absolute inset-0 flex items-center justify-center"
                                         >
                                             <span
-                                                class="text-xs font-bold text-yellow-600"
+                                                class="text-xs font-bold text-amber-600"
                                                 >{{
                                                     totalOrders > 0
                                                         ? Math.round(
                                                               (stats.reviewed /
-                                                                  props.totalOrders) *
+                                                                  totalOrders) *
                                                                   100
                                                           )
                                                         : 0
@@ -617,10 +641,9 @@ const getPercentage = (key) => {
                                             >
                                         </div>
                                     </div>
-
                                     <div>
                                         <div
-                                            class="text-xs font-bold text-gray-900"
+                                            class="text-lg font-bold text-gray-900"
                                         >
                                             {{ stats.reviewed }}
                                         </div>
@@ -630,284 +653,287 @@ const getPercentage = (key) => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Approved -->
-                        <div class="relative">
-                            <div class="flex items-center mb-2">
-                                <div class="w-16 h-16 relative mr-4">
-                                    <svg class="w-16 h-16 transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            stroke-width="4"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#22c55e"
-                                            stroke-width="4"
-                                            :stroke-dasharray="`${
-                                                (stats.approved / totalOrders) *
-                                                125.6
-                                            } 125.6`"
-                                        />
-                                    </svg>
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-green-600"
-                                            >{{
-                                                totalOrders > 0
-                                                    ? Math.round(
-                                                          (stats.approved /
-                                                              totalOrders) *
-                                                              100
-                                                      )
-                                                    : 0
-                                            }}%</span
+                            <!-- Approved -->
+                            <div class="relative">
+                                <div class="flex items-center mb-2">
+                                    <div class="w-16 h-16 relative mr-4">
+                                        <svg class="w-16 h-16 transform -rotate-90">
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#e2e8f0"
+                                                stroke-width="4"
+                                            />
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#22c55e"
+                                                stroke-width="4"
+                                                :stroke-dasharray="`${
+                                                    (stats.approved /
+                                                        totalOrders) *
+                                                    125.6
+                                                } 125.6`"
+                                            />
+                                        </svg>
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
                                         >
+                                            <span
+                                                class="text-xs font-bold text-green-600"
+                                                >{{
+                                                    totalOrders > 0
+                                                        ? Math.round(
+                                                              (stats.approved /
+                                                                  totalOrders) *
+                                                                  100
+                                                          )
+                                                        : 0
+                                                }}%</span
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-lg font-bold text-gray-900"
-                                    >
-                                        {{ stats.approved }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">
-                                        Approved
+                                    <div>
+                                        <div
+                                            class="text-lg font-bold text-gray-900"
+                                        >
+                                            {{ stats.approved }}
+                                        </div>
+                                        <div class="text-xs text-gray-600">
+                                            Approved
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Rejected -->
-                        <div class="relative">
-                            <div class="flex items-center mb-2">
-                                <div class="w-16 h-16 relative mr-4">
-                                    <svg class="w-16 h-16 transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            stroke-width="4"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#ef4444"
-                                            stroke-width="4"
-                                            :stroke-dasharray="`${
-                                                (stats.rejected / totalOrders) *
-                                                125.6
-                                            } 125.6`"
-                                        />
-                                    </svg>
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-red-600"
-                                            >{{
-                                                totalOrders > 0
-                                                    ? Math.round(
-                                                          (stats.rejected /
-                                                              totalOrders) *
-                                                              100
-                                                      )
-                                                    : 0
-                                            }}%</span
+                            <!-- Rejected -->
+                            <div class="relative">
+                                <div class="flex items-center mb-2">
+                                    <div class="w-16 h-16 relative mr-4">
+                                        <svg class="w-16 h-16 transform -rotate-90">
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#e2e8f0"
+                                                stroke-width="4"
+                                            />
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#ef4444"
+                                                stroke-width="4"
+                                                :stroke-dasharray="`${
+                                                    (stats.rejected /
+                                                        totalOrders) *
+                                                    125.6
+                                                } 125.6`"
+                                            />
+                                        </svg>
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
                                         >
+                                            <span
+                                                class="text-xs font-bold text-red-600"
+                                                >{{
+                                                    totalOrders > 0
+                                                        ? Math.round(
+                                                              (stats.rejected /
+                                                                  totalOrders) *
+                                                                  100
+                                                          )
+                                                        : 0
+                                                }}%</span
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-lg font-bold text-gray-900"
-                                    >
-                                        {{ stats.rejected }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">
-                                        Rejected
+                                    <div>
+                                        <div
+                                            class="text-lg font-bold text-gray-900"
+                                        >
+                                            {{ stats.rejected }}
+                                        </div>
+                                        <div class="text-xs text-gray-600">
+                                            Rejected
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- In Process -->
-                        <div class="relative">
-                            <div class="flex items-center mb-2">
-                                <div class="w-16 h-16 relative mr-4">
-                                    <svg class="w-16 h-16 transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            stroke-width="4"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#3b82f6"
-                                            stroke-width="4"
-                                            :stroke-dasharray="`${
-                                                (stats.in_process /
-                                                    totalOrders) *
-                                                125.6
-                                            } 125.6`"
-                                        />
-                                    </svg>
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-blue-600"
-                                            >{{
-                                                totalOrders > 0
-                                                    ? Math.round(
-                                                          (stats.in_process /
-                                                              totalOrders) *
-                                                              100
-                                                      )
-                                                    : 0
-                                            }}%</span
+                            <!-- In Process -->
+                            <div class="relative">
+                                <div class="flex items-center mb-2">
+                                    <div class="w-16 h-16 relative mr-4">
+                                        <svg class="w-16 h-16 transform -rotate-90">
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#e2e8f0"
+                                                stroke-width="4"
+                                            />
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#3b82f6"
+                                                stroke-width="4"
+                                                :stroke-dasharray="`${
+                                                    (stats.in_process /
+                                                        totalOrders) *
+                                                    125.6
+                                                } 125.6`"
+                                            />
+                                        </svg>
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
                                         >
+                                            <span
+                                                class="text-xs font-bold text-blue-600"
+                                                >{{
+                                                    totalOrders > 0
+                                                        ? Math.round(
+                                                              (stats.in_process /
+                                                                  totalOrders) *
+                                                                  100
+                                                          )
+                                                        : 0
+                                                }}%</span
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-lg font-bold text-gray-900"
-                                    >
-                                        {{ stats.in_process }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">
-                                        In Process
+                                    <div>
+                                        <div
+                                            class="text-lg font-bold text-gray-900"
+                                        >
+                                            {{ stats.in_process }}
+                                        </div>
+                                        <div class="text-xs text-gray-600">
+                                            In Process
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- Dispatched -->
-                        <div class="relative">
-                            <div class="flex items-center mb-2">
-                                <div class="w-16 h-16 relative mr-4">
-                                    <svg class="w-16 h-16 transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            stroke-width="4"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#8b5cf6"
-                                            stroke-width="4"
-                                            :stroke-dasharray="`${
-                                                (stats.dispatched /
-                                                    props.totalOrders) *
-                                                125.6
-                                            } 125.6`"
-                                        />
-                                    </svg>
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-purple-600"
-                                            >{{
-                                                totalOrders > 0
-                                                    ? Math.round(
-                                                          (stats.dispatched /
-                                                              props.totalOrders) *
-                                                              100
-                                                      )
-                                                    : 0
-                                            }}%</span
+                            
+                            <!-- Dispatched -->
+                            <div class="relative">
+                                <div class="flex items-center mb-2">
+                                    <div class="w-16 h-16 relative mr-4">
+                                        <svg class="w-16 h-16 transform -rotate-90">
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#e2e8f0"
+                                                stroke-width="4"
+                                            />
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#8b5cf6"
+                                                stroke-width="4"
+                                                :stroke-dasharray="`${
+                                                    (stats.dispatched /
+                                                        totalOrders) *
+                                                    125.6
+                                                } 125.6`"
+                                            />
+                                        </svg>
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
                                         >
+                                            <span
+                                                class="text-xs font-bold text-purple-600"
+                                                >{{
+                                                    totalOrders > 0
+                                                        ? Math.round(
+                                                              (stats.dispatched /
+                                                                  totalOrders) *
+                                                                  100
+                                                          )
+                                                        : 0
+                                                }}%</span
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-lg font-bold text-gray-900"
-                                    >
-                                        {{ stats.dispatched }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">
-                                        Dispatched
+                                    <div>
+                                        <div
+                                            class="text-lg font-bold text-gray-900"
+                                        >
+                                            {{ stats.dispatched }}
+                                        </div>
+                                        <div class="text-xs text-gray-600">
+                                            Dispatched
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Received -->
-                        <div class="relative">
-                            <div class="flex items-center mb-2">
-                                <div class="w-16 h-16 relative mr-4">
-                                    <svg class="w-16 h-16 transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            stroke-width="4"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            fill="none"
-                                            stroke="#6366f1"
-                                            stroke-width="4"
-                                            :stroke-dasharray="`${
-                                                (stats.received / totalOrders) *
-                                                125.6
-                                            } 125.6`"
-                                        />
-                                    </svg>
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-indigo-600"
-                                            >{{
-                                                props.totalOrders > 0
-                                                    ? Math.round(
-                                                          (stats.received /
-                                                              props.totalOrders) *
-                                                              100
-                                                      )
-                                                    : 0
-                                            }}%</span
+                            <!-- Received -->
+                            <div class="relative">
+                                <div class="flex items-center mb-2">
+                                    <div class="w-16 h-16 relative mr-4">
+                                        <svg class="w-16 h-16 transform -rotate-90">
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#e2e8f0"
+                                                stroke-width="4"
+                                            />
+                                            <circle
+                                                cx="32"
+                                                cy="32"
+                                                r="28"
+                                                fill="none"
+                                                stroke="#6366f1"
+                                                stroke-width="4"
+                                                :stroke-dasharray="`${
+                                                    (stats.received / totalOrders) *
+                                                    125.6
+                                                } 125.6`"
+                                            />
+                                        </svg>
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center"
                                         >
+                                            <span
+                                                class="text-xs font-bold text-indigo-600"
+                                                >{{
+                                                    totalOrders > 0
+                                                        ? Math.round(
+                                                              (stats.received /
+                                                                  totalOrders) *
+                                                                  100
+                                                          )
+                                                        : 0
+                                                }}%</span
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-lg font-bold text-gray-900"
-                                    >
-                                        {{ stats.received }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">
-                                        Received
+                                    <div>
+                                        <div
+                                            class="text-lg font-bold text-gray-900"
+                                        >
+                                            {{ stats.received }}
+                                        </div>
+                                        <div class="text-xs text-gray-600">
+                                            Received
+                                        </div>
                                     </div>
                                 </div>
                             </div>

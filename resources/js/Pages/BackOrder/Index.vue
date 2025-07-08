@@ -1,780 +1,395 @@
 <template>
-    <AuthenticatedLayout title="Back Orders" description="Manage Back Orders">
-        <div class="p-6">
-            <div
-                class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-            >
-                <!-- Left: Search bar -->
-                <div class="w-full md:w-auto">
-                    <input
-                        type="text"
-                        v-model="search"
-                        class="w-full sm:w-[400px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Search by [Item Name,barcode, batch number]"
-                    />
+    <AuthenticatedLayout title="Back Order" description="Back Order History">
+        <div class="py-6" @click="handleOutsideClick">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-orange-400 to-red-500 rounded-xl">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Back Order History</h1>
+                            <p class="text-gray-600 text-sm">Manage and track all back order activities</p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="/backorders/manage" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Manage Back Orders
+                        </a>
+                    </div>
+                </div>
                 </div>
 
-                <!-- Right: Per Page + Status -->
-                <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                    <!-- Per Page -->
-                    <select
-                        v-model="per_page"
-                        @change="props.filters.page = 1"
-                        class="w-full sm:w-[200px] border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="10">10 Per page</option>
-                        <option value="25">25 Per page</option>
-                        <option value="50">50 Per page</option>
-                        <option value="100">100 Per page</option>
-                    </select>
-
-                    <!-- Status -->
-                    <select
+            <!-- Search and Filter Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Search -->
+                    <div>
+                        <label for="search" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            Search
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <input type="text" v-model="search" placeholder="Search by back order number, order number"
+                                class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 text-sm bg-gray-50 hover:bg-white" />
+                        </div>
+                    </div>
+                    
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="status" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Status
+                        </label>
+                        <Multiselect
                         v-model="status"
-                        @change="props.filters.page = 1"
-                        class="w-full sm:w-[200px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="reviewed">Reviewed</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
+                            :options="['pending', 'processing', 'completed', 'cancelled']"
+                            :searchable="true"
+                            :allow-empty="true"
+                            :multiple="false"
+                            placeholder="Filter by Status"
+                            :show-labels="false"
+                            class="text-sm"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Per Page and Results Section -->
+            <div class="flex items-center justify-end mb-6">
+                <div class="w-48">
+                    <select v-model="per_page" @change="filters.page = 1"
+                        class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 text-sm bg-gray-50 hover:bg-white">
+                        <option value="10">10 per page</option>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
                     </select>
                 </div>
             </div>
+
+            <!-- Main Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                        <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">SN</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Back Order ID</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Date</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Order</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Notes & Documents</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                            <tr v-for="(order, idx) in props.history.data" :key="order.id" class="hover:bg-indigo-50/30 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium border border-gray-200">{{ idx + 1 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
+                                    <button class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150" @click="openHistoryModal(order)">
+                                        {{ order.back_order_number }}
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">{{ formatDate(order.back_order_date) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">{{ order.order?.order_number || '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600 border border-gray-200">
+                                    <div v-if="order.attach_documents && order.attach_documents.length">
+                                        <div class="relative">
+                                            <button @click.stop="toggleDropdown(order.id)" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                                {{ order.attach_documents.length }} document(s)
+                                            </button>
+                                            <div v-if="openDropdowns.includes(order.id)" class="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                                                <div class="p-3">
+                                                    <div v-for="(doc, i) in order.attach_documents" :key="i" class="mb-2 last:mb-0">
+                                                        <a :href="doc.path" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
+                                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                            </svg>
+                                                            {{ doc.name }}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        <div v-if="order.notes && order.notes.length > 50">
+                                            <div class="relative">
+                                                <button @click.stop="toggleDropdown(order.id)" class="text-gray-600 hover:text-gray-800">
+                                                    {{ order.notes.substring(0, 50) }}...
+                                                </button>
+                                                <div v-if="openDropdowns.includes(order.id)" class="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                                                    <div class="p-3">
+                                                        <p class="text-sm text-gray-700">{{ order.notes }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else>
+                                            {{ order.notes || '-' }}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
+                                    <button class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-150" @click="openHistoryModal(order)">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        View History
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="mt-6">
+                <TailwindPagination 
+                    :data="props.history" 
+                    @pagination-change-page="getResults" 
+                    :limit="3" 
+                />
+            </div>
         </div>
 
-        <div class="p-6 bg-white shadow rounded-lg mb-[80px]">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Backorders</h2>
+        <!-- Modal for BackOrderHistory -->
+        <Modal :show="showModal" max-width="5xl" @close="showModal = false">
+            <div class="p-6" @click="handleModalOutsideClick">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Back Order History for {{ selectedOrder?.back_order?.back_order_number || selectedOrder?.back_order_number }}</h2>
+                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                        <XMarkIcon class="h-6 w-6" />
+                    </button>
+                </div>
+                <!-- Loading State -->
+                <div v-if="isLoadingHistories" class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-2 text-gray-600">Loading back order history...</span>
+                </div>
 
-            <div class="overflow-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 text-gray-600 text-sm font-medium">
+                <!-- Empty State -->
+                <div v-else-if="!histories.data || histories.data.length === 0" class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No history found</h3>
+                    <p class="mt-1 text-sm text-gray-500">No back order history data available for this item.</p>
+                </div>
+
+                <!-- History Table -->
+                <table v-else class="min-w-full border border-gray-300 text-xs">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-3 text-left">#</th>
-                            <th class="w-[250px] px-4 py-3 text-left">Item</th>
-                            <th class="px-4 py-3 text-left">Item Info</th>
-                            <th class="px-4 py-3 text-left">Type</th>
-                            <th class="w-[200px] px-4 py-3 text-left">
-                                Quantity
-                            </th>
-                            <th class="px-4 py-3 text-left">Notes</th>
-                            <th class="px-4 py-3 text-left">Status</th>
-                            <th class="px-4 py-3 text-left">Created At</th>
-                            <th class="px-4 py-3 text-left">Actions</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">SN</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Item Name</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Expiry Date</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Batch Number</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">QTY</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Status</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Note & Attachment</th>
+                            <th class="px-4 text-left py-2 border border-gray-300">Performed By</th>
                         </tr>
                     </thead>
-                    <tbody
-                        class="divide-y divide-gray-200 text-sm text-gray-700"
-                    >
-                        <tr
-                            v-for="(item, index) in props.backorders.data"
-                            :key="item.id"
-                            class="hover:bg-gray-50"
-                        >
-                            <td class="px-4 py-2">{{ index + 1 }}</td>
-                            <td class="px-4 py-2">{{ item.product?.name }}</td>
-                            <td class="px-4 py-2">
-                                <div class="flex flex-col">
-                                    <span class="text-gray-600"
-                                        >Batch Number:
-                                        {{
-                                            item.inventory_allocation
-                                                ?.batch_number || item.transfer_item?.batch_number || "N/A"
-                                        }}</span
-                                    >
-                                    <span class="text-gray-600"
-                                        >Barcode:
-                                        {{
-                                            item.inventory_allocation
-                                                ?.barcode || item.transfer_item?.barcode || "N/A"
-                                        }}</span
-                                    >
-                                    <span class="text-gray-600"
-                                        >UoM:
-                                        {{
-                                            item.inventory_allocation?.uom || item.transfer_item?.uom || "N/A"
-                                        }}</span
-                                    >
-                                </div>
-                            </td>
-                            <td class="px-4 py-2">
-                                <span
-                                    class="inline-block px-2 py-1 rounded-full text-xs font-semibold"
-                                    :class="{
-                                        'bg-red-100 text-red-800':
-                                            item.type === 'Missing',
-                                        'bg-yellow-100 text-yellow-800':
-                                            item.type === 'Lost',
-                                        'bg-orange-100 text-orange-800':
-                                            item.type === 'Damaged',
-                                        'bg-purple-100 text-purple-800':
-                                            item.type === 'Expired',
-                                    }"
-                                >
-                                    {{ item.type }}
+                    <tbody class="bg-white">
+                        <tr v-for="(history, idx) in histories.data" :key="history.id">
+                            <td class="px-4 text-left py-2 border border-gray-300">{{ idx + 1 }}</td>
+                            <td class="px-4 text-left py-2 border border-gray-300">{{ history.product?.name }}</td>
+                            <td class="px-4 text-left py-2 border border-gray-300">{{ formatDate(history.expiry_date) }}</td>
+                            <td class="px-4 text-left py-2 border border-gray-300">{{ history.batch_number }}</td>
+                            <td class="px-4 text-left py-2 border border-gray-300">{{ history.quantity }}</td>
+                            <td class="px-4 text-left py-2 border border-gray-300">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="statusClass(history.status)">
+                                    {{ history.status }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2">
-                                <div class="flex flex-col">
-                                    <span
-                                        >Allocated QTY:
-                                        {{
-                                            item.inventory_allocation
-                                                ?.allocated_quantity || item.transfer_item?.quantity || "N/A"
-                                        }}</span
-                                    >
-                                    <span
-                                        >Backordered QTY:
-                                        {{ item.quantity }}</span
-                                    >
+                            <td class="px-4 text-left py-2 border border-gray-300">
+                                <div v-if="history.attach_documents && history.attach_documents.length">
+                                    <div class="relative">
+                                        <button @click.stop="toggleHistoryDropdown(history.id)" class="text-blue-600 underline">
+                                            {{ history.attach_documents.length }} document(s)
+                                        </button>
+                                        <div v-if="openHistoryDropdowns.includes(history.id)" class="absolute z-10 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg">
+                                            <div class="p-2">
+                                                <div v-for="(doc, i) in history.attach_documents" :key="i" class="mb-1">
+                                                    <a :href="doc.path" target="_blank" class="text-blue-600 underline block text-xs">{{ doc.name }}</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else>
+                                    <div v-if="history.note && history.note.length > 50">
+                                        <div class="relative">
+                                            <button @click.stop="toggleHistoryDropdown(history.id)" class="text-gray-600">
+                                                {{ history.note.substring(0, 50) }}...
+                                        </button>
+                                            <div v-if="openHistoryDropdowns.includes(history.id)" class="absolute z-10 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                <div class="p-2">
+                                                    <p class="text-xs">{{ history.note }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        {{ history.note || '-' }}
+                                    </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-2">{{ item.notes }}</td>
-                            <td class="px-4 py-2">
-                                <span
-                                    class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800"
-                                >
-                                    {{ item.status }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2">
-                                {{ formatDate(item.created_at) }}
-                            </td>
-                            <td class="px-4 py-2">
-                                <div class="flex gap-2 flex-wrap">
-                                    <!-- Actions for Missing/Lost items -->
-                                    <template v-if="['Missing', 'Lost'].includes(item.type)">
-                                        <button
-                                            @click="receive(item, index)"
-                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
-                                            title="Receive this item"
-                                        >
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                            {{ typeOf[index] ? 'Receiving...' : 'Receive'}}
-                                        </button>
-                                    </template>
-
-                                    <!-- Actions for Damaged/Expired items -->
-                                    <template v-else-if="['Damaged', 'Expired'].includes(item.type)">
-                                        <button
-                                            @click="liquidate(item)"
-                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
-                                            title="Liquidate this item"
-                                        >
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                                            </svg>
-                                            Liquidate
-                                        </button>
-                                        <button
-                                            @click="disposal(item)"
-                                            class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-all duration-200 shadow-sm"
-                                            title="Dispose this item"
-                                        >
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                            Dispose
-                                        </button>
-                                    </template>
-
-                                    <!-- Fallback for other types -->
-                                    <template v-else>
-                                        <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500">
-                                            No actions available
-                                        </span>
-                                    </template>
-                                </div>
+                            <td class="px-4 text-left py-2 border border-gray-300">
+                                {{ history.performer?.name || '-' }}
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <TailwindPagination
-                :data="props.backorders"
-                @pagination-change-page="getResult"
-            />
-        </div>
-
-        <!-- Liquidation Modal -->
-        <Modal
-            :show="showLiquidateModal"
-            max-width="xl"
-            @close="showLiquidateModal = false"
-        >
-            <form
-                id="liquidationForm"
-                class="p-6 space-y-4"
-                @submit.prevent="submitLiquidation"
-            >
-                <h2 class="text-lg font-medium text-gray-900 mb-4">
-                    Liquidate Item
-                </h2>
-
-                <!-- Product Info -->
-                <div v-if="selectedItem" class="bg-gray-50 p-4 rounded-lg">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">
-                                Item
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.product.name }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-500">
-                                Item Condition
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.type }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">
-                                Order Info
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{
-                                    selectedItem.order_item?.order?.order_number
-                                }}
-                                -
-                                {{ selectedItem.order_item?.order?.order_type }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-500">
-                                Status
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.status }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quantity -->
-                <div>
-                    <label
-                        for="quantity"
-                        class="block text-sm font-medium text-gray-700"
-                        >Quantity</label
-                    >
-                    <input
-                        type="number"
-                        id="quantity"
-                        v-model="liquidateForm.quantity"
-                        readonly
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        :min="1"
-                        :max="selectedItem?.quantity"
-                        required
-                    />
-                </div>
-
-                <!-- Note -->
-                <div>
-                    <label
-                        for="note"
-                        class="block text-sm font-medium text-gray-700"
-                        >Note</label
-                    >
-                    <textarea
-                        id="note"
-                        v-model="liquidateForm.note"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        rows="3"
-                        required
-                    ></textarea>
-                </div>
-
-                <!-- Attachments -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700"
-                        >Attachments (PDF files)</label
-                    >
-                    <input
-                        type="file"
-                        ref="attachments"
-                        @change="(e) => handleFileChange('liquidate', e)"
-                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                        multiple
-                        accept=".pdf"
-                        required
-                    />
-                </div>
-
-                <!-- Selected Files Preview -->
-                <div v-if="liquidateForm.attachments.length > 0" class="mt-2">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">
-                        Selected Files:
-                    </h4>
-                    <ul class="space-y-2">
-                        <li
-                            v-for="(file, index) in liquidateForm.attachments"
-                            :key="index"
-                            class="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-2 rounded"
-                        >
-                            <span>{{ file.name }}</span>
-                            <button
-                                type="button"
-                                @click="removeFile('liquidate', index)"
-                                class="text-red-500 hover:text-red-700"
-                            >
-                                Remove
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button
-                        type="button"
-                        class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        @click="showLiquidateModal = false"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        class="inline-flex justify-center rounded-md border border-transparent bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-                        :disabled="isSubmitting"
-                    >
-                        {{ isSubmitting ? "Liquidating..." : "Liquidate" }}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-
-        <!-- disposals -->
-        <!-- Dispose Modal -->
-        <Modal
-            :show="showDisposeModal"
-            max-width="xl"
-            @close="showDisposeModal = false"
-        >
-            <form
-                id="disposeForm"
-                class="p-6 space-y-4"
-                @submit.prevent="submitDisposal"
-            >
-                <h2 class="text-lg font-medium text-gray-900 mb-4">
-                    Dispose Item
-                </h2>
-
-                <!-- Product Info -->
-                <div v-if="selectedItem" class="bg-gray-50 p-4 rounded-lg">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">
-                                Item
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.product.name }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-500">
-                                Item Condition
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.type }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">
-                                Info
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{
-                                    selectedItem.order_item?.order?.order_number || "TransferID: " + selectedItem.transfer_item?.transfer?.transferID
-                                }}
-                                -
-                                {{ selectedItem.order_item?.order?.order_type || '' }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-500">
-                                Status
-                            </p>
-                            <p class="text-sm text-gray-900">
-                                {{ selectedItem.status }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quantity -->
-                <div>
-                    <label
-                        for="quantity"
-                        class="block text-sm font-medium text-gray-700"
-                        >Quantity</label
-                    >
-                    <input
-                        type="number"
-                        id="quantity"
-                        v-model="disposeForm.quantity"
-                        readonly
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        :min="1"
-                        :max="selectedItem?.quantity"
-                        required
-                    />
-                </div>
-
-                <!-- Note -->
-                <div>
-                    <label
-                        for="note"
-                        class="block text-sm font-medium text-gray-700"
-                        >Note</label
-                    >
-                    <textarea
-                        id="note"
-                        v-model="disposeForm.note"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        rows="3"
-                        required
-                    ></textarea>
-                </div>
-
-                <!-- Attachments -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700"
-                        >Attachments (PDF files)</label
-                    >
-                    <input
-                        type="file"
-                        ref="attachments"
-                        @change="(e) => handleFileChange('dispose', e)"
-                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                        multiple
-                        accept=".pdf"
-                        required
-                    />
-                </div>
-
-                <!-- Selected Files Preview -->
-                <div v-if="disposeForm.attachments.length > 0" class="mt-2">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">
-                        Selected Files:
-                    </h4>
-                    <ul class="space-y-2">
-                        <li
-                            v-for="(file, index) in disposeForm.attachments"
-                            :key="index"
-                            class="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-2 rounded"
-                        >
-                            <span>{{ file.name }}</span>
-                            <button
-                                type="button"
-                                @click="removeFile('dispose', index)"
-                                class="text-red-500 hover:text-red-700"
-                            >
-                                Remove
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button
-                        type="button"
-                        class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        @click="showDisposeModal = false"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        class="inline-flex justify-center rounded-md border border-transparent bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-                        :disabled="isSubmitting"
-                    >
-                        {{ isSubmitting ? "Disposing..." : "Dispose" }}
-                    </button>
-                </div>
-            </form>
         </Modal>
     </AuthenticatedLayout>
 </template>
 
 <script setup>
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { TailwindPagination } from "laravel-vue-pagination";
-import { ref, watch } from "vue";
-import { router } from "@inertiajs/vue3";
-import Swal from "sweetalert2";
-import axios from "axios";
-import Modal from "@/Components/Modal.vue";
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Modal from '@/Components/Modal.vue';
+import { ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
+import { TailwindPagination } from 'laravel-vue-pagination';
+import Multiselect from "vue-multiselect";
+import "vue-multiselect/dist/vue-multiselect.css";
+import "@/Components/multiselect.css";
+import { XMarkIcon } from '@heroicons/vue/24/outline';
+import axios from 'axios';
 
 const props = defineProps({
-    backorders: Object,
+    history: {
+        type: Object,
+        required: true,
+    },
     filters: Object,
 });
 
-const search = ref(props.filters.search);
-const per_page = ref(props.filters.per_page);
-const status = ref(props.filters.status);
+const histories = ref([]);
+const showModal = ref(false);
+const selectedOrder = ref(null);
+const openDropdowns = ref([]);
+const openHistoryDropdowns = ref([]);
+const isLoadingHistories = ref(false);
 
-watch(
-    [
-        () => per_page.value,
-        () => props.filters.page,
+// Filter refs
+const search = ref(props.filters.search);
+const status = ref(props.filters.status);
+const per_page = ref(props.filters.per_page || 25);
+
+// Watch for filter changes
+watch([
         () => search.value,
         () => status.value,
-    ],
-    () => {
-        reloadBackOrder();
-    }
-);
+    () => per_page.value,
+    () => props.filters.page
+], () => {
+    reloadBackOrders();
+});
 
-function reloadBackOrder() {
-    const query = {};
-
-    // Add all non-empty filter values
-    if (search.value) query.search = search.value;
-    if (per_page.value) query.per_page = per_page.value;
-    if (props.filters.page) query.page = props.filters.page;
-    if (status.value) query.status = status.value;
-
-    // Update the URL immediately
-    router.get(route("backorders.index"), query, {
-        preserveState: true,
-        preserveScroll: true,
-        only: ["backorders"],
-    });
-}
-
-function getResult(page = 1) {
+function getResults(page = 1) {
     props.filters.page = page;
 }
 
-// liquidations
-const showLiquidateModal = ref(false);
-const isSubmitting = ref(false);
-const showDisposeModal = ref(false);
-const selectedItem = ref(null);
+function reloadBackOrders() {
+    const query = {};
+    if (search.value) query.search = search.value;
+    if (status.value) query.status = status.value;
+    if (per_page.value) query.per_page = per_page.value;
+    if (props.filters.page) query.page = props.filters.page;
 
-const liquidateForm = ref({
-    quantity: 0,
-    note: "",
-    attachments: [],
-});
-
-const disposeForm = ref({
-    quantity: 0,
-    note: "",
-    attachments: [],
-});
-
-const handleFileChange = (formType, e) => {
-    const files = Array.from(e.target.files || []);
-    if (formType === "liquidate") {
-        liquidateForm.value.attachments = files;
-    } else {
-        disposeForm.value.attachments = files;
-    }
-};
-
-function removeFile(formType, index) {
-    if (formType === "liquidate") {
-        liquidateForm.value.attachments.splice(index, 1);
-    } else {
-        disposeForm.value.attachments.splice(index, 1);
-    }
+    router.get(route('backorders.index'), query, {
+        preserveScroll: true,
+        only: ['history', 'filters']
+    });
 }
 
-// backorder actions
+function openHistoryModal(order) {
+    selectedOrder.value = order;
+    showModal.value = true;
+    isLoadingHistories.value = true;
+    fetchHistories(order.id);
+}
 
-const handleAction = async (action, item) => {
-    selectedItem.value = item;
-
-    switch (action) {
-        // case 'Receive':
-        //     await receiveItems(item);
-        //     break;
-
-        case "Liquidate":
-            liquidateForm.value = {
-                quantity: item.quantity,
-                note: "",
-                attachments: [],
-            };
-            showLiquidateModal.value = true;
-            break;
-
-        case "Dispose":
-            disposeForm.value = {
-                quantity: item.quantity,
-                note: "",
-                attachments: [],
-            };
-            showDisposeModal.value = true;
-            break;
-    }
-};
-
-// liquidation
-const submitLiquidation = async () => {
-    isSubmitting.value = true;
-    const formData = new FormData();
-    formData.append("id", selectedItem.value.id);
-    formData.append("product_id", selectedItem.value.product.id);
-    formData.append("quantity", liquidateForm.value.quantity);
-    formData.append("status", selectedItem.value.status);
-    formData.append("note", liquidateForm.value.note);
-
-    // Append each attachment
-    for (let i = 0; i < liquidateForm.value.attachments.length; i++) {
-        formData.append("attachments[]", liquidateForm.value.attachments[i]);
-    }
-
-    await axios
-        .post(route("backorders.liquidate"), formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        })
-        .then((response) => {
-            isSubmitting.value = false;
-            console.log(response);
-            showLiquidateModal.value = false;
-            Swal.fire({
-                icon: "success",
-                title: response.data,
-                showConfirmButton: true,
-                timer: 1500,
-            }).then(() => {
-                liquidateForm.value = {
-                    quantity: 0,
-                    note: "",
-                    attachments: [],
-                };
-                reloadBackOrder();
-            });
-        })
-        .catch((error) => {
-            isSubmitting.value = false;
-            console.error("Failed to liquidate items:", error);
-            Swal.fire({
-                icon: "error",
-                title: error.response.data,
-                showConfirmButton: false,
-                timer: 1500,
-            });
-        });
-};
-
-const submitDisposal = async () => {
-    isSubmitting.value = true;
-    const formData = new FormData();
-    formData.append("id", selectedItem.value.id);
-    formData.append("product_id", selectedItem.value.product.id);
-    formData.append("quantity", disposeForm.value.quantity);
-    formData.append("status", selectedItem.value.status);
-    formData.append("note", disposeForm.value.note);
-
-    // Append each attachment
-    for (let i = 0; i < disposeForm.value.attachments.length; i++) {
-        formData.append("attachments[]", disposeForm.value.attachments[i]);
-    }
-
-    await axios
-        .post(route("backorders.dispose"), formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        })
-        .then((response) => {
-            isSubmitting.value = false;
-            showDisposeModal.value = false;
-            Swal.fire({
-                icon: "success",
-                title: response.data,
-                showConfirmButton: false,
-                timer: 1500,
-            }).then(() => {
-                disposeForm.value = {
-                    quantity: 0,
-                    note: "",
-                    attachments: [],
-                };
-                reloadBackOrder();
-            });
-        })
-        .catch((error) => {
-            isSubmitting.value = false;
-            console.error("Failed to dispose items:", error);
-            Swal.fire({
-                icon: "error",
-                title: error.response.data,
-                showConfirmButton: false,
-                timer: 1500,
-            });
-        });
-};
-
-const typeOf = ref([]);
-function receive(item, index) {
-    Swal.fire({
-        title: 'Enter Quantity',
-        input: 'number',
-        inputAttributes: {
-            min: 1,
-            max: item.quantity,
-            step: 1
-        },
-        inputLabel: `Max: ${item.quantity}`,
-        inputPlaceholder: `Enter a quantity (1 - ${item.quantity})`,
-        showCancelButton: true,
-        confirmButtonText: 'Submit',
-        preConfirm: (value) => {
-            const qty = Number(value);
-            if (!value || qty < 1 || qty > item.quantity) {
-                Swal.showValidationMessage(`Please enter a value between 1 and ${item.quantity}`);
-            }
-            return qty;
-        }
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            typeOf.value[index] = true;
-            const enteredQuantity = result.value;
-            console.log(`Received quantity: ${enteredQuantity}`);
-            await axios.post(route('backorders.received'), {
-                id: item.id,
-                quantity: enteredQuantity
-            })
-            .then((response) => {
-                typeOf.value[index] = false;
-                Swal.fire({
-                    icon: 'success',
-                    title: response.data,
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    reloadBackOrder();
-                });
-            })
-            .catch((error) => {
-                typeOf.value[index] = false;
-                Swal.fire({
-                    icon: 'error',
-                    title: error.response.data,
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-            });
-        }
+async function fetchHistories(backOrderId) {
+    isLoadingHistories.value = true;
+    await axios.get(route('backorders.histories', backOrderId))
+    .then(response => {
+        isLoadingHistories.value = false;
+        histories.value = { data: response.data };
+    })
+    .catch(error => {
+        isLoadingHistories.value = false;
+        console.error('Error fetching back order histories:', error);
+        histories.value = { data: [] };
     });
 }
 
 function formatDate(date) {
+    if (!date) return '-';
     return new Date(date).toLocaleDateString();
 }
 
-function liquidate(item, index) {
-    handleAction('Liquidate', item, index);
+function statusClass(status) {
+    switch (status) {
+        case 'pending':
+        case 'Pending':
+            return 'bg-yellow-100 text-yellow-800';
+        case 'processing':
+        case 'Processing':
+            return 'bg-blue-100 text-blue-800';
+        case 'completed':
+        case 'Received':
+            return 'bg-green-100 text-green-800';
+        case 'cancelled':
+            return 'bg-red-100 text-red-800';
+        default:
+            return 'bg-gray-100 text-gray-800';
+    }
 }
 
-function disposal(item, index) {
-    handleAction('Dispose', item, index);
+function toggleDropdown(id) {
+    if (openDropdowns.value.includes(id)) {
+        openDropdowns.value = openDropdowns.value.filter((i) => i !== id);
+    } else {
+        openDropdowns.value.push(id);
+    }
+}
+
+function toggleHistoryDropdown(id) {
+    if (openHistoryDropdowns.value.includes(id)) {
+        openHistoryDropdowns.value = openHistoryDropdowns.value.filter((i) => i !== id);
+    } else {
+        openHistoryDropdowns.value.push(id);
+    }
+}
+
+function handleOutsideClick() {
+    // Close all main table dropdowns when clicking outside
+    openDropdowns.value = [];
+}
+
+function handleModalOutsideClick() {
+    // Close all modal dropdowns when clicking outside
+    openHistoryDropdowns.value = [];
 }
 </script>

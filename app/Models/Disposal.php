@@ -43,8 +43,8 @@ class Disposal extends Model
         'facility',
         'warehouse',
         'unit_cost',
-        'tota_cost',
-        'attachments',
+        'total_cost',
+        'back_order_id',
     ];
 
     /**
@@ -85,5 +85,13 @@ class Disposal extends Model
     public function rejectedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    /**
+     * Get the back order that owns the disposal record
+     */
+    public function backOrder(): BelongsTo
+    {
+        return $this->belongsTo(BackOrder::class);
     }
 }

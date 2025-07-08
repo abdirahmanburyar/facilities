@@ -94,4 +94,9 @@ class Order extends Model
         return $this->belongsTo(User::class, 'received_by');
     }
 
+    public function backorders()
+    {
+        return $this->hasMany(BackOrder::class);
+    }
+
 }

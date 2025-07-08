@@ -120,4 +120,9 @@ class Transfer extends Model
         return $this->hasMany(DispatchInfo::class);
     }
 
+    public function backorders()
+    {
+        return $this->hasMany(BackOrder::class);
+    }
+
 }
