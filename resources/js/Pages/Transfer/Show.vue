@@ -1516,7 +1516,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { router, Head, usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import moment from "moment";
@@ -1524,6 +1524,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useToast } from "vue-toastification";
 import Modal from "@/Components/Modal.vue";
+import realtimeService from "@/Services/RealtimeService.js";
 
 
 const toast = useToast();
@@ -1562,7 +1563,59 @@ const dispatchForm = ref({
 
 onMounted(() => {
     form.value = props.transfer.items || [];
+    
+    // Set up real-time listeners
+    setupRealtimeListeners();
 });
+
+onUnmounted(() => {
+    // Clean up real-time listeners
+    realtimeService.disconnect();
+});
+
+// Set up real-time listeners for facility inventory updates
+const setupRealtimeListeners = () => {
+    // Listen for facility inventory updates
+    if (props.transfer.to_facility_id) {
+        realtimeService.listenToFacilityInventory(props.transfer.to_facility_id, (data) => {
+            console.log('Facility inventory updated in real-time:', data);
+            
+            // Show notification
+            toast.info('Facility inventory has been updated');
+            
+            // Refresh the page data
+            router.get(route("transfers.show", props.transfer.id), {}, {
+                preserveScroll: true,
+                only: ['transfer'],
+            });
+        });
+    }
+    
+    // Listen for transfer status changes
+    realtimeService.listenToTransferStatus(props.transfer.id, (data) => {
+        console.log('Transfer status changed in real-time:', data);
+        
+        // Show notification
+        toast.info(`Transfer status changed to: ${data.status}`);
+        
+        // Refresh the page data
+        router.get(route("transfers.show", props.transfer.id), {}, {
+            preserveScroll: true,
+            only: ['transfer'],
+        });
+    });
+    
+    // Listen for general inventory updates
+    realtimeService.listenToInventoryUpdates((data) => {
+        console.log('General inventory updated in real-time:', data);
+        
+        // Refresh the page data
+        router.get(route("transfers.show", props.transfer.id), {}, {
+            preserveScroll: true,
+            only: ['transfer'],
+        });
+    });
+};
 
 // Status styling
 const statusClasses = computed(() => ({

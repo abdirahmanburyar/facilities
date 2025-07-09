@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\TransferCreated;
 use App\Events\TransferStatusChanged;
 use App\Events\InventoryUpdated;
+use App\Events\FacilityInventoryUpdated;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\TransferResource;
 
@@ -743,9 +744,9 @@ class TransferController extends Controller
             $newQuantityToRelease = (int) ceil($request->quantity);
             $oldQuantityToRelease = $transferItem->quantity_to_release ?? 0;
 
-            // Determine source type (warehouse or facility)
-            $isFromWarehouse = !empty($transfer->from_warehouse_id);
-            $sourceId = $transfer->from_warehouse_id ?? $transfer->from_facility_id;
+            // Always use from_facility_id as the source for FacilityInventory
+            $isFromWarehouse = false;
+            $sourceId = $transfer->from_facility_id;
 
             // Case 1: Decrease
             if ($newQuantityToRelease < $oldQuantityToRelease) {
@@ -1272,9 +1273,9 @@ class TransferController extends Controller
             $newQuantityToRelease = (int) ceil($request->quantity);
             $oldQuantityToRelease = $transferItem->quantity_to_release ?? 0;
 
-            // Determine source type (warehouse or facility)
-            $isFromWarehouse = !empty($transfer->from_warehouse_id);
-            $sourceId = $transfer->from_warehouse_id ?? $transfer->from_facility_id;
+            // Always use from_facility_id as the source for FacilityInventory
+            $isFromWarehouse = false;
+            $sourceId = $transfer->from_facility_id;
 
             // Case 1: Decrease
             if ($newQuantityToRelease < $oldQuantityToRelease) {
