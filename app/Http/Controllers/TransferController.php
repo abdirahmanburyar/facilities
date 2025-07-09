@@ -477,25 +477,15 @@ class TransferController extends Controller
             $transfer = Transfer::create($transferData);
     
             foreach ($request->items as $item) {
-                // Calculate total quantity on hand for this product (excluding expired)
-                $warehouseQuantity = InventoryItem::where('product_id', $item['product_id'])
-                    ->where('quantity', '>', 0)
-                    ->where('expiry_date', '>', \Carbon\Carbon::now())
-                    ->sum('quantity');
-
-                $facilityQuantity = FacilityInventoryItem::where('product_id', $item['product_id'])
-                    ->where('quantity', '>', 0)
-                    ->where('expiry_date', '>', \Carbon\Carbon::now())
-                    ->sum('quantity');
-
-                $totalQuantityOnHand = (int) $warehouseQuantity ?? (int) $facilityQuantity;
+                // Use the available_quantity from the frontend (which is the correct quantity per unit)
+                $quantityPerUnit = $item['available_quantity'] ?? 0;
 
                 // Create transfer item for this product
                 $transferItem = $transfer->items()->create([
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'], // Total requested quantity
                     'quantity_to_release' => $item['quantity'],
-                    'quantity_per_unit' => $totalQuantityOnHand // Save total quantity on hand at time of transfer creation
+                    'quantity_per_unit' => $quantityPerUnit // Use the available_quantity from frontend
                 ]);
 
                 // Process each detail item with specific quantities to transfer

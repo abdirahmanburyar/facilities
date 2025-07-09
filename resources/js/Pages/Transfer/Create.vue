@@ -268,7 +268,7 @@ const submit = async () => {
         return;
     }
 
-    // Filter out items with no quantity to transfer
+    // // Filter out items with no quantity to transfer
     const filteredItems = form.value.items.filter(item => 
         item.product_id && item.details.some(detail => 
             parseFloat(detail.quantity_to_transfer) > 0
@@ -279,6 +279,8 @@ const submit = async () => {
         ...form.value,
         items: filteredItems
     };
+
+    console.log(submitData);
     
     await axios
         .post(route("transfers.store"), submitData)
