@@ -9,7 +9,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Support\Facades\Log;
 
-class InventoryEvent implements ShouldBroadcast
+class InventoryEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
