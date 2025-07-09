@@ -351,7 +351,7 @@ const expiredCount = computed(() => {
     return stat.count;
 });
 
-function getResults(page = 1) {
+function getResults(page =51) {
     props.filters.page = page;
 }
 </script>

@@ -15,12 +15,12 @@ class RealtimeService {
 
                 this.echo = new Echo({
                     broadcaster: 'reverb',
-                    key: 'your-reverb-app-key', // Replace with your actual Reverb key
+                    key: 'reverb-app-key', // Replace with your actual Reverb key
                     wsHost: window.location.hostname,
                     wsPort: 8080,
                     wssPort: 8080,
                     forceTLS: false,
-                    enabledTransports: ['ws', 'wss'],
+                    enabledTransports: ['ws'],
                     disableStats: true,
                 });
                 console.log('Echo initialized successfully');
