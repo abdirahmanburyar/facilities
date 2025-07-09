@@ -17,6 +17,7 @@ import "vue-multiselect/dist/vue-multiselect.css";
 import "@/Components/multiselect.css";
 import moment from "moment";
 import { TailwindPagination } from "laravel-vue-pagination";
+import realtimeService from "@/Services/RealtimeService.js";
 
 const props = defineProps({
     inventories: Object,
@@ -85,25 +86,79 @@ const uploadResults = ref(null);
 let echoChannel = null;
 
 onMounted(() => {
-    // Listen for inventory updates
-    echoChannel = window.Echo.channel("inventory").listen(
-        ".refresh",
-        (data) => {
-            console.log("[PUSHER-DEBUG] Received inventory update:", data);
-            applyFilters();
-        }
-    );
-});
-
-onBeforeUnmount(() => {
-    // Clean up Echo listeners when component is unmounted
-    if (echoChannel) {
-        echoChannel.stopListening(".refresh");
+    console.log('[INVENTORY-DEBUG] Component mounted, setting up real-time listeners...');
+    
+    // Set up real-time listeners for facility inventory updates
+    setupRealtimeListeners();
+    
+    // Listen for inventory updates (legacy)
+    try {
+        echoChannel = window.Echo.channel("inventory").listen(
+            ".refresh",
+            (data) => {
+                console.log("[PUSHER-DEBUG] Received inventory update:", data);
+                applyFilters();
+            }
+        );
+        console.log('[INVENTORY-DEBUG] Legacy Echo channel set up successfully');
+    } catch (error) {
+        console.warn('[INVENTORY-DEBUG] Failed to set up legacy Echo channel:', error);
     }
 });
 
+onBeforeUnmount(() => {
+    console.log('[INVENTORY-DEBUG] Component unmounting, cleaning up listeners...');
+    
+    // Clean up real-time service
+    realtimeService.disconnect();
+    
+    // Clean up Echo listeners when component is unmounted
+    if (echoChannel) {
+        echoChannel.stopListening(".refresh");
+        console.log('[INVENTORY-DEBUG] Legacy Echo channel cleaned up');
+    }
+});
+
+// Set up real-time listeners for facility inventory updates
+const setupRealtimeListeners = () => {
+    console.log('[INVENTORY-DEBUG] Setting up real-time listeners...');
+    
+    // Get current user's facility ID (you may need to adjust this based on your auth structure)
+    const currentFacilityId = window.auth?.user?.facility_id;
+    console.log('[INVENTORY-DEBUG] Current facility ID:', currentFacilityId);
+    
+    if (currentFacilityId) {
+        // Listen for facility inventory updates
+        console.log('[INVENTORY-DEBUG] Listening for facility inventory updates for facility:', currentFacilityId);
+        realtimeService.listenToFacilityInventory(currentFacilityId, (data) => {
+            console.log('[INVENTORY-DEBUG] Facility inventory updated in real-time:', data);
+            
+            // Show notification
+            toast.info('Facility inventory has been updated');
+            
+            // Refresh the page data
+            applyFilters();
+        });
+    }
+    
+    // Listen for general inventory updates
+    console.log('[INVENTORY-DEBUG] Listening for general inventory updates');
+    realtimeService.listenToInventoryUpdates((data) => {
+        console.log('[INVENTORY-DEBUG] General inventory updated in real-time:', data);
+        
+        // Show notification
+        toast.info('Inventory has been updated');
+        
+        // Refresh the page data
+        applyFilters();
+    });
+};
+
+
+
 // Apply filters
 const applyFilters = () => {
+    console.log('[INVENTORY-DEBUG] applyFilters called');
     const query = {};
     // Add all filter values to query object
     if (search.value) query.search = search.value;
@@ -116,6 +171,7 @@ const applyFilters = () => {
     if (per_page.value) query.per_page = per_page.value;
     if (props.filters.page) query.page = props.filters.page;
 
+    console.log('[INVENTORY-DEBUG] Applying filters with query:', query);
     router.get(route("inventories.index"), query, {
         preserveState: true,
         preserveScroll: true,

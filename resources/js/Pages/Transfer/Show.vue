@@ -1575,13 +1575,13 @@ onUnmounted(() => {
 
 // Set up real-time listeners for facility inventory updates
 const setupRealtimeListeners = () => {
+    console.log('Setting up real-time listeners...');
+    
     // Listen for facility inventory updates
     if (props.transfer.to_facility_id) {
+        console.log('Listening for facility inventory updates for facility:', props.transfer.to_facility_id);
         realtimeService.listenToFacilityInventory(props.transfer.to_facility_id, (data) => {
             console.log('Facility inventory updated in real-time:', data);
-            
-            // Show notification
-            toast.info('Facility inventory has been updated');
             
             // Refresh the page data
             router.get(route("transfers.show", props.transfer.id), {}, {
@@ -1592,11 +1592,9 @@ const setupRealtimeListeners = () => {
     }
     
     // Listen for transfer status changes
+    console.log('Listening for transfer status changes for transfer:', props.transfer.id);
     realtimeService.listenToTransferStatus(props.transfer.id, (data) => {
         console.log('Transfer status changed in real-time:', data);
-        
-        // Show notification
-        toast.info(`Transfer status changed to: ${data.status}`);
         
         // Refresh the page data
         router.get(route("transfers.show", props.transfer.id), {}, {
@@ -1606,6 +1604,7 @@ const setupRealtimeListeners = () => {
     });
     
     // Listen for general inventory updates
+    console.log('Listening for general inventory updates');
     realtimeService.listenToInventoryUpdates((data) => {
         console.log('General inventory updated in real-time:', data);
         

@@ -10,6 +10,7 @@ class RealtimeService {
     initializeEcho() {
         if (typeof window !== 'undefined') {
             try {
+                console.log('Initializing Echo...');
                 window.Pusher = Pusher;
 
                 this.echo = new Echo({
@@ -22,6 +23,7 @@ class RealtimeService {
                     enabledTransports: ['ws', 'wss'],
                     disableStats: true,
                 });
+                console.log('Echo initialized successfully');
             } catch (error) {
                 console.warn('Failed to initialize Echo:', error);
                 this.echo = null;
@@ -39,6 +41,8 @@ class RealtimeService {
             console.warn('Echo not initialized');
             return;
         }
+
+        console.log(`Setting up listeners for facility ${facilityId}`);
 
         // Listen to specific facility channel
         this.echo.channel(`facility-inventory.${facilityId}`)
