@@ -45,4 +45,8 @@ class InventoryAllocation extends Model
     public function differences(){
         return $this->hasMany(PackingListDifference::class, 'inventory_allocation_id');
     }
+
+    public function backorders(){
+        return $this->hasMany(FacilityBackorder::class, 'inventory_allocation_id');
+    }
 }

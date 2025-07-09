@@ -18,6 +18,8 @@ use App\Models\Disposal;
 use App\Models\BackOrderHistory;
 use App\Models\BackOrder;
 use App\Models\InventoryItem;
+use App\Models\PackingListDifference;
+use App\Models\InventoryAllocation;
 use App\Models\Liquidate;
 use App\Models\ReceivedQuantity;
 use Carbon\Carbon;
@@ -477,15 +479,25 @@ class TransferController extends Controller
             $transfer = Transfer::create($transferData);
     
             foreach ($request->items as $item) {
-                // Use the available_quantity from the frontend (which is the correct quantity per unit)
-                $quantityPerUnit = $item['available_quantity'] ?? 0;
+                // Calculate total quantity on hand for this product (excluding expired)
+                $warehouseQuantity = InventoryItem::where('product_id', $item['product_id'])
+                    ->where('quantity', '>', 0)
+                    ->where('expiry_date', '>', \Carbon\Carbon::now())
+                    ->sum('quantity');
+
+                $facilityQuantity = FacilityInventoryItem::where('product_id', $item['product_id'])
+                    ->where('quantity', '>', 0)
+                    ->where('expiry_date', '>', \Carbon\Carbon::now())
+                    ->sum('quantity');
+
+                $totalQuantityOnHand = (int) $warehouseQuantity ?? (int) $facilityQuantity;
 
                 // Create transfer item for this product
                 $transferItem = $transfer->items()->create([
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'], // Total requested quantity
                     'quantity_to_release' => $item['quantity'],
-                    'quantity_per_unit' => $quantityPerUnit // Use the available_quantity from frontend
+                    'quantity_per_unit' => $totalQuantityOnHand // Save total quantity on hand at time of transfer creation
                 ]);
 
                 // Process each detail item with specific quantities to transfer
@@ -587,21 +599,42 @@ class TransferController extends Controller
     }
 
     public function show($id){
-        $transfer = Transfer::where('id', $id)->with([
-            'items.product.category', 
-            'items.backorders', 
-            'fromWarehouse', 
-            'toWarehouse', 
-            'fromFacility', 
-            'toFacility',
-            'items.inventory_allocations.location',
-            'dispatchInfo',
-            'items.inventory_allocations.backorders','reviewedBy', 'approvedBy', 'processedBy','dispatchedBy','deliveredBy','receivedBy'
-        ])->first();
+        try {
+            DB::beginTransaction();
 
-        return inertia('Transfer/Show', [
-            'transfer' => $transfer
-        ]);
+            $transfer = Transfer::where('id', $id)
+            ->with([
+                'items.product.category',
+                'dispatch',
+                'items.inventory_allocations.location',
+                'items.differences', 
+                'backorders', 
+                'toFacility', 
+                'fromFacility',
+                'toWarehouse',
+                'fromWarehouse',
+                'user',
+                'reviewedBy', 
+                'approvedBy', 
+                'processedBy',
+                'dispatchedBy',
+                'deliveredBy',
+                'receivedBy'
+            ])
+            ->first();
+            
+            logger()->info($transfer);
+            
+            DB::commit();
+            return inertia('Transfer/Show', [
+                'transfer' => $transfer
+            ]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            logger()->error('Transfer show error: ' . $th->getMessage());
+            logger()->error('Stack trace: ' . $th->getTraceAsString());
+            return redirect()->back()->with('error', 'An error occurred while loading the transfer');    
+        }
     }
     
     public function create(Request $request){
@@ -981,6 +1014,99 @@ class TransferController extends Controller
     /**
      * Save back orders for a transfer item with detailed issue types
      */
+    public function backorder(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_item_id' => 'required|exists:transfer_items,id',
+                'differences' => 'required|array',
+                'received_quantity' => 'required|numeric|min:0',
+                'differences.*.inventory_allocation_id' => 'required|exists:inventory_allocations,id',
+                'differences.*.quantity' => 'required|numeric|min:0',
+                'differences.*.status' => 'required|in:Missing,Damaged,Expired,Lost,Low Quality',
+                'differences.*.notes' => 'nullable|string',
+                'differences.*.id' => 'nullable|exists:packing_list_differences,id',
+                'deleted_differences' => 'nullable|array',
+                'deleted_differences.*' => 'exists:packing_list_differences,id'
+            ]);
+
+            return DB::transaction(function () use ($request) {
+                $transferItem = TransferItem::with('transfer.facility:id,name','inventory_allocations')->find($request->transfer_item_id);
+                $transferItem->received_quantity = $request->received_quantity;
+                $transferItem->save();
+                
+                if ($transferItem->transfer->to_facility_id != auth()->user()->facility_id) {
+                    return response()->json('You are not authorized to record differences for this transfer.', 403);
+                }
+
+                // Find or create a single BackOrder for the entire transfer
+                $hasDifferenceItems = collect($request->differences)
+                    ->filter(function($item) { return !empty($item); })
+                    ->isNotEmpty();
+                $backOrder = null;
+                if ($hasDifferenceItems) {
+                    $backOrder = BackOrder::firstOrCreate(
+                        ['transfer_id' => $transferItem->transfer_id],
+                        [
+                            'transfer_id' => $transferItem->transfer_id,
+                            'back_order_date' => now()->toDateString(),
+                            'created_by' => auth()->user()->id,
+                            'source_type' => 'transfer',
+                            'reported_by' => $transferItem->transfer->toFacility->name ?? 'Unknown Facility',
+                        ]
+                    );
+                }
+
+                // Process deleted differences first
+                if ($request->has('deleted_differences') && !empty($request->deleted_differences)) {
+                    PackingListDifference::whereIn('id', $request->deleted_differences)->delete();
+                }
+
+                // Process differences (create new ones or update existing ones)
+                foreach ($request->differences as $differenceData) {
+                    $inventoryAllocation = InventoryAllocation::where('id', $differenceData['inventory_allocation_id'])
+                        ->where('transfer_item_id', $transferItem->id)
+                        ->first();
+                    if (!$inventoryAllocation) {
+                        return response()->json('Invalid inventory allocation specified.', 500);
+                    }
+                    if ($differenceData['quantity'] > $inventoryAllocation->allocated_quantity) {
+                        return response()->json('Difference quantity exceeds allocated quantity for batch ' . $inventoryAllocation->batch_number, 500);
+                    }
+                    if (isset($differenceData['id'])) {
+                        $difference = PackingListDifference::find($differenceData['id']);
+                        if ($difference) {
+                            $difference->update([
+                                'quantity' => $differenceData['quantity'],
+                                'notes' => $differenceData['notes'],
+                                'status' => $differenceData['status'],
+                                'back_order_id' => $backOrder ? $backOrder->id : null,
+                            ]);
+                        }
+                    } else {
+                        PackingListDifference::create([
+                            'product_id' => $transferItem->product_id,
+                            'inventory_allocation_id' => $inventoryAllocation->id,
+                            'quantity' => $differenceData['quantity'],
+                            'notes' => $differenceData['notes'],
+                            'status' => $differenceData['status'],
+                            'back_order_id' => $backOrder ? $backOrder->id : null,
+                        ]);
+                    }
+                }
+                
+                // Update BackOrder totals if it exists
+                if ($backOrder) {
+                    $backOrder->updateTotals();
+                }
+                
+                return response()->json('Differences have been recorded successfully', 200);
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
+
     public function saveBackOrders(Request $request)
     {
         try {
@@ -1780,6 +1906,406 @@ class TransferController extends Controller
             return response()->json([
                 'error' => $th->getMessage()
             ], 500);
+        }
+    }
+    
+    /**
+     * Show the form for editing the specified transfer
+     */
+    public function edit($id)
+    {
+        try {
+            $transfer = Transfer::with(['items.product', 'fromWarehouse', 'toWarehouse', 'fromFacility', 'toFacility'])
+                ->findOrFail($id);
+            
+            // Check authorization
+            $user = auth()->user();
+            $canEdit = false;
+            
+            if ($transfer->from_facility_id == $user->facility_id || 
+                $transfer->to_facility_id == $user->facility_id ||
+                $transfer->from_warehouse_id == $user->warehouse_id ||
+                $transfer->to_warehouse_id == $user->warehouse_id) {
+                $canEdit = true;
+            }
+            
+            if ($user->hasRole('admin') || $user->hasRole('super_admin')) {
+                $canEdit = true;
+            }
+            
+            if (!$canEdit) {
+                return redirect()->back()->with('error', 'You are not authorized to edit this transfer');
+            }
+            
+            // Only allow editing if transfer is in pending status
+            if ($transfer->status !== 'pending') {
+                return redirect()->back()->with('error', 'Cannot edit transfer that is not in pending status');
+            }
+            
+            $warehouses = Warehouse::select('id', 'name')->get();
+            $facilities = Facility::select('id', 'name')->get();
+            
+            return inertia('Transfer/Edit', [
+                'transfer' => $transfer,
+                'warehouses' => $warehouses,
+                'facilities' => $facilities
+            ]);
+        } catch (\Throwable $th) {
+            return redirect()->back()->with('error', 'Transfer not found');
+        }
+    }
+    
+    /**
+     * Update the specified transfer
+     */
+    public function update(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $transfer = Transfer::findOrFail($id);
+            
+            // Check authorization and status
+            $user = auth()->user();
+            $canUpdate = false;
+            
+            if ($transfer->from_facility_id == $user->facility_id || 
+                $transfer->to_facility_id == $user->facility_id ||
+                $transfer->from_warehouse_id == $user->warehouse_id ||
+                $transfer->to_warehouse_id == $user->warehouse_id) {
+                $canUpdate = true;
+            }
+            
+            if ($user->hasRole('admin') || $user->hasRole('super_admin')) {
+                $canUpdate = true;
+            }
+            
+            if (!$canUpdate) {
+                return response()->json(['error' => 'You are not authorized to update this transfer'], 403);
+            }
+            
+            if ($transfer->status !== 'pending') {
+                return response()->json(['error' => 'Cannot update transfer that is not in pending status'], 400);
+            }
+            
+            $request->validate([
+                'transfer_date' => 'required|date',
+                'notes' => 'nullable|string',
+                'expected_date' => 'nullable|date'
+            ]);
+            
+            $transfer->update([
+                'transfer_date' => $request->transfer_date,
+                'notes' => $request->notes,
+                'expected_date' => $request->expected_date
+            ]);
+            
+            DB::commit();
+            return response()->json('Transfer updated successfully', 200);
+            
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Remove the specified transfer
+     */
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            $transfer = Transfer::findOrFail($id);
+            
+            // Check authorization
+            $user = auth()->user();
+            $canDelete = false;
+            
+            if ($transfer->from_facility_id == $user->facility_id || 
+                $transfer->to_facility_id == $user->facility_id ||
+                $transfer->from_warehouse_id == $user->warehouse_id ||
+                $transfer->to_warehouse_id == $user->warehouse_id) {
+                $canDelete = true;
+            }
+            
+            if ($user->hasRole('admin') || $user->hasRole('super_admin')) {
+                $canDelete = true;
+            }
+            
+            if (!$canDelete) {
+                return response()->json(['error' => 'You are not authorized to delete this transfer'], 403);
+            }
+            
+            // Only allow deletion if transfer is in pending status
+            if ($transfer->status !== 'pending') {
+                return response()->json(['error' => 'Cannot delete transfer that is not in pending status'], 400);
+            }
+            
+            // Restore allocated inventory
+            foreach ($transfer->items as $item) {
+                foreach ($item->inventory_allocations as $allocation) {
+                    if ($transfer->from_warehouse_id) {
+                        // Restore warehouse inventory
+                        $inventoryItem = InventoryItem::where('product_id', $allocation->product_id)
+                            ->where('warehouse_id', $allocation->warehouse_id)
+                            ->where('batch_number', $allocation->batch_number)
+                            ->where('expiry_date', $allocation->expiry_date)
+                            ->first();
+                            
+                        if ($inventoryItem) {
+                            $inventoryItem->increment('quantity', $allocation->allocated_quantity);
+                        }
+                    } else {
+                        // Restore facility inventory
+                        $facilityInventory = FacilityInventory::where('facility_id', $transfer->from_facility_id)
+                            ->where('product_id', $allocation->product_id)
+                            ->first();
+                            
+                        if ($facilityInventory) {
+                            $facilityItem = FacilityInventoryItem::where('facility_inventory_id', $facilityInventory->id)
+                                ->where('batch_number', $allocation->batch_number)
+                                ->where('expiry_date', $allocation->expiry_date)
+                                ->first();
+                                
+                            if ($facilityItem) {
+                                $facilityItem->increment('quantity', $allocation->allocated_quantity);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $transfer->delete();
+            
+            DB::commit();
+            return response()->json('Transfer deleted successfully', 200);
+            
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Remove back order
+     */
+    public function removeBackOrder(Request $request)
+    {
+        try {
+            $request->validate([
+                'backorder_id' => 'required|exists:facility_backorders,id',
+            ]);
+
+            $backorder = FacilityBackorder::findOrFail($request->backorder_id);
+            $backorder->delete();
+
+            return response()->json('Back order removed successfully', 200);
+
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Show transfer back order page
+     */
+    public function transferBackOrder()
+    {
+        return inertia('Transfer/BackOrder');
+    }
+    
+    /**
+     * Transfer liquidate
+     */
+    public function transferLiquidate(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'items' => 'required|array',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.quantity' => 'required|numeric|min:1',
+                'items.*.reason' => 'required|string'
+            ]);
+            
+            DB::beginTransaction();
+            
+            $transfer = Transfer::findOrFail($request->transfer_id);
+            
+            foreach ($request->items as $item) {
+                Liquidate::create([
+                    'transfer_id' => $transfer->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'reason' => $item['reason'],
+                    'created_by' => auth()->id()
+                ]);
+            }
+            
+            DB::commit();
+            return response()->json('Items liquidated successfully', 200);
+            
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Transfer dispose
+     */
+    public function transferDispose(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'items' => 'required|array',
+                'items.*.product_id' => 'required|exists:products,id',
+                'items.*.quantity' => 'required|numeric|min:1',
+                'items.*.reason' => 'required|string'
+            ]);
+            
+            DB::beginTransaction();
+            
+            $transfer = Transfer::findOrFail($request->transfer_id);
+            
+            foreach ($request->items as $item) {
+                Disposal::create([
+                    'transfer_id' => $transfer->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'reason' => $item['reason'],
+                    'created_by' => auth()->id()
+                ]);
+            }
+            
+            DB::commit();
+            return response()->json('Items disposed successfully', 200);
+            
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Restore transfer
+     */
+    public function restoreTransfer(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+            ]);
+            
+            $transfer = Transfer::withTrashed()->findOrFail($request->transfer_id);
+            $transfer->restore();
+            
+            return response()->json('Transfer restored successfully', 200);
+            
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Get drivers list
+     */
+    public function getDrivers()
+    {
+        try {
+            $drivers = DB::table('drivers')->select('id', 'name', 'phone')->get();
+            return response()->json($drivers, 200);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Get logistic companies list
+     */
+    public function getLogisticCompanies()
+    {
+        try {
+            $companies = DB::table('logistic_companies')->select('id', 'name', 'contact_person', 'phone')->get();
+            return response()->json($companies, 200);
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Add driver
+     */
+    public function addDriver(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'phone' => 'required|string|max:20',
+                'license_number' => 'nullable|string|max:50'
+            ]);
+            
+            $driverId = DB::table('drivers')->insertGetId([
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'license_number' => $request->license_number,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            $driver = DB::table('drivers')->where('id', $driverId)->first();
+            
+            return response()->json(['driver' => $driver, 'message' => 'Driver added successfully'], 200);
+            
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Receive transfer
+     */
+    public function receiveTransfer(Request $request)
+    {
+        try {
+            $request->validate([
+                'transfer_id' => 'required|exists:transfers,id',
+                'received_items' => 'required|array',
+                'received_items.*.transfer_item_id' => 'required|exists:transfer_items,id',
+                'received_items.*.received_quantity' => 'required|numeric|min:0'
+            ]);
+            
+            DB::beginTransaction();
+            
+            $transfer = Transfer::findOrFail($request->transfer_id);
+            
+            // Check if user is authorized to receive this transfer
+            $user = auth()->user();
+            if ($transfer->to_facility_id !== $user->facility_id && $transfer->to_warehouse_id !== $user->warehouse_id) {
+                return response()->json(['error' => 'You are not authorized to receive this transfer'], 403);
+            }
+            
+            foreach ($request->received_items as $item) {
+                $transferItem = TransferItem::findOrFail($item['transfer_item_id']);
+                $transferItem->received_quantity = $item['received_quantity'];
+                $transferItem->save();
+            }
+            
+            // Update transfer status to received
+            $transfer->status = 'received';
+            $transfer->received_at = now();
+            $transfer->received_by = auth()->id();
+            $transfer->save();
+            
+            DB::commit();
+            return response()->json('Transfer received successfully', 200);
+            
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => $th->getMessage()], 500);
         }
     }
     
