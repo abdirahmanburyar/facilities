@@ -493,7 +493,7 @@
                             <tbody>
                                 <template v-for="(item, index) in form" :key="item.id">
                         <!-- Show allocations if they exist, otherwise show one row with main item data -->
-                        <tr v-for="(allocation, allocIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])" :key="`${item.id}-${allocIndex}`" class="hover:bg-gray-50 transition-colors duration-150">
+                                <tr v-for="(allocation, allocIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])" :key="`${item.id}-${allocIndex}`" class="hover:bg-gray-50 transition-colors duration-150 border-b border-black">
                                         <!-- Item Name -->
                                         <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations
                                                 ?.length || 1
@@ -1524,6 +1524,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useToast } from "vue-toastification";
 import Modal from "@/Components/Modal.vue";
+import debounce from 'lodash.debounce';
 
 const toast = useToast();
 const page = usePage();
@@ -1675,14 +1676,26 @@ const removeItem = (index) => {
 
 // update quantity
 const isUpading = ref([]);
-async function updateQuantity(item, index) {
-    isUpading.value[index] = true;
+
+// Debounced version of the axios call
+const debouncedUpdateQuantityApi = debounce(async (item, index, resolve, reject) => {
     await axios
         .post(route("transfers.update-quantity"), {
             item_id: item.id,
             quantity: item.quantity_to_release,
         })
         .then((response) => {
+            resolve(response);
+        })
+        .catch((error) => {
+            reject(error);
+        });
+}, 500);
+
+async function updateQuantity(item, index) {
+    isUpading.value[index] = true;
+    return new Promise((resolve, reject) => {
+        debouncedUpdateQuantityApi(item, index, (response) => {
             isUpading.value[index] = false;
             Swal.fire({
                 title: "Success!",
@@ -1695,12 +1708,14 @@ async function updateQuantity(item, index) {
                     only: ['transfer'],
                 });
             });
-        })
-        .catch((error) => {
+            resolve(response);
+        }, (error) => {
             isUpading.value[index] = false;
             console.log(error);
             toast.error(error.response?.data || "Failed to update quantity");
+            reject(error);
         });
+    });
 }
 
 // Functions for back order modal
