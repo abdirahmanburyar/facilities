@@ -109,10 +109,11 @@ class InventoryController extends Controller
             }
         }
 
-        return inertia('Inventory/Index', [
+        return Inertia::render('Inventory/Index', [
             'inventories' => InventoryResource::collection($inventories),
             'inventoryStatusCounts' => collect($statusCounts)->map(fn($count, $status) => ['status' => $status, 'count' => $count]),
             'products'   => Product::select('id', 'name')->get(),
+            'warehouses' => Warehouse::pluck('name')->toArray(),
             'filters'    => $request->only(['search', 'product_id', 'category', 'dosage', 'per_page', 'page']),
             'category'   => Category::pluck('name')->toArray(),
             'dosage'     => Dosage::pluck('name')->toArray(),

@@ -189,6 +189,7 @@ class ExpiredController extends Controller
             $inv = FacilityInventoryItem::with('product')
                 ->where('expiry_date', '>', \Carbon\Carbon::now())
                 ->find($inventory);
+
             if(!$inv) {
                 return redirect()->route('expired.index')->with('error', 'Inventory not found');
             }
