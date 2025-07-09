@@ -329,7 +329,7 @@ async function handleProductSelect(index, selected) {
                 }));
                 
                 item.available_quantity = response.data?.reduce(
-                    (sum, item) => sum + item.quantity,
+                    (sum, detail) => sum + detail.quantity,
                     0
                 );
                 item.product = selected;
