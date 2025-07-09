@@ -1524,7 +1524,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useToast } from "vue-toastification";
 import Modal from "@/Components/Modal.vue";
-import debounce from 'lodash.debounce';
+import debounce from 'lodash/debounce';
 
 const toast = useToast();
 const page = usePage();
