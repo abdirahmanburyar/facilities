@@ -1524,7 +1524,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useToast } from "vue-toastification";
 import Modal from "@/Components/Modal.vue";
-import debounce from 'lodash';
+
 
 const toast = useToast();
 const page = usePage();
@@ -1677,25 +1677,25 @@ const removeItem = (index) => {
 // update quantity
 const isUpading = ref([]);
 
-// Debounced version of the axios call
-const debouncedUpdateQuantityApi = debounce(async (item, index, resolve, reject) => {
-    await axios
-        .post(route("transfers.update-quantity"), {
-            item_id: item.id,
-            quantity: item.quantity_to_release,
-        })
-        .then((response) => {
-            resolve(response);
-        })
-        .catch((error) => {
-            reject(error);
-        });
-}, 500);
+// Simple debounce implementation
+let updateQuantityTimeout = null;
 
 async function updateQuantity(item, index) {
     isUpading.value[index] = true;
-    return new Promise((resolve, reject) => {
-        debouncedUpdateQuantityApi(item, index, (response) => {
+    
+    // Clear any existing timeout
+    if (updateQuantityTimeout) {
+        clearTimeout(updateQuantityTimeout);
+    }
+    
+    // Set new timeout
+    updateQuantityTimeout = setTimeout(async () => {
+        try {
+            const response = await axios.post(route("transfers.update-quantity"), {
+                item_id: item.id,
+                quantity: item.quantity_to_release,
+            });
+            
             isUpading.value[index] = false;
             Swal.fire({
                 title: "Success!",
@@ -1708,14 +1708,12 @@ async function updateQuantity(item, index) {
                     only: ['transfer'],
                 });
             });
-            resolve(response);
-        }, (error) => {
+        } catch (error) {
             isUpading.value[index] = false;
             console.log(error);
             toast.error(error.response?.data || "Failed to update quantity");
-            reject(error);
-        });
-    });
+        }
+    }, 500);
 }
 
 // Functions for back order modal
