@@ -9,18 +9,23 @@ class RealtimeService {
 
     initializeEcho() {
         if (typeof window !== 'undefined') {
-            window.Pusher = Pusher;
+            try {
+                window.Pusher = Pusher;
 
-            this.echo = new Echo({
-                broadcaster: 'reverb',
-                key: process.env.MIX_REVERB_APP_KEY,
-                wsHost: process.env.MIX_REVERB_HOST || window.location.hostname,
-                wsPort: process.env.MIX_REVERB_PORT || 8080,
-                wssPort: process.env.MIX_REVERB_PORT || 8080,
-                forceTLS: false,
-                enabledTransports: ['ws', 'wss'],
-                disableStats: true,
-            });
+                this.echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: 'your-reverb-app-key', // Replace with your actual Reverb key
+                    wsHost: window.location.hostname,
+                    wsPort: 8080,
+                    wssPort: 8080,
+                    forceTLS: false,
+                    enabledTransports: ['ws', 'wss'],
+                    disableStats: true,
+                });
+            } catch (error) {
+                console.warn('Failed to initialize Echo:', error);
+                this.echo = null;
+            }
         }
     }
 
