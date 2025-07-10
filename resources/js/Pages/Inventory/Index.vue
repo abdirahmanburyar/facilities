@@ -43,6 +43,7 @@ const isSubmitting = ref(false);
 
 // Modal states
 const showAddModal = ref(false);
+const showLegend = ref(false);
 
 async function loadLocations() {
     if (!warehouse.value) {
@@ -391,6 +392,19 @@ const testFacilityInventoryEvent = async () => {
                         class="hidden"
                         @change="handleFileUpload"
                     />
+                    <button
+                        @click="showAddModal = true"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                    >
+                        Add Inventory
+                    </button>
+                    <button
+                        @click="showLegend = true"
+                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                        Icon Legend
+                    </button>
                 </div>
             </div>
             <!-- Search and Filters -->
@@ -445,234 +459,49 @@ const testFacilityInventoryEvent = async () => {
                 </select>
             </div>
 
-            <!-- Test and Add Buttons -->
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex space-x-2">
-                    <button
-                        @click="testReverbConnection"
-                        class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                    >
-                        Test Reverb Connection
-                    </button>
-                    <button
-                        @click="testFacilityInventoryEvent"
-                        class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
-                    >
-                        Test Inventory Updated Event
-                    </button>
-                </div>
-                <button
-                    @click="showAddModal = true"
-                    class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                    Add Inventory
-                </button>
-            </div>
-            
             <div class="lg:grid lg:grid-cols-8 lg:gap-2">
                 <div class="lg:col-span-7 overflow-auto w-full">
                     <!-- Inventory Table -->
-                    <table
-                        class="w-full border border-gray-300 text-sm text-left"
-                    >
-                        <thead class="bg-gray-100">
-                            <tr class="divide-x divide-gray-300">
-                                <th class="px-3 py-2 text-xs" rowspan="2">Item</th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">Category</th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">UoM</th>
-                                <th class="px-3 py-2 text-xs text-center" colspan="4">
-                                    Item Details
-                                </th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">Total Qty on Hand</th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">Reorder Level</th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">Status</th>
-                                <th class="px-3 py-2 text-xs" rowspan="2">Actions</th>
+                    <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                        <thead>
+                            <tr style="background-color: #F4F7FB;">
+                                <th class="px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Item</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Category</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">UoM</th>
+                                <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="4">Item Details</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Total Qty on Hand</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Reorder Level</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Status</th>
+                                <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Actions</th>
                             </tr>
-                            <tr class="bg-gray-50 divide-x divide-gray-300">
-                                <th class="px-2 py-1 text-xs border border-gray-300 text-left">
-                                    QTY
-                                </th>
-                                <th class="px-2 py-1 text-xs border border-gray-300 text-left">
-                                    Batch Number
-                                </th>
-                                <th class="px-2 py-1 text-xs border border-gray-300 text-left">
-                                    Expiry Date
-                                </th>
-                                <th class="px-2 py-1 text-xs border border-gray-300 text-left">
-                                    Status
-                                </th>
+                            <tr style="background-color: #F4F7FB;">
+                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">QTY</th>
+                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Batch Number</th>
+                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Expiry Date</th>
+                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Status</th>
                             </tr>
                         </thead>
-
-                        <tbody class="divide-y divide-gray-200">
+                        <tbody>
                             <template v-for="inventory in props.inventories.data" :key="inventory.id">
-                                <tr
-                                    v-for="(item, itemIndex) in inventory.items"
-                                    :key="`${inventory.id}-${item.id}`"
-                                    class="divide-x divide-gray-300 hover:bg-gray-50 transition-colors duration-150"
-                                >
-                                    <!-- Show inventory details only on first row for this inventory -->
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs font-medium text-gray-800 align-top"
-                                    >
-                                        {{ inventory.product.name }}
-                                    </td>
-
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs text-gray-700 align-top"
-                                    >
-                                        {{ inventory.product.category.name }}
-                                    </td>
-
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs text-gray-700 align-top"
-                                    >
-                                        {{ inventory.items[0].uom }}
-                                    </td>
-
-                                    <td
-                                        class="px-2 py-1 text-xs border border-gray-300 text-left"
-                                        :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
-                                    >
-                                        {{ item.quantity }}
-                                    </td>
-
-                                    <td
-                                        class="px-2 py-1 text-xs border border-gray-300 text-left"
-                                        :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
-                                    >
-                                        {{ item.batch_number }}
-                                    </td>
-
-                                    <td
-                                        class="px-2 py-1 text-xs border border-gray-300 text-left"
-                                        :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
-                                    >
-                                        {{ formatDate(item.expiry_date) }}
-                                    </td>
-
-
-                                    <!-- Status Icons -->
-                                    <td class="px-2 py-1 text-xs border border-gray-300 text-left">
-                                        <div class="flex items-center">
+                                <tr v-for="(item, itemIndex) in inventory.items" :key="`${inventory.id}-${item.id}`" class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs font-medium text-gray-800 align-top">{{ inventory.product.name }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.product.category.name }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.items[0].uom }}</td>
+                                    <td class="px-2 py-1 text-xs border border-[#B7C6E6] text-center" :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.quantity }}</td>
+                                    <td class="px-2 py-1 text-xs border border-[#B7C6E6] text-center" :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.batch_number }}</td>
+                                    <td class="px-2 py-1 text-xs border border-[#B7C6E6] text-center" :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ formatDate(item.expiry_date) }}</td>
+                                    <td class="px-2 py-1 text-xs border border-[#B7C6E6] text-center">
+                                        <div class="flex items-center justify-center">
                                             <div v-if="isExpiringSoon(item)" class="mr-1">
-                                                <img
-                                                    src="/assets/images/soon_expire.png"
-                                                    title="Expire soon"
-                                                    class="w-5 h-5"
-                                                    alt="Expire soon"
-                                                />
+                                                <img src="/assets/images/soon_expire.png" title="Expire soon" class="w-5 h-5" alt="Expire soon" />
                                             </div>
-                                            <div v-if="isExpired(item)">
-                                                <img
-                                                    src="/assets/images/expired_stock.png"
-                                                    title="Expired"
-                                                    class="w-5 h-5"
-                                                    alt="Expired"
-                                                />
-                                            </div>
+                                            <div v-if="isExpired(item)"><img src="/assets/images/expired_stock.png" title="Expired" class="w-5 h-5" alt="Expired" /></div>
                                         </div>
                                     </td>
-
-                                    <!-- Total Qty on Hand (only on first row) -->
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs text-gray-800 align-top"
-                                    >
-                                        {{ inventory.items.reduce((sum, item) => sum + item.quantity, 0) }}
-                                    </td>
-
-                                    <!-- Reorder Level (only on first row) -->
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs text-gray-800 align-top"
-                                    >
-                                        {{ inventory.reorder_level }}
-                                    </td>
-
-                                    <!-- Status (only on first row) -->
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-2 text-xs align-top"
-                                    >
-                                        <div class="flex items-center space-x-2">
-                                            <div v-if="isLowStock(inventory)" class="flex items-center">
-                                                <img
-                                                    src="/assets/images/low_stock.png"
-                                                    title="Low Stock"
-                                                    class="w-6 h-6"
-                                                    alt="Low Stock"
-                                                />
-                                            </div>
-
-                                            <div v-if="isOutOfStock(inventory)" class="flex items-center">
-                                                <img
-                                                    src="/assets/images/out_stock.png"
-                                                    title="Out of Stock"
-                                                    class="w-6 h-6"
-                                                    alt="Out of Stock"
-                                                />
-                                            </div>
-                                            <div
-                                                v-if="!isLowStock(inventory) && !isOutOfStock(inventory)"
-                                                class="flex items-center"
-                                            >
-                                                <img
-                                                    src="/assets/images/in_stock.png"
-                                                    title="In Stock"
-                                                    class="w-6 h-6"
-                                                    alt="In Stock"
-                                                />
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    <!-- Actions (only on first row) -->
-                                    <td
-                                        v-if="itemIndex === 0"
-                                        :rowspan="inventory.items.length"
-                                        class="px-3 py-4 whitespace-nowrap text-xs font-medium align-top"
-                                    >
-                                        <div class="flex items-center space-x-3">
-                                            <div v-if="isLowStock(inventory)">
-                                                <img
-                                                    src="/assets/images/reorder_status.png"
-                                                    alt="Reorder Status"
-                                                    class="w-6 h-6"
-                                                    title="Reorder Status"
-                                                />
-                                            </div>
-                                            <Link
-                                                :href="route('orders.create')"
-                                                v-if="inventory.quantity > inventory.reorder_level"
-                                                class="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-5 w-5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                    />
-                                                </svg>
-                                            </Link>
-                                        </div>
-                                    </td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.items.reduce((sum, item) => sum + item.quantity, 0) }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.reorder_level }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top"></td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top rounded-tr-lg"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -696,7 +525,7 @@ const testFacilityInventoryEvent = async () => {
                             >
                                 <img
                                     src="/assets/images/in_stock.png"
-                                    class="w-[40px] h-[40px]"
+                                    class="w-[56px] h-[56px]"
                                     alt="In Stock"
                                 />
                                 <div class="ml-4 flex flex-col">
@@ -714,7 +543,7 @@ const testFacilityInventoryEvent = async () => {
                             >
                                 <img
                                     src="/assets/images/low_stock.png"
-                                    class="w-[40px] h-[40px]"
+                                    class="w-[56px] h-[56px]"
                                     alt="Low Stock"
                                 />
                                 <div class="ml-4 flex flex-col">
@@ -732,7 +561,7 @@ const testFacilityInventoryEvent = async () => {
                             >
                                 <img
                                     src="/assets/images/out_stock.png"
-                                    class="w-[40px] h-[40px]"
+                                    class="w-[56px] h-[56px]"
                                     alt="Out of Stock"
                                 />
                                 <div class="ml-4 flex flex-col">
@@ -750,7 +579,7 @@ const testFacilityInventoryEvent = async () => {
                             >
                                 <img
                                     src="/assets/images/expired_stock.png"
-                                    class="w-[40px] h-[40px]"
+                                    class="w-[56px] h-[56px]"
                                     alt="Expired"
                                 />
                                 <div class="ml-4 flex flex-col">
@@ -864,5 +693,76 @@ const testFacilityInventoryEvent = async () => {
                 </div>
             </div>
         </Modal>
+
+        <!-- Slideover for Icon Legend -->
+        <transition name="slide">
+          <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
+            <!-- Overlay -->
+            <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
+            <!-- Slideover Panel -->
+            <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto">
+              <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
+              <ul class="space-y-5">
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/in_stock.png" class="w-10 h-10" alt="In Stock" />
+                  <div>
+                    <div class="font-semibold text-green-700">In Stock</div>
+                    <div class="text-xs text-gray-500">Indicates items that are sufficiently stocked.</div>
+                  </div>
+                </li>
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/low_stock.png" class="w-10 h-10" alt="Low Stock" />
+                  <div>
+                    <div class="font-semibold text-orange-600">Low Stock</div>
+                    <div class="text-xs text-gray-500">Indicates items that are below the reorder level.</div>
+                  </div>
+                </li>
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/out_stock.png" class="w-10 h-10" alt="Out of Stock" />
+                  <div>
+                    <div class="font-semibold text-red-600">Out of Stock</div>
+                    <div class="text-xs text-gray-500">Indicates items that are completely out of stock.</div>
+                  </div>
+                </li>
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/expired_stock.png" class="w-10 h-10" alt="Expired" />
+                  <div>
+                    <div class="font-semibold text-gray-600">Expired</div>
+                    <div class="text-xs text-gray-500">Indicates items that have expired.</div>
+                  </div>
+                </li>
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/soon_expire.png" class="w-10 h-10" alt="Expiring Soon" />
+                  <div>
+                    <div class="font-semibold text-yellow-600">Expiring Soon</div>
+                    <div class="text-xs text-gray-500">Indicates items that will expire soon (within 160 days).</div>
+                  </div>
+                </li>
+                <li class="flex items-center gap-4">
+                  <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Reorder Status" />
+                  <div>
+                    <div class="font-semibold text-blue-600">Reorder Status</div>
+                    <div class="text-xs text-gray-500">Indicates that a reorder is recommended for this item.</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </transition>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(100%);
+}
+.slide-enter-to, .slide-leave-from {
+  transform: translateX(0);
+}
+</style>

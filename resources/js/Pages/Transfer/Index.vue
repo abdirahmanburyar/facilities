@@ -41,7 +41,15 @@
         <!-- Header Section -->
         <div class="flex flex-col space-y-6">
             <!-- Buttons First -->
-            <div class="flex items-center justify-end">
+            <div class="flex items-center justify-end gap-3">
+                <!-- Icon Legend Button -->
+                <button @click="showLegend = true"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Icon Legend
+                </button>
                 <!-- New Transfer -->
                 <button @click="router.visit(route('transfers.create'))"
                     class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -322,6 +330,72 @@
             </div>
         </div>
     </AuthenticatedLayout>
+
+    <!-- Slideover for Icon Legend -->
+    <transition name="slide">
+        <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
+            <!-- Overlay -->
+            <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
+            <!-- Slideover Panel -->
+            <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto">
+                <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
+                <ul class="space-y-5">
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/pending.png" class="w-10 h-10" alt="Pending" />
+                        <div>
+                            <div class="font-semibold text-yellow-600">Pending</div>
+                            <div class="text-xs text-gray-500">Transfer is awaiting review or action.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/review.png" class="w-10 h-10" alt="Reviewed" />
+                        <div>
+                            <div class="font-semibold text-amber-600">Reviewed</div>
+                            <div class="text-xs text-gray-500">Transfer has been reviewed by an authorized user.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/approved.png" class="w-10 h-10" alt="Approved" />
+                        <div>
+                            <div class="font-semibold text-green-600">Approved</div>
+                            <div class="text-xs text-gray-500">Transfer has been approved and is ready for processing.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/rejected.png" class="w-10 h-10" alt="Rejected" />
+                        <div>
+                            <div class="font-semibold text-red-600">Rejected</div>
+                            <div class="text-xs text-gray-500">Transfer has been rejected and will not be processed.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/inprocess.png" class="w-10 h-10" alt="In Process" />
+                        <div>
+                            <div class="font-semibold text-blue-600">In Process</div>
+                            <div class="text-xs text-gray-500">Transfer is currently being processed.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/dispatch.png" class="w-10 h-10" alt="Dispatched" />
+                        <div>
+                            <div class="font-semibold text-purple-600">Dispatched</div>
+                            <div class="text-xs text-gray-500">Transfer has been dispatched for delivery.</div>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <img src="/assets/images/received.png" class="w-10 h-10" alt="Received" />
+                        <div>
+                            <div class="font-semibold text-green-700">Received</div>
+                            <div class="text-xs text-gray-500">Transfer has been received and confirmed by the destination.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </transition>
 </template>
 
 <script setup>
@@ -363,6 +437,9 @@ const statusTabs = ref([
 ]);
 
 const currentTab = ref('all');
+
+// Icon Legend state
+const showLegend = ref(false);
 
 // Filter states
 const search = ref(props.filters.search || '');
@@ -436,3 +513,15 @@ const getResults = () => {
     });
 };
 </script>
+
+<style scoped>
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(100%);
+}
+.slide-enter-to, .slide-leave-from {
+  transform: translateX(0);
+}
+</style>

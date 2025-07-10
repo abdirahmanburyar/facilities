@@ -142,6 +142,8 @@ const getPercentage = (key) => {
     if (props.totalOrders === 0) return 0;
     return Math.round((props.stats[key] / props.totalOrders) * 100);
 };
+
+const showLegend = ref(false);
 </script>
 
 <template>
@@ -155,12 +157,21 @@ const getPercentage = (key) => {
             <!-- Filters Section -->
             <div class="flex items-center justify-between mb-[30px]">
                 <h1 class="text-xl font-bold text-gray-900">Facility Orders</h1>
-                <Link
-                    :href="route('orders.create')"
-                    class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
-                >
-                    Create New Order
-                </Link>
+                <div class="flex gap-2">
+                    <Link
+                        :href="route('orders.create')"
+                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
+                    >
+                        Create New Order
+                    </Link>
+                    <button
+                        @click="showLegend = true"
+                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                        Icon Legend
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white mb-6">
@@ -819,4 +830,89 @@ const getPercentage = (key) => {
             </div>
         </div>
     </AuthenticatedLayout>
+
+    <!-- Slideover for Icon Legend -->
+    <transition name="slide">
+      <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
+        <!-- Overlay -->
+        <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
+        <!-- Slideover Panel -->
+        <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto">
+          <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
+          <ul class="space-y-5">
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/pending.png" class="w-10 h-10" alt="Pending" />
+              <div>
+                <div class="font-semibold text-yellow-600">Pending</div>
+                <div class="text-xs text-gray-500">Order is awaiting review or action.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/review.png" class="w-10 h-10" alt="Reviewed" />
+              <div>
+                <div class="font-semibold text-amber-600">Reviewed</div>
+                <div class="text-xs text-gray-500">Order has been reviewed by an authorized user.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/approved.png" class="w-10 h-10" alt="Approved" />
+              <div>
+                <div class="font-semibold text-green-600">Approved</div>
+                <div class="text-xs text-gray-500">Order has been approved and is ready for processing.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/rejected.png" class="w-10 h-10" alt="Rejected" />
+              <div>
+                <div class="font-semibold text-red-600">Rejected</div>
+                <div class="text-xs text-gray-500">Order has been rejected and will not be processed.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/inprocess.png" class="w-10 h-10" alt="In Process" />
+              <div>
+                <div class="font-semibold text-blue-600">In Process</div>
+                <div class="text-xs text-gray-500">Order is currently being processed.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/dispatch.png" class="w-10 h-10" alt="Dispatched" />
+              <div>
+                <div class="font-semibold text-purple-600">Dispatched</div>
+                <div class="text-xs text-gray-500">Order has been dispatched for delivery.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/delivery.png" class="w-10 h-10" alt="Delivered" />
+              <div>
+                <div class="font-semibold text-indigo-600">Delivered</div>
+                <div class="text-xs text-gray-500">Order has been delivered to the destination.</div>
+              </div>
+            </li>
+            <li class="flex items-center gap-4">
+              <img src="/assets/images/received.png" class="w-10 h-10" alt="Received" />
+              <div>
+                <div class="font-semibold text-green-700">Received</div>
+                <div class="text-xs text-gray-500">Order has been received and confirmed by the facility.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </transition>
 </template>
+
+<style scoped>
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(100%);
+}
+.slide-enter-to, .slide-leave-from {
+  transform: translateX(0);
+}
+</style>
