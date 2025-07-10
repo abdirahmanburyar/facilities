@@ -655,7 +655,7 @@ class OrderController extends Controller
     private function appendQuarterToOrderType($orderType)
     {
         $quarter = $this->getCurrentQuarter();
-        return $orderType . ' Q' . $quarter;
+        return $orderType . ' Q-' . $quarter;
     }
 
     private function generateOrderNumber() {
