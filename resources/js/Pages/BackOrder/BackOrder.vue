@@ -705,12 +705,15 @@ const submitDisposal = async () => {
     isSubmitting.value = true;
     const formData = new FormData();
     formData.append('id', selectedItem.value.id);
-    formData.append('note', disposeForm.value.note);
-    formData.append('type', selectedItem.value.status);
-    formData.append('quantity', selectedItem.value.quantity);
+    formData.append('product_id', selectedItem.value.product.id);
     formData.append('source_id', selectedItem.value.source_id);
     formData.append('source_type', selectedItem.value.source_type);
-
+    formData.append('quantity', disposeForm.value.quantity);
+    formData.append('original_quantity', selectedItem.value.quantity);
+    formData.append('status', selectedItem.value.status);
+    formData.append('type', selectedItem.value.status);
+    formData.append('note', disposeForm.value.note);
+    
     // Get back_order_id from backOrderInfo or from the item itself
     const backOrderId = backOrderInfo.value?.id || selectedItem.value.back_order_id;
     if (backOrderId) {
