@@ -168,7 +168,7 @@ class OrderController extends Controller
                     'order_number' => $orderNumber,
                     'facility_id' => auth()->user()->facility_id,
                     'user_id' => auth()->user()->id,
-                    'order_type' => $request->order_type,
+                    'order_type' => $this->appendQuarterToOrderType($request->order_type),
                     'order_date' => $request->order_date,
                     'expected_date' => $request->expected_date,
                     'note' => $request->notes,
@@ -634,6 +634,29 @@ class OrderController extends Controller
         3 => '01-07',
         4 => '01-10'
     ];
+
+    /**
+     * Determine the current quarter based on the current date
+     * 
+     * @return int
+     */
+    private function getCurrentQuarter()
+    {
+        $now = Carbon::now();
+        return $now->quarter;
+    }
+
+    /**
+     * Append quarter information to order type
+     * 
+     * @param string $orderType
+     * @return string
+     */
+    private function appendQuarterToOrderType($orderType)
+    {
+        $quarter = $this->getCurrentQuarter();
+        return $orderType . ' Q' . $quarter;
+    }
 
     private function generateOrderNumber() {
         $now = Carbon::now();
