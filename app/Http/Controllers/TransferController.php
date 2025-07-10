@@ -162,7 +162,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // pending -> rejected (branch) (SENDER ACTION)
@@ -174,7 +174,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // reviewed -> approved (SENDER ACTION)
@@ -186,7 +186,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // reviewed -> rejected (branch) (SENDER ACTION)
@@ -198,7 +198,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // approved -> in_process (SENDER ACTION)
@@ -210,7 +210,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
 
             // in_process -> dispatched (SENDER ACTION)
@@ -222,7 +222,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // dispatched -> delivered (RECEIVER ACTION)
@@ -234,7 +234,7 @@ class TransferController extends Controller
                 ]);
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             // delivered -> received (RECEIVER ACTION)
@@ -311,7 +311,7 @@ class TransferController extends Controller
                 $transfer->save();
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
             }
             
             DB::commit();
@@ -1809,7 +1809,7 @@ class TransferController extends Controller
                 $transfer->save();
                 
                 // Dispatch event for status change
-                event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
+                // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, auth()->id()));
                     break;
 
                 default:
@@ -1822,7 +1822,7 @@ class TransferController extends Controller
             $transfer->save();
 
             // Dispatch event for real-time updates
-            event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, $user->id));
+            // event(new TransferStatusChanged($transfer, $oldStatus, $newStatus, $user->id));
 
             DB::commit();
             return response()->json('Transfer status updated successfully', 200);
