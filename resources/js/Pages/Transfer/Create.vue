@@ -2,7 +2,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { ref, computed, watch } from "vue";
 import { router } from "@inertiajs/vue3";
-import InputLabel from "@/Components/InputLabel.vue";
 import InputError from "@/Components/InputError.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
@@ -32,6 +31,10 @@ const props = defineProps({
     },
     facilityID: {
         type: Number,
+        required: true,
+    },
+    reasons: {
+        type: Array,
         required: true,
     },
 });
@@ -689,16 +692,14 @@ function isExpiringSoon(expiryDate) {
 
                                         <!-- Reasons for Transfers - per detail -->
                                         <td class="px-2 py-1 text-xs border border-black text-center">
-                                            <select
-                                                v-if="item.product && detail.quantity"
-                                                v-model="detail.transfer_reason"
-                                                class="w-full text-xs border rounded px-2 py-1"
-                                            >
-                                                <option value="">Select reason...</option>
-                                                <option value="Soon to expire">Soon to expire</option>
-                                                <option value="Replenishment">Replenishment</option>
-                                                <option value="Other">Other</option>
-                                            </select>
+                                        <Multiselect
+                                            v-if="item.product && detail.quantity"
+                                            v-model="detail.transfer_reason"
+                                            :options="props.reasons"
+                                            :searchable="true"
+                                            :close-on-select="true"
+                                            :show-labels="false"
+                                        />
                                         </td>
 
                                         <!-- Quantity to be transferred - per detail -->

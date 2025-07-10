@@ -14,6 +14,7 @@ use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\MonthlyInventoryReportController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReasonController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -306,6 +307,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/orders/summary', 'ordersSummary')->name('orders.summary');
             Route::get('/orders/export', 'exportOrders')->name('orders.export');
         });
+
+    // Reason Management Routes
+    Route::controller(ReasonController::class)->prefix('reasons')->group(function () {
+        Route::get('/', 'index')->name('reasons.index');
+        Route::post('/store', 'store')->name('reasons.store');
+        Route::delete('/destroy', 'destroy')->name('reasons.destroy');
+        Route::get('/get-reasons', 'getReasons')->name('reasons.get-reasons');
+    });
 
 });
 

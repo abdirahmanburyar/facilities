@@ -9,7 +9,7 @@ use App\Models\Warehouse;
 use App\Models\Facility;
 use App\Models\FacilityInventory;
 use App\Models\FacilityInventoryItem;
-
+use App\Models\Reason;
 use App\Models\Transfer;
 use App\Models\TransferItem;
 use App\Models\Product;
@@ -519,7 +519,7 @@ class TransferController extends Controller
                 'items.*.details' => 'required|array',
                 'items.*.details.*.quantity_to_transfer' => 'required|integer|min:1',
                 'items.*.details.*.id' => 'required|integer',
-                'items.*.details.*.transfer_reason' => 'nullable|string',
+                'items.*.details.*.transfer_reason' => 'required|string',
                 'notes' => 'nullable|string',
                 'transfer_type' => 'nullable|string'
             ]);
@@ -599,7 +599,7 @@ class TransferController extends Controller
                         'allocation_type' => 'transfer',
                         'unit_cost' => $inventoryItem->unit_cost ?? 0,
                         'total_cost' => $quantityToTransfer * ($inventoryItem->unit_cost ?? 0),
-                        'transfer_reason' => $detail['transfer_reason'] ?? null,
+                        'transfer_reason' => $detail['transfer_reason'],
                     ]);
 
                     // Deduct from source inventory
@@ -717,7 +717,8 @@ class TransferController extends Controller
             'facilities' => $facilities,
             'transferID' => $transferID,
             'inventories' => $inventories,
-            'facilityID' => $facilityID
+            'facilityID' => $facilityID,
+            'reasons' => Reason::pluck('name')->toArray()
         ]);
     }
     
