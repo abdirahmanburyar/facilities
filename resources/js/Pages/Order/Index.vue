@@ -293,43 +293,47 @@ const getPercentage = (key) => {
                     <div>
                         <div class="overflow-auto">
                             <table class="w-full table-sm">
-                                <thead
-                                    style="background-color: #eef1f8"
-                                    class="rounded-t-xl"
-                                >
+                                <thead style="background-color: #F4F7FB;">
                                     <tr>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tl-lg"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Number
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Facility
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Type
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Date
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Expected Date
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Handled By
                                         </th>
                                         <th
-                                            class="px-2 py-2 text-left text-xs font-medium text-black border border-black capitalize tracking-wider"
+                                            class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tr-lg"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Status
                                         </th>
@@ -339,7 +343,8 @@ const getPercentage = (key) => {
                                     <tr v-if="orders.data?.length === 0">
                                         <td
                                             colspan="7"
-                                            class="px-2 py-2 text-center text-sm text-black border border-black"
+                                            class="px-2 py-2 text-center text-sm text-gray-600 border-b"
+                                            style="border-bottom: 1px solid #B7C6E6;"
                                         >
                                             No orders found
                                         </td>
@@ -347,180 +352,51 @@ const getPercentage = (key) => {
                                     <tr
                                         v-for="order in orders.data"
                                         :key="order.id"
-                                        class=""
+                                        class="border-b"
                                         :class="{
                                             'hover:bg-gray-50': true,
                                             'text-red-500':
                                                 order.status === 'rejected',
                                         }"
+                                        style="border-bottom: 1px solid #B7C6E6;"
                                     >
-                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
-                                            <div class="text-xs text-gray-900">
-                                                <Link
-                                                    :href="
-                                                        route(
-                                                            'orders.show',
-                                                            order.id
-                                                        )
-                                                    "
-                                                    >{{ order.order_number }}</Link
-                                                >
-                                            </div>
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                            <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                         </td>
-                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
-                                            <div class="text-xs text-gray-900">
-                                                {{ order.facility?.name }}
-                                            </div>
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                            {{ order.facility?.name }}
                                         </td>
-                                        <td
-                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
-                                        >
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ order.order_type }}
                                         </td>
-
-                                        <td
-                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
-                                        >
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ formatDate(order.order_date) }}
                                         </td>
-                                        <td
-                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
-                                        >
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ formatDate(order.expected_date) }}
                                         </td>
-                                        <td
-                                            class="px-2 py-2 border border-black whitespace-nowrap text-xs text-black"
-                                        >
-                                            {{
-                                                order.facility?.handledby?.name ||
-                                                "Not assigned"
-                                            }}
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                            {{ order.facility?.handledby?.name || "Not assigned" }}
                                         </td>
-                                        <td class="px-2 py-2 border border-black whitespace-nowrap">
+                                        <td class="px-2 py-2 whitespace-nowrap border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             <div class="flex items-center gap-2">
                                                 <!-- Status Progress Icons - Only show actions taken -->
-                                                <div
-                                                    class="flex items-center gap-1"
-                                                >
+                                                <div class="flex items-center gap-1">
                                                     <!-- Always show pending as it's the initial state -->
-                                                    <img
-                                                        src="/assets/images/pending.png"
-                                                        class="w-6 h-6"
-                                                        alt="pending"
-                                                        title="Pending"
-                                                    />
-
+                                                    <img src="/assets/images/pending.png" class="w-6 h-6" alt="pending" title="Pending" />
                                                     <!-- Only show reviewed if status is reviewed or further -->
-                                                    <img
-                                                        v-if="
-                                                            [
-                                                                'reviewed',
-                                                                'approved',
-                                                                'in_process',
-                                                                'dispatched',
-                                                                'delivered',
-                                                                'received',
-                                                            ].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/review.png"
-                                                        class="w-6 h-6"
-                                                        alt="Reviewed"
-                                                        title="Reviewed"
-                                                    />
+                                                    <img v-if="['reviewed','approved','in_process','dispatched','delivered','received'].includes(order.status)" src="/assets/images/review.png" class="w-6 h-6" alt="Reviewed" title="Reviewed" />
                                                     <!-- Only show approved if status is approved or further -->
-                                                    <img
-                                                        v-if="
-                                                            [
-                                                                'approved',
-                                                                'in_process',
-                                                                'dispatched',
-                                                                'delivered',
-                                                                'received',
-                                                            ].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/approved.png"
-                                                        class="w-6 h-6"
-                                                        alt="Approved"
-                                                        title="Approved"
-                                                    />
+                                                    <img v-if="['approved','in_process','dispatched','delivered','received'].includes(order.status)" src="/assets/images/approved.png" class="w-6 h-6" alt="Approved" title="Approved" />
                                                     <!-- Only show rejected if status is rejected -->
-                                                    <img
-                                                        v-if="
-                                                            order.status ===
-                                                            'rejected'
-                                                        "
-                                                        src="/assets/images/rejected.png"
-                                                        class="w-6 h-6"
-                                                        alt="Rejected"
-                                                        title="Rejected"
-                                                    />
-
+                                                    <img v-if="order.status === 'rejected'" src="/assets/images/rejected.png" class="w-6 h-6" alt="Rejected" title="Rejected" />
                                                     <!-- Only show in_process if status is in_process or further -->
-                                                    <img
-                                                        v-if="
-                                                            [
-                                                                'in_process',
-                                                                'dispatched',
-                                                                'delivered',
-                                                                'received',
-                                                            ].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/inprocess.png"
-                                                        class="w-6 h-6"
-                                                        alt="In Process"
-                                                        title="In Process"
-                                                    />
-
+                                                    <img v-if="['in_process','dispatched','delivered','received'].includes(order.status)" src="/assets/images/inprocess.png" class="w-6 h-6" alt="In Process" title="In Process" />
                                                     <!-- Only show dispatched if status is dispatched or further -->
-                                                    <img
-                                                        v-if="
-                                                            [
-                                                                'dispatched',
-                                                                'delivered',
-                                                                'received',
-                                                            ].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/dispatch.png"
-                                                        class="w-6 h-6"
-                                                        alt="Dispatched"
-                                                        title="Dispatched"
-                                                    />
-
-                                                    <img
-                                                        v-if="
-                                                            [
-                                                                'delivered',
-                                                                'received',
-                                                            ].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/delivery.png"
-                                                        class="w-6 h-6"
-                                                        alt="Delivered"
-                                                        title="Delivered"
-                                                    />
-
+                                                    <img v-if="['dispatched','delivered','received'].includes(order.status)" src="/assets/images/dispatch.png" class="w-6 h-6" alt="Dispatched" title="Dispatched" />
+                                                    <img v-if="['delivered','received'].includes(order.status)" src="/assets/images/delivery.png" class="w-6 h-6" alt="Delivered" title="Delivered" />
                                                     <!-- Only show received if status is received -->
-                                                    <img
-                                                        v-if="
-                                                            ['received'].includes(
-                                                                order.status
-                                                            )
-                                                        "
-                                                        src="/assets/images/received.png"
-                                                        class="w-6 h-6"
-                                                        alt="Received"
-                                                        title="Received"
-                                                    />
+                                                    <img v-if="['received'].includes(order.status)" src="/assets/images/received.png" class="w-6 h-6" alt="Received" title="Received" />
                                                 </div>
                                             </div>
                                         </td>

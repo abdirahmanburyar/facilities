@@ -132,42 +132,48 @@
         </div>
 
         <!-- Main Content -->
-        <div class="grid grid-cols-12 mb-[40px]">
+        <div class="grid grid-cols-12 mb-[40px] mt-2">
             <!-- Table Section (9 cols) -->
             <div class="md:col-span-9 sm:col-span-12">
                 <div class="w-full overflow-x-auto">
-                    <table class="w-full bg-white rounded-lg shadow-sm border border-gray-200">
+                    <table class="w-full rounded-t-3xl overflow-hidden table-sm">
                         <thead>
-                            <tr class="bg-gray-50">
+                            <tr style="background-color: #F4F7FB;">
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-20">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b rounded-tl-3xl"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     ID
                                 </th>
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-20">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     Date
                                 </th>
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-28">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     To
                                 </th>
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-28">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     Type
                                 </th>
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-16">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     Items
                                 </th>
                                 <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-semibold text-gray-700 capitalize tracking-wider border border-gray-300 w-32">
+                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b rounded-tr-3xl"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
                                     Status
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             <tr v-if="props.transfers.data.length === 0">
-                                <td colspan="6" class="text-center py-8">
+                                <td colspan="6" class="text-center py-8 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -187,112 +193,26 @@
                             </tr>
                             <tr v-for="transfer in props.transfers.data" :key="transfer.id"
                                 class="hover:bg-gray-50 transition-colors duration-150">
-                                <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border border-gray-300">
+                                <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     <Link :href="route('transfers.show', transfer.id)"
                                         class="text-blue-600 hover:text-blue-800 hover:underline">
                                         {{ transfer.transferID }}
                                     </Link>
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
+                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ moment(transfer.transfer_date).format('DD/MM/YYYY') }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
+                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ transfer.to_warehouse?.name || transfer.to_facility?.name }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
+                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ transfer.transfer_type }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 text-center border border-gray-300">
+                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ transfer.items_count }}
                                 </td>
-                                <td class="px-3 py-3 text-sm text-gray-700 border border-gray-300">
-                                    <div class="flex items-center gap-2">
-                                        <!-- Status Progress Icons - Only show actions taken -->
-                                        <div class="flex items-center gap-2">
-                                            <!-- Show status progression up to current status - icons with labels -->
-                                            <!-- Always show pending as it's the initial state -->
-                                            <div class="flex items-center gap-1">
-                                                <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending"
-                                                    title="Pending" />
-                                            </div>
-
-                                            <!-- Show approved if status is approved or further -->
-                                            <template v-if="
-                                                [
-                                                    'approved',
-                                                    'in_process',
-                                                    'dispatched',
-                                                    'transferred',
-                                                    'delivered',
-                                                    'received',
-                                                ].includes(
-                                                    transfer.status?.toLowerCase()
-                                                )
-                                            ">
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/approved.png" class="w-8 h-8"
-                                                        alt="Approved" title="Approved" />
-                                                </div>
-                                            </template>
-
-                                            <!-- Show processed if status is in_process or further -->
-                                            <template v-if="
-                                                [
-                                                    'in_process',
-                                                    'dispatched',
-                                                    'transferred',
-                                                    'delivered',
-                                                    'received',
-                                                ].includes(
-                                                    transfer.status?.toLowerCase()
-                                                )
-                                            ">
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/inprocess.png" class="w-8 h-8"
-                                                        alt="Processed" title="Processed" />
-                                                </div>
-                                            </template>
-
-                                            <!-- Show dispatched if status is dispatched or further -->
-                                            <template v-if="
-                                                [
-                                                    'dispatched',
-                                                    'transferred',
-                                                    'delivered',
-                                                    'received',
-                                                ].includes(
-                                                    transfer.status?.toLowerCase()
-                                                )
-                                            ">
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/dispatch.png" class="w-8 h-8"
-                                                        alt="Dispatched" title="Dispatched" />
-                                                </div>
-                                            </template>
-                                            <!-- Show received if status is received -->
-                                            <template v-if="
-                                                ['received'].includes(
-                                                    transfer.status?.toLowerCase()
-                                                )
-                                            ">
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/received.png" class="w-8 h-8"
-                                                        alt="Received" title="Received" />
-                                                </div>
-                                            </template>
-
-                                            <!-- Show rejected if status is rejected (special case) -->
-                                            <template v-if="
-                                                transfer.status?.toLowerCase() ===
-                                                'rejected'
-                                            ">
-                                                <div class="flex items-center gap-1">
-                                                    <img src="/assets/images/rejected.png" class="w-8 h-8"
-                                                        alt="Rejected" title="Rejected" />
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
+                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b rounded-tr-3xl" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{ transfer.status }}
                                 </td>
                             </tr>
                         </tbody>
