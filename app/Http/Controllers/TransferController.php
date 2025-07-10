@@ -1241,7 +1241,7 @@ class TransferController extends Controller
                 'total_quantity' => $totalQuantity,
             ]);
             
-            event(new \App\Events\InventoryUpdated($transfer->from_facility_id));
+            // event(new \App\Events\InventoryUpdated($transfer->from_facility_id));
 
             DB::commit();
             return response()->json('Back orders saved successfully', 200);
