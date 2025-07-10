@@ -15,6 +15,7 @@ class InventoryAllocation extends Model
         'batch_number',
         'expiry_date',
         'allocated_quantity',
+        'received_quantity',
         'allocation_type',
         'unit_cost',
         'total_cost',
@@ -47,6 +48,6 @@ class InventoryAllocation extends Model
     }
 
     public function backorders(){
-        return $this->hasMany(FacilityBackorder::class, 'inventory_allocation_id');
+        return $this->hasManyThrough(BackOrder::class, PackingListDifference::class, 'inventory_allocation_id', 'id', 'id', 'back_order_id');
     }
 }

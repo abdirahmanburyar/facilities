@@ -47,7 +47,6 @@
                                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 text-sm bg-gray-50 hover:bg-white" />
                         </div>
                     </div>
-                    
                     <!-- Status Filter -->
                     <div>
                         <label for="status" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
@@ -63,7 +62,7 @@
                             :allow-empty="true"
                             :multiple="false"
                             placeholder="Filter by Status"
-                            :show-labels="false"
+                            :show-labels="false"                            
                             class="text-sm"
                         />
                     </div>
@@ -84,80 +83,80 @@
             </div>
 
             <!-- Main Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
-                        <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">SN</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Back Order ID</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Date</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Order</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Notes & Documents</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-100">
-                            <tr v-for="(order, idx) in props.history.data" :key="order.id" class="hover:bg-indigo-50/30 transition-colors duration-150">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium border border-gray-200">{{ idx + 1 }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
-                                    <button class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150" @click="openHistoryModal(order)">
-                                        {{ order.back_order_number }}
-                                    </button>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">{{ formatDate(order.back_order_date) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">{{ order.order?.order_number || '-' }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600 border border-gray-200">
-                                    <div v-if="order.attach_documents && order.attach_documents.length">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                    <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">SN</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Back Order ID</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Date</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Source Type</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Notes & Documents</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        <tr v-for="(order, idx) in props.history.data" :key="order.id" class="hover:bg-indigo-50/30 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium border border-gray-200">{{ idx + 1 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
+                                <button class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-150" @click="openHistoryModal(order)">
+                                    {{ order.back_order_number }}
+                                </button>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">{{ formatDate(order.back_order_date) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border border-gray-200">
+                                <span class="capitalize">{{ order.source_type }}</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600 border border-gray-200">
+                                <div v-if="order.attach_documents && order.attach_documents.length">
+                                    <div class="relative">
+                                        <button @click.stop="toggleDropdown(order.id)" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                            {{ order.attach_documents.length }} document(s)
+                                        </button>
+                                        <div v-if="openDropdowns.includes(order.id)" class="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                                            <div class="p-3">
+                                                <div v-for="(doc, i) in order.attach_documents" :key="i" class="mb-2 last:mb-0">
+                                                    <a :href="doc.path" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                        </svg>
+                                                        {{ doc.name }}
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else>
+                                    <div v-if="order.notes && order.notes.length > 50">
                                         <div class="relative">
-                                            <button @click.stop="toggleDropdown(order.id)" class="text-indigo-600 hover:text-indigo-800 font-medium">
-                                                {{ order.attach_documents.length }} document(s)
+                                            <button @click.stop="toggleDropdown(order.id)" class="text-gray-600 hover:text-gray-800">
+                                                {{ order.notes.substring(0, 50) }}...
                                             </button>
                                             <div v-if="openDropdowns.includes(order.id)" class="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
                                                 <div class="p-3">
-                                                    <div v-for="(doc, i) in order.attach_documents" :key="i" class="mb-2 last:mb-0">
-                                                        <a :href="doc.path" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
-                                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                            </svg>
-                                                            {{ doc.name }}
-                                                        </a>
-                                                    </div>
+                                                    <p class="text-sm text-gray-700">{{ order.notes }}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     <div v-else>
-                                        <div v-if="order.notes && order.notes.length > 50">
-                                            <div class="relative">
-                                                <button @click.stop="toggleDropdown(order.id)" class="text-gray-600 hover:text-gray-800">
-                                                    {{ order.notes.substring(0, 50) }}...
-                                                </button>
-                                                <div v-if="openDropdowns.includes(order.id)" class="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
-                                                    <div class="p-3">
-                                                        <p class="text-sm text-gray-700">{{ order.notes }}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else>
-                                            {{ order.notes || '-' }}
-                                        </div>
+                                        {{ order.notes || '-' }}
                                     </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
-                                    <button class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-150" @click="openHistoryModal(order)">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
-                                        View History
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap border border-gray-200">
+                                <button class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-150" @click="openHistoryModal(order)">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    View History
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Pagination -->
@@ -347,6 +346,17 @@ async function fetchHistories(backOrderId) {
 function formatDate(date) {
     if (!date) return '-';
     return new Date(date).toLocaleDateString();
+}
+
+function getSourceTypeDisplay(order) {
+    console.log(order);
+    if (order.source_type === 'order' && order.order) {
+        return `Order: ${order.order.order_number}`;
+    } else if (order.source_type === 'transfer' && order.transfer) {
+        return `Transfer: ${order.transfer.transfer_id || order.transfer.transferID || 'N/A'}`;
+    } else {
+        return order.source_type ? `${order.source_type.charAt(0).toUpperCase() + order.source_type.slice(1)}` : 'N/A';
+    }
 }
 
 function statusClass(status) {

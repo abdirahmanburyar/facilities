@@ -32,6 +32,10 @@ class BackOrderHistory extends Model
         'back_order_id',
     ];
 
+    protected $casts = [
+        'expiry_date' => 'date',
+    ];
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

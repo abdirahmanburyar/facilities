@@ -8,21 +8,24 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class InventoryUpdated implements ShouldBroadcastNow
+class FacilityInventoryTestEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $facilityId;
+    public $productId;
+    public $action;
     public $timestamp;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($facilityId = null)
+    public function __construct($facilityId, $productId, $action = 'test')
     {
         $this->facilityId = $facilityId;
-        
-        logger()->info($this->facilityId);
+        $this->productId = $productId;
+        $this->action = $action;
+        $this->timestamp = now()->toISOString();
     }
 
     /**
@@ -32,7 +35,10 @@ class InventoryUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return [new Channel("inventory.{$this->facilityId}")];
+        return [
+            new Channel('facility-inventory.' . $this->facilityId),
+            new Channel('facility-inventory'),
+        ];
     }
 
     /**
@@ -42,7 +48,7 @@ class InventoryUpdated implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'refresh';
+        return 'FacilityInventoryTestEvent';
     }
 
     /**
@@ -52,6 +58,12 @@ class InventoryUpdated implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
-        return [];
+        return [
+            'facility_id' => $this->facilityId,
+            'product_id' => $this->productId,
+            'action' => $this->action,
+            'timestamp' => $this->timestamp,
+            'message' => 'Test event from TransferController updateQuantity method',
+        ];
     }
 } 

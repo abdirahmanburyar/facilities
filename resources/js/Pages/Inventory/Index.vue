@@ -6,7 +6,7 @@ import {
     onMounted,
     onBeforeUnmount,
 } from "vue";
-import { Head, router, Link } from "@inertiajs/vue3";
+import { Head, router, Link, usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import Modal from "@/Components/Modal.vue";
@@ -17,7 +17,6 @@ import "vue-multiselect/dist/vue-multiselect.css";
 import "@/Components/multiselect.css";
 import moment from "moment";
 import { TailwindPagination } from "laravel-vue-pagination";
-import realtimeService from "@/Services/RealtimeService.js";
 
 const props = defineProps({
     inventories: Object,
@@ -30,6 +29,7 @@ const props = defineProps({
 });
 
 const toast = useToast();
+const page = usePage();
 
 // Search and filter states
 const search = ref(props.filters.search);
@@ -83,77 +83,26 @@ const showUploadModal = ref(false);
 const uploadResults = ref(null);
 
 // Set up real-time inventory updates
+// Set up real-time inventory updates
 let echoChannel = null;
 
 onMounted(() => {
-    console.log('[INVENTORY-DEBUG] Component mounted, setting up real-time listeners...');
-    
-    // Set up real-time listeners for facility inventory updates
-    setupRealtimeListeners();
-    
-    // Listen for inventory updates (legacy)
-    try {
-        echoChannel = window.Echo.channel("inventory").listen(
-            ".refresh",
-            (data) => {
-                console.log("[PUSHER-DEBUG] Received inventory update:", data);
-                applyFilters();
-            }
-        );
-        console.log('[INVENTORY-DEBUG] Legacy Echo channel set up successfully');
-    } catch (error) {
-        console.warn('[INVENTORY-DEBUG] Failed to set up legacy Echo channel:', error);
-    }
+    // Listen for inventory updates
+    echoChannel = window.Echo.channel(`inventory.${page.props.auth.user?.facility_id}`).listen(
+        ".refresh",
+        (data) => {
+            console.log("[PUSHER-DEBUG] Received inventory update:", data);
+            applyFilters();
+        }
+    );
 });
 
 onBeforeUnmount(() => {
-    console.log('[INVENTORY-DEBUG] Component unmounting, cleaning up listeners...');
-    
-    // Clean up real-time service
-    realtimeService.disconnect();
-    
     // Clean up Echo listeners when component is unmounted
     if (echoChannel) {
         echoChannel.stopListening(".refresh");
-        console.log('[INVENTORY-DEBUG] Legacy Echo channel cleaned up');
     }
 });
-
-// Set up real-time listeners for facility inventory updates
-const setupRealtimeListeners = () => {
-    console.log('[INVENTORY-DEBUG] Setting up real-time listeners...');
-    
-    // Get current user's facility ID (you may need to adjust this based on your auth structure)
-    const currentFacilityId = window.auth?.user?.facility_id;
-    console.log('[INVENTORY-DEBUG] Current facility ID:', currentFacilityId);
-    
-    if (currentFacilityId) {
-        // Listen for facility inventory updates
-        console.log('[INVENTORY-DEBUG] Listening for facility inventory updates for facility:', currentFacilityId);
-        realtimeService.listenToFacilityInventory(currentFacilityId, (data) => {
-            console.log('[INVENTORY-DEBUG] Facility inventory updated in real-time:', data);
-            
-            // Show notification
-            toast.info('Facility inventory has been updated');
-            
-            // Refresh the page data
-            applyFilters();
-        });
-    }
-    
-    // Listen for general inventory updates
-    console.log('[INVENTORY-DEBUG] Listening for general inventory updates');
-    realtimeService.listenToInventoryUpdates((data) => {
-        console.log('[INVENTORY-DEBUG] General inventory updated in real-time:', data);
-        
-        // Show notification
-        toast.info('Inventory has been updated');
-        
-        // Refresh the page data
-        applyFilters();
-    });
-};
-
 
 
 // Apply filters
@@ -171,7 +120,6 @@ const applyFilters = () => {
     if (per_page.value) query.per_page = per_page.value;
     if (props.filters.page) query.page = props.filters.page;
 
-    console.log('[INVENTORY-DEBUG] Applying filters with query:', query);
     router.get(route("inventories.index"), query, {
         preserveState: true,
         preserveScroll: true,
@@ -180,7 +128,6 @@ const applyFilters = () => {
             "products",
             "warehouses",
             "inventoryStatusCounts",
-            "locations",
             "dosage",
             "category",
         ],
@@ -354,6 +301,50 @@ const expiredCount = computed(() => {
 function getResults(page =51) {
     props.filters.page = page;
 }
+
+// Test function to verify Reverb connection
+const testReverbConnection = async () => {
+    try {
+        console.log('[REVERB-TEST] Testing Reverb connection...');
+        
+        // Test if Echo is initialized
+        if (!window.Echo) {
+            console.error('[REVERB-TEST] Echo not initialized');
+            toast.error('Echo not initialized');
+            return;
+        }
+        
+        console.log('[REVERB-TEST] Echo is initialized');
+        
+        // Test connection by subscribing to a test channel
+        const testChannel = window.Echo.private('test-channel');
+        console.log('[REVERB-TEST] Test channel created:', testChannel);
+        
+        toast.success('Reverb connection test completed - check console for details');
+        
+    } catch (error) {
+        console.error('[REVERB-TEST] Failed to test Reverb connection:', error);
+        toast.error('Reverb connection test failed: ' + error.message);
+    }
+};
+
+// Test function to manually trigger facility inventory event
+const testFacilityInventoryEvent = async () => {
+    try {
+        console.log('[INVENTORY-DEBUG] Testing inventory updated event...');
+        
+        const response = await axios.post('/api/test-inventory-updated', {
+            facility_id: page.props.auth.user?.facility_id || 1
+        });
+        
+        console.log('[INVENTORY-DEBUG] Test event response:', response.data);
+        toast.success('Test event dispatched successfully');
+        
+    } catch (error) {
+        console.error('[INVENTORY-DEBUG] Failed to test event:', error);
+        toast.error('Failed to test event: ' + error.response?.data?.message || error.message);
+    }
+};
 </script>
 
 <template>
@@ -454,7 +445,30 @@ function getResults(page =51) {
                 </select>
             </div>
 
-            <!-- Add Button -->
+            <!-- Test and Add Buttons -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex space-x-2">
+                    <button
+                        @click="testReverbConnection"
+                        class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+                    >
+                        Test Reverb Connection
+                    </button>
+                    <button
+                        @click="testFacilityInventoryEvent"
+                        class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+                    >
+                        Test Inventory Updated Event
+                    </button>
+                </div>
+                <button
+                    @click="showAddModal = true"
+                    class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                    Add Inventory
+                </button>
+            </div>
+            
             <div class="lg:grid lg:grid-cols-8 lg:gap-2">
                 <div class="lg:col-span-7 overflow-auto w-full">
                     <!-- Inventory Table -->
@@ -466,7 +480,7 @@ function getResults(page =51) {
                                 <th class="px-3 py-2 text-xs" rowspan="2">Item</th>
                                 <th class="px-3 py-2 text-xs" rowspan="2">Category</th>
                                 <th class="px-3 py-2 text-xs" rowspan="2">UoM</th>
-                                <th class="px-3 py-2 text-xs text-center" colspan="5">
+                                <th class="px-3 py-2 text-xs text-center" colspan="4">
                                     Item Details
                                 </th>
                                 <th class="px-3 py-2 text-xs" rowspan="2">Total Qty on Hand</th>
@@ -522,8 +536,6 @@ function getResults(page =51) {
                                         {{ inventory.items[0].uom }}
                                     </td>
 
-                                    <!-- Item Details Columns (like Transfer/Show.vue) -->
-                                    <!-- Quantity -->
                                     <td
                                         class="px-2 py-1 text-xs border border-gray-300 text-left"
                                         :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
@@ -531,7 +543,6 @@ function getResults(page =51) {
                                         {{ item.quantity }}
                                     </td>
 
-                                    <!-- Batch Number -->
                                     <td
                                         class="px-2 py-1 text-xs border border-gray-300 text-left"
                                         :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
@@ -539,13 +550,13 @@ function getResults(page =51) {
                                         {{ item.batch_number }}
                                     </td>
 
-                                    <!-- Expiry Date -->
                                     <td
                                         class="px-2 py-1 text-xs border border-gray-300 text-left"
                                         :class="isExpired(item) ? 'text-red-600 font-medium' : 'text-gray-900'"
                                     >
                                         {{ formatDate(item.expiry_date) }}
                                     </td>
+
 
                                     <!-- Status Icons -->
                                     <td class="px-2 py-1 text-xs border border-gray-300 text-left">

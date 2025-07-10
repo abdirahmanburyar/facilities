@@ -146,7 +146,7 @@ class InventoryController extends Controller
             $validated
         );
 
-        event(new InventoryUpdated());
+        event(new InventoryUpdated(auth()->user()->facility_id));
         
         return response()->json( $request->id ? 'Inventory updated successfully' : 'Inventory created successfully', 200);
         } catch (\Throwable $th) {

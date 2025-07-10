@@ -9,7 +9,7 @@ use App\Models\Warehouse;
 use App\Models\Facility;
 use App\Models\FacilityInventory;
 use App\Models\FacilityInventoryItem;
-use App\Models\FacilityBackorder;
+
 use App\Models\Transfer;
 use App\Models\TransferItem;
 use App\Models\Product;
@@ -30,6 +30,7 @@ use App\Notifications\TransferCreated;
 use App\Events\TransferStatusChanged;
 use App\Events\InventoryUpdated;
 use App\Events\FacilityInventoryUpdated;
+use App\Events\FacilityInventoryTestEvent;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\TransferResource;
 
@@ -40,17 +41,79 @@ class TransferController extends Controller
     
     public function receivedQuantity(Request $request){
         try {
-            $request->validate([
-                'transfer_item_id' => 'required',
-                'received_quantity' => 'required|min:1',
-            ]);
-            $transferItem = TransferItem::find($request->transfer_item_id);
+            return DB::transaction(function () use ($request) {
+                $request->validate([
+                    'allocation_id' => 'required|exists:inventory_allocations,id',
+                    'received_quantity' => 'required|numeric|min:0',
+                ]);
+                
+                $allocation = InventoryAllocation::find($request->allocation_id);
+                $allocation->received_quantity = $request->received_quantity;
+                $allocation->save();
+                PackingListDifference::where('inventory_allocation_id', $request->allocation_id)->delete();
+    
+                return response()->json("Success", 200);
+                
+            });
+        } catch (\Throwable $th) {
+            return response()->json($th->getMessage(), 500);
+        }
+    }
 
-            if(!$transferItem) return response()->json("Transfer item not exist", 500);
-            if((int) $transferItem->received_quantity > (int) $transferItem->quantity) return response()->json("Received quantity can be exceed the original quantity", 500);
-            $transferItem->received_quantity = $request->received_quantity;
+    public function receivedAllocationQuantity(Request $request){
+        try {
+            $request->validate([
+                'allocation_id' => 'required|exists:inventory_allocations,id',
+                'received_quantity' => 'required|numeric|min:0',
+            ]);
+
+            $allocation = InventoryAllocation::find($request->allocation_id);
+            $transferItem = $allocation->transfer_item;
+            $transfer = $transferItem->transfer;
+
+            // Validate that user belongs to the receiving facility/warehouse
+            $currentUser = auth()->user();
+            $isReceiver = ($transfer->to_warehouse_id === $currentUser->warehouse_id) || 
+                         ($transfer->to_facility_id === $currentUser->facility_id);
+
+            if (!$isReceiver) {
+                return response()->json("You are not authorized to receive this transfer", 403);
+            }
+
+            // Validate received quantity doesn't exceed allocated quantity
+            if ($request->received_quantity > $allocation->allocated_quantity) {
+                return response()->json("Received quantity cannot exceed allocated quantity", 400);
+            }
+
+            // Calculate total PackingListDifference quantities for this allocation
+            $totalDifferences = $allocation->differences()->sum('quantity');
+            
+            // Validate that: allocated_quantity - received_quantity = total_differences
+            $expectedReceivedQuantity = $allocation->allocated_quantity - $totalDifferences;
+            
+            if ($request->received_quantity != $expectedReceivedQuantity) {
+                return response()->json([
+                    "message" => "Received quantity must equal allocated quantity minus differences",
+                    "allocated_quantity" => $allocation->allocated_quantity,
+                    "total_differences" => $totalDifferences,
+                    "expected_received_quantity" => $expectedReceivedQuantity,
+                    "provided_received_quantity" => $request->received_quantity
+                ], 400);
+            }
+
+            // Update allocation received quantity
+            $allocation->received_quantity = $request->received_quantity;
+            $allocation->save();
+
+            // Update transfer item received quantity (sum of all allocations)
+            $totalReceived = $transferItem->inventory_allocations->sum('received_quantity');
+            $transferItem->received_quantity = $totalReceived;
             $transferItem->save();
-            return response()->json('Done', 200);
+
+            // Dispatch inventory updated event
+            event(new InventoryUpdated($transfer->from_facility_id));
+
+            return response()->json('Allocation received quantity updated successfully', 200);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
         }
@@ -826,6 +889,9 @@ class TransferController extends Controller
                 $transferItem->quantity_to_release = $newQuantityToRelease;
                 $transferItem->save();
 
+                // Dispatch inventory updated event
+                event(new InventoryUpdated($sourceId));
+
                 DB::commit();
                 return response()->json('Quantity to release decreased successfully', 200);
             }
@@ -996,7 +1062,8 @@ class TransferController extends Controller
                 $transferItem->quantity_to_release = $newQuantityToRelease;
                 $transferItem->save();
 
-                event(new InventoryUpdated());
+                // Dispatch inventory updated event
+                event(new InventoryUpdated($sourceId));
 
                 DB::commit();
                 return response()->json('Quantity to release updated successfully', 200);
@@ -1112,83 +1179,69 @@ class TransferController extends Controller
     {
         try {
             DB::beginTransaction();
-
+            
             $request->validate([
-                'item_id' => 'required|exists:transfer_items,id',
-                'backorders' => 'required|array',
-                'backorders.*.quantity' => 'required|integer|min:1',
-                'backorders.*.status' => 'required|string|in:Missing,Damaged,Lost,Expired,Low quality',
-                'backorders.*.note' => 'nullable|string'
-            ],[
-                'backorders.*.quantity.required' => 'Quantity is required',
-                'backorders.*.status.required' => 'Status is required',
-                'backorders.*.note' => 'Note is required'
+                'transfer_id' => 'required|exists:transfers,id',
+                'packing_list_differences' => 'required|array',
+                'packing_list_differences.*.id' => 'nullable|exists:packing_list_differences,id',
+                'packing_list_differences.*.quantity' => 'required|numeric|min:0',
+                'packing_list_differences.*.status' => 'required|in:Missing,Damaged,Expired,Lost,Low Quality',
+                'packing_list_differences.*.notes' => 'nullable|string',
+                'packing_list_differences.*.transfer_item_id' => 'required|exists:transfer_items,id',
             ]);
 
-            $transferItem = TransferItem::findOrFail($request->item_id);
-            $transfer = $transferItem->transfer;
-
-            // Verify user has permission to save back orders for this transfer
-            if (!in_array($transfer->status, ['delivered'])) {
-                return response()->json('Cannot save back orders for transfers with this status', 400);
+            $transfer = Transfer::find($request->transfer_id);
+            if(!$transfer) {
+                return response()->json('Transfer not found', 500);
             }
 
-            // Calculate missing quantity
-            $missingQuantity = $transferItem->quantity_to_release - ($transferItem->received_quantity ?? 0);
-            
-            // Validate total back order quantity doesn't exceed missing quantity
-            $totalBackOrderQuantity = collect($request->backorders)->sum('quantity');
-            if ($totalBackOrderQuantity > $missingQuantity) {
-                return response()->json('Total back order quantity cannot exceed missing quantity', 400);
+            // Find or create BackOrder for this transfer
+            $backOrder = BackOrder::where('transfer_id', $request->transfer_id)->first();
+
+            if(!$backOrder) {
+                $backOrder = BackOrder::create([
+                    'transfer_id' => $request->transfer_id,
+                    'back_order_date' => now()->toDateString(),
+                    'created_by' => auth()->user()->id,
+                    'source_type' => 'transfer',
+                    'reported_by' => $transfer->toFacility->name ?? 'Unknown Facility',
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                ]);
             }
 
-            // Clear existing backorders for this transfer item to prevent duplicates
-            FacilityBackorder::where('transfer_item_id', $transferItem->id)->delete();
-
-            // Get existing allocations to find where to create back orders
-            $allocations = $transferItem->inventory_allocations()
-                ->orderBy('expiry_date', 'asc')
-                ->get();
-
-            $remainingToAllocate = $totalBackOrderQuantity;
+            // Process packing list differences
+            $totalQuantity = 0;
+            $totalItems = 0;
             
-            foreach ($request->backorders as $backOrderData) {
-                $quantityForThisStatus = $backOrderData['quantity'];
-                $tempRemaining = $quantityForThisStatus;
-
-                foreach ($allocations as $allocation) {
-                    if ($tempRemaining <= 0) break;
-
-                    $quantityToAllocateFromThisAllocation = min($tempRemaining, $allocation->allocated_quantity);
-
-                    // Create back order record using updateOrCreate for safety
-                    FacilityBackorder::updateOrCreate([
-                        'inventory_allocation_id' => $allocation->id,
-                        'transfer_item_id' => $transferItem->id,
-                        'product_id' => $transferItem->product_id,
-                        'type' => $backOrderData['status'],
-                    ], [
-                        'quantity' => $quantityToAllocateFromThisAllocation,
-                        'notes' => $backOrderData['note'] ?? null,
-                        'status' => 'pending',
-                        'created_by' => auth()->id(),
-                        'updated_by' => auth()->id(),
-                    ]);
-
-                    $tempRemaining -= $quantityToAllocateFromThisAllocation;
+            foreach ($request->packing_list_differences as $differenceData) {
+                
+                $transferItem = TransferItem::find($differenceData['transfer_item_id']);
+                if(!$transferItem) {
+                    throw new \Exception('Transfer item not found: ' . $differenceData['transfer_item_id']);
+                    break;
                 }
+                
+                $difference = PackingListDifference::updateOrCreate(['id' => $differenceData['id']], [
+                    'back_order_id' => $backOrder->id,
+                    'product_id' => $transferItem->product_id,
+                    'inventory_allocation_id' => $differenceData['inventory_allocation_id'] ?? null,
+                    'quantity' => $differenceData['quantity'],
+                    'status' => $differenceData['status'],
+                    'notes' => $differenceData['notes'] ?? null,
+                ]);
+                
+                $totalQuantity += $differenceData['quantity'];
+                $totalItems++;
             }
 
-            // Update transfer item received quantity to reflect what was actually received
-            // (This helps track the progress and shows the shortfall)
-            $actualReceivedQuantity = $transferItem->quantity_to_release - $totalBackOrderQuantity;
-            $transferItem->received_quantity = max($transferItem->received_quantity ?? 0, $actualReceivedQuantity);
-            $transferItem->save();
-
-            // Update transfer status if needed
-            $this->updateTransferStatusIfNeeded($transfer);
-
-            event(new InventoryUpdated());
+            // Update BackOrder totals
+            $backOrder->update([
+                'total_items' => $totalItems,
+                'total_quantity' => $totalQuantity,
+            ]);
+            
+            event(new \App\Events\InventoryUpdated($transfer->from_facility_id));
 
             DB::commit();
             return response()->json('Back orders saved successfully', 200);
@@ -1263,10 +1316,6 @@ class TransferController extends Controller
                 $transferItem->quantity = $request->quantity;
                 $transferItem->save();
                 $transferItem->refresh();
-            }
-
-            if (!in_array($transfer->status, ['pending'])) {
-                return response()->json('Cannot update quantity for transfers that are not in pending status', 500);
             }
 
             // Use the requested quantity directly for transfers
@@ -1354,6 +1403,9 @@ class TransferController extends Controller
 
                 $transferItem->quantity_to_release = $newQuantityToRelease;
                 $transferItem->save();
+
+                // Dispatch inventory updated event
+                event(new InventoryUpdated($sourceId));
 
                 DB::commit();
                 return response()->json('Quantity to release decreased successfully', 200);
@@ -1525,7 +1577,8 @@ class TransferController extends Controller
                 $transferItem->quantity_to_release = $newQuantityToRelease;
                 $transferItem->save();
 
-                event(new InventoryUpdated());
+                // Dispatch inventory updated event
+                event(new InventoryUpdated($sourceId));
 
                 DB::commit();
                 return response()->json('Quantity to release updated successfully', 200);
@@ -1548,20 +1601,21 @@ class TransferController extends Controller
     {
         try {
             $request->validate([
-                'backorder_id' => 'required|exists:facility_backorders,id',
+                'backorder_id' => 'required|exists:back_orders,id',
             ]);
 
-            $backorder = FacilityBackorder::findOrFail($request->backorder_id);
-            $transferItem = $backorder->transferItem;
+            $backorder = BackOrder::findOrFail($request->backorder_id);
             
             // Verify user has permission to delete back orders for this transfer
-            if (!in_array($transferItem->transfer->status, ['pending', 'shipped', 'received'])) {
+            if ($backorder->transfer && !in_array($backorder->transfer->status, ['pending', 'shipped', 'received'])) {
                 return response()->json(['error' => 'Cannot delete back orders for transfers with this status'], 400);
             }
 
             $backorder->delete();
 
-            event(new InventoryUpdated());
+            if ($backorder->transfer) {
+                event(new InventoryUpdated($backorder->transfer->from_facility_id));
+            }
 
             return response()->json('Back order deleted successfully', 200);
 
@@ -1688,12 +1742,13 @@ class TransferController extends Controller
                     // Debug information for this item
                     
                     foreach ($item->inventory_allocations as $allocation) {
-                        // Calculate total back order quantity for this allocation
-                        if((int) $allocation->allocated_quantity < (int) $allocation->backorders->sum('quantity')){
+                        // Calculate total back order quantity for this allocation using PackingListDifference
+                        $backOrderQuantity = $allocation->differences()->whereNull('finalized')->sum('quantity');
+                        if((int) $allocation->allocated_quantity < (int) $backOrderQuantity){
                             DB::rollback();
                             return response()->json('Backorder quantities exceeded the allocated quantity', 500);
                         }
-                        $finalQuantity = $allocation->allocated_quantity - $allocation->backorders->sum('quantity');
+                        $finalQuantity = $allocation->allocated_quantity - $backOrderQuantity;
                         
                         $inventory = FacilityInventory::where('facility_id', $transfer->to_facility_id)
                             ->where('product_id', $allocation->product_id)
@@ -1794,24 +1849,32 @@ class TransferController extends Controller
             $receivedQuantity = $request->quantity;
             
             // Find the backorder record
-            $backorder = FacilityBackorder::findOrFail($backorderData['id']);
+            $backorder = BackOrder::findOrFail($backorderData['id']);
             
-            // Find the transfer item
-            $transferItem = TransferItem::findOrFail($backorder->transfer_item_id);
+            // Find the transfer item through the differences
+            $difference = PackingListDifference::where('back_order_id', $backorder->id)->first();
+            if (!$difference || !$difference->inventoryAllocation) {
+                throw new \Exception('Back order difference or inventory allocation not found');
+            }
+            
+            $transferItem = $difference->inventoryAllocation->transfer_item;
+            if (!$transferItem) {
+                throw new \Exception('Transfer item not found for this back order');
+            }
             
             // Update the received quantity of the transfer item
             $transferItem->received_quantity += $receivedQuantity;
             $transferItem->save();
             
-            // Deduct the received quantity from the backorder
-            $backorder->quantity -= $receivedQuantity;
+            // Deduct the received quantity from the packing list difference
+            $difference->quantity -= $receivedQuantity;
             
-            // If quantity becomes zero, delete the backorder
-            if ($backorder->quantity <= 0) {
-                $backorder->delete();
+            // If quantity becomes zero, mark as finalized
+            if ($difference->quantity <= 0) {
+                $difference->update(['finalized' => 'Received']);
             } else {
                 // Otherwise, save the updated quantity
-                $backorder->save();
+                $difference->save();
             }
             
             // Get the warehouse ID from the transfer
@@ -2096,10 +2159,10 @@ class TransferController extends Controller
     {
         try {
             $request->validate([
-                'backorder_id' => 'required|exists:facility_backorders,id',
+                'backorder_id' => 'required|exists:back_orders,id',
             ]);
 
-            $backorder = FacilityBackorder::findOrFail($request->backorder_id);
+            $backorder = BackOrder::findOrFail($request->backorder_id);
             $backorder->delete();
 
             return response()->json('Back order removed successfully', 200);
@@ -2310,4 +2373,46 @@ class TransferController extends Controller
         }
     }
     
+    public function manageBackOrder()
+    {
+        // Get transfers with active back orders (those that have non-finalized differences)
+        $transfers = Transfer::where('to_facility_id', auth()->user()->facility_id)
+            ->whereHas('backOrders', function($query) {
+                $query->whereHas('differences', function($q) {
+                    $q->whereNull('finalized');
+                });
+            })
+            ->with(['backOrders' => function($query) {
+                $query->whereHas('differences', function($q) {
+                    $q->whereNull('finalized');
+                });
+            }])
+            ->get(['id', 'transferID', 'transfer_type'])
+            ->filter(function($transfer) {
+                return $transfer->backOrders->count() > 0;
+            });
+
+        // Get orders with active back orders (those that have non-finalized differences)
+        $orders = \App\Models\Order::where('facility_id', auth()->user()->facility_id)
+            ->whereHas('backOrders', function($query) {
+                $query->whereHas('differences', function($q) {
+                    $q->whereNull('finalized');
+                });
+            })
+            ->with(['backOrders' => function($query) {
+                $query->whereHas('differences', function($q) {
+                    $q->whereNull('finalized');
+                });
+            }])
+            ->get(['id', 'order_number', 'order_type'])
+            ->filter(function($order) {
+                return $order->backOrders->count() > 0;
+            });
+
+        return inertia('BackOrder/BackOrder', [
+            'transfers' => $transfers,
+            'orders' => $orders
+        ]);
+    }
+
 }

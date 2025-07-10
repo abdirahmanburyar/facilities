@@ -124,7 +124,7 @@ class Transfer extends Model
 
     public function backorders()
     {
-        return $this->hasManyThrough(FacilityBackorder::class, TransferItem::class);
+        return $this->hasMany(BackOrder::class);
     }
 
     public function user()
@@ -229,5 +229,10 @@ class Transfer extends Model
         }
         
         return $query;
+    }
+
+    public function getTransferIDAttribute($value)
+    {
+        return $value;
     }
 }

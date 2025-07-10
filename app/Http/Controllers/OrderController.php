@@ -999,7 +999,7 @@ class OrderController extends Controller
                     $q->whereNull('finalized');
                 });
             }])
-            ->get()
+            ->get(['id', 'transferID', 'transfer_type']) // Use correct DB column name
             ->filter(function($transfer) {
                 return $transfer->backOrders->count() > 0;
             });
@@ -1008,55 +1008,6 @@ class OrderController extends Controller
             'orders' => $orders,
             'transfers' => $transfers
         ]);
-    }
-
-    public function getBackOrder(Request $request, $type, $id)
-    {
-        try {
-            $query = PackingListDifference::whereNull('finalized');
-
-            if ($type === 'order') {
-                $query->whereHas('inventoryAllocation', function($q) use ($id) {
-                    $q->where('order_item_id', '!=', null)
-                      ->whereHas('order_item', function($orderQ) use ($id) {
-                          $orderQ->where('order_id', $id);
-                      });
-                });
-            } elseif ($type === 'transfer') {
-                $query->whereHas('inventoryAllocation', function($q) use ($id) {
-                    $q->where('transfer_item_id', '!=', null)
-                      ->whereHas('transfer_item', function($transferQ) use ($id) {
-                          $transferQ->where('transfer_id', $id);
-                      });
-                });
-            }
-
-            $results = $query->with([
-                'product:id,name,productID',
-                'inventoryAllocation.order_item.order:id,order_number',
-                'inventoryAllocation.transfer_item.transfer:id,transfer_id',
-                'backOrder:id,back_order_number,back_order_date,status'
-            ])->get();
-
-            // Transform the data to include source information
-            $results = $results->map(function($item) use ($type, $id) {
-                $item->source_id = $id;
-                $item->source_type = $type;
-                
-                if ($type === 'order') {
-                    $item->source = $item->inventoryAllocation->order_item->order;
-                } elseif ($type === 'transfer') {
-                    $item->source = $item->inventoryAllocation->transfer_item->transfer;
-                }
-                
-                return $item;
-            });
-
-            return response()->json($results, 200);
-
-        } catch (\Throwable $th) {
-            return response()->json($th->getMessage(), 500);
-        }
     }
 
     public function checkInventory(Request $request)

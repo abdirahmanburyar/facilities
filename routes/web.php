@@ -115,38 +115,29 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::delete('/{facility}', 'destroy')->name('facilities.destroy');
         });
 
-        // Backorder routes
+        // All Back Order routes consolidated in BackOrderController
         Route::controller(BackOrderController::class)->prefix('backorders')->group(function () {
             Route::get('/', 'index')->name('backorders.index');
-            // backorders.received
-            Route::post('/received', 'received')->name('backorders.received');
+            Route::get('/manage', 'manageBackOrder')->name('backorders.manage');
+            Route::get('/history', 'showBackOrder')->name('backorders.history');
+            Route::get('/{backOrderId}/histories', 'getBackOrderHistories')->name('backorders.histories');
             
-            // Route::get('/{id}/show', 'show')->name('backorders.show');
-            // Route::post('/store', 'store')->name('backorders.store');
-            // Route::get('/create', 'create')->name('backorders.create');
-            // Route::get('/{backorder}/edit', 'edit')->name('backorders.edit');
-            // Route::put('/{backorder}', 'update')->name('backorders.update');
-            // Route::delete('/{backorder}', 'destroy')->name('backorders.destroy');
-        });
-
-        // Back Order Management routes (using OrderController)
-        Route::controller(OrderController::class)->prefix('backorders')->group(function () {
+            // Get back order items for orders and transfers
+            Route::get('/order/{id}/get-back-order', 'getBackOrder')->name('backorders.get-back-order.order');
+            Route::get('/transfer/{id}/get-back-order', 'getBackOrder')->name('backorders.get-back-order.transfer');
+            
+            // Back order actions
             Route::post('/receive', 'receiveBackOrder')->name('backorders.receive');
-            Route::post('/liquidate', 'liquidateBackOrder')->name('backorders.liquidate');
-            Route::post('/dispose', 'disposeBackOrder')->name('backorders.dispose');
+            Route::post('/received', 'received')->name('backorders.received');
+            Route::post('/liquidate', 'liquidate')->name('backorders.liquidate');
+            Route::post('/dispose', 'dispose')->name('backorders.dispose');
+            
+            // Back order attachments
             Route::post('/{backOrderId}/attachments', 'uploadBackOrderAttachment')->name('backorders.uploadAttachment');
             Route::delete('/{backOrderId}/attachments', 'deleteBackOrderAttachment')->name('backorders.deleteAttachment');
             
-            // Test route to verify routing is working
+            // Test route
             Route::get('/test', 'testBackOrderRoute')->name('backorders.test');
-        });
-
-        // Back Order History routes (using OrderController)
-        Route::controller(OrderController::class)->prefix('backorders')->group(function () {
-            Route::get('/history', 'showBackOrder')->name('backorders.index');
-            Route::get('/manage', 'manageBackOrder')->name('backorders.manage');
-            Route::get('/{backOrderId}/histories', 'getBackOrderHistories')->name('backorders.histories');
-            Route::get('/{type}/{id}/get-back-order', 'getBackOrder')->name('backorders.get-back-order');
         });
 
         // Order Management Routes
@@ -247,14 +238,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
          // save transfer back orders
          Route::post('/save-back-orders', [TransferController::class, 'saveBackOrders'])->name('transfers.save-back-orders');
+
+        // transfers.received-quantity
+        Route::post('/received-quantity', [TransferController::class, 'receivedQuantity'])->name('transfers.received-quantity');
          
          // delete transfer back order
          Route::post('/delete-back-order', [TransferController::class, 'deleteBackOrder'])->name('transfers.delete-back-order');
           // change transfer status
           Route::post('/change-status', [TransferController::class, 'changeStatus'])->name('transfers.change-status');
 
-           // receivedQuantity
-           Route::post('/update-received-quantity', [TransferController::class, 'receivedQuantity'])->name('transfers.receivedQuantity');
+           // receivedAllocationQuantity
+           Route::post('/update-allocation-received-quantity', [TransferController::class, 'receivedAllocationQuantity'])->name('transfers.receivedAllocationQuantity');
 
         Route::post('/dispatch-info', [TransferController::class, 'dispatchInfo'])->name('transfers.dispatch-info');
 

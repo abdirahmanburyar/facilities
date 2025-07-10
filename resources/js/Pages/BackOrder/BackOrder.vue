@@ -5,6 +5,7 @@
                 <label for="source" class="block text-sm font-medium text-gray-700">Select Source</label>
                 <Multiselect v-model="selectedSource" :options="sourceOptions" :searchable="true" :create-option="false"
                     class="mt-1" placeholder="Select Order or Transfer" label="display_name" track-by="id"
+                    :show-labels="false"
                     @select="handleSourceChange" />
             </div>
 
@@ -498,7 +499,7 @@ onMounted(() => {
     
     const transferOptions = props.transfers.map(transfer => ({
         id: transfer.id,
-        display_name: `Transfer: ${transfer.transfer_id}`,
+        display_name: `Transfer: ${transfer.transferID || transfer.transfer_id || transfer.id}`,
         type: 'transfer',
         ...transfer
     }));
@@ -580,16 +581,23 @@ const handleSourceChange = async (source) => {
         backOrderInfo.value = null;
         return;
     }
+    
     isLoading.value = true;
-    await axios.get(route('backorders.get-back-order', { type: source.type, id: source.id }))
+    let url = '';
+    if (source.type === 'order') {
+        url = route('backorders.get-back-order.order', source.id);
+    } else if (source.type === 'transfer') {
+        url = route('backorders.get-back-order.transfer', source.id);
+    }
+    
+    await axios.get(url)
         .then((response) => {
             isLoading.value = false;
-
             // Sort items by created_at to ensure consistent grouping
             items.value = response.data.sort((a, b) =>
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
-
+            
             // Extract back order information from the first item (all items should have the same back order)
             if (items.value.length > 0 && items.value[0].back_order) {
                 backOrderInfo.value = items.value[0].back_order;
@@ -599,9 +607,9 @@ const handleSourceChange = async (source) => {
         })
         .catch((error) => {
             isLoading.value = false;
+            console.error('Failed to fetch back order items:', error);
             items.value = [];
             backOrderInfo.value = null;
-            toast.error(error.response?.data || 'Failed to fetch back order items')
         });
 };
 
@@ -759,6 +767,12 @@ function removeParentAttachment(index) {
 const isUploading = ref(false);
 
 async function uploadParentAttachments() {
+    console.log('Upload attachments called with:', {
+        backOrderInfo: backOrderInfo.value,
+        parentAttachments: parentAttachments.value,
+        backOrderId: backOrderInfo.value?.id
+    });
+    
     if (!backOrderInfo.value || parentAttachments.value.length === 0) return;
     const result = await Swal.fire({
         title: 'Upload Attachments?',
@@ -773,16 +787,21 @@ async function uploadParentAttachments() {
     isUploading.value = true;
     const formData = new FormData();
     parentAttachments.value.forEach(file => formData.append('attachments[]', file));
+    
+    console.log('Making upload request to:', route('backorders.uploadAttachment', backOrderInfo.value.id));
+    
     try {
         const { data } = await axios.post(route('backorders.uploadAttachment', backOrderInfo.value.id), formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
+        console.log('Upload response:', data);
         parentAttachments.value = [];
         if (backOrderInfo.value.attach_documents) {
             backOrderInfo.value.attach_documents = data.files;
         }
         toast.success(data.message);
     } catch (error) {
+        console.error('Upload error:', error);
         toast.error(error.response?.data?.message || 'Failed to upload attachments');
     } finally {
         isUploading.value = false;
@@ -790,6 +809,11 @@ async function uploadParentAttachments() {
 }
 
 async function deleteParentAttachment(filePath) {
+    console.log('Delete attachment called with:', {
+        filePath: filePath,
+        backOrderId: backOrderInfo.value?.id
+    });
+    
     const result = await Swal.fire({
         title: 'Delete Attachment?',
         text: 'Are you sure you want to delete this attachment? This cannot be undone.',
@@ -801,14 +825,17 @@ async function deleteParentAttachment(filePath) {
     });
     if (!result.isConfirmed) return;
     try {
+        console.log('Making delete request to:', route('backorders.deleteAttachment', backOrderInfo.value.id));
         const { data } = await axios.delete(route('backorders.deleteAttachment', backOrderInfo.value.id), {
             data: { file_path: filePath }
         });
+        console.log('Delete response:', data);
         if (backOrderInfo.value.attach_documents) {
             backOrderInfo.value.attach_documents = data.files;
         }
         toast.success(data.message);
     } catch (error) {
+        console.error('Delete error:', error);
         toast.error(error.response?.data?.message || 'Failed to delete attachment');
     }
 }
