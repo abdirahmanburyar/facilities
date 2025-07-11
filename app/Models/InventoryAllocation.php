@@ -17,6 +17,7 @@ class InventoryAllocation extends Model
         'allocated_quantity',
         'received_quantity',
         'allocation_type',
+        'updated_quantity',
         'transfer_reason',
         'unit_cost',
         'total_cost',

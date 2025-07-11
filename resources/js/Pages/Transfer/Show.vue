@@ -586,7 +586,7 @@
                                                 ?.length || 1
                                             "
                                             class="px-2 py-1 text-xs border border-gray-300 text-center text-black align-top">
-                                            {{ item.quantity_per_unit || 0 }}
+                                            {{ item }}
                                         </td>
 
                                         <!-- Reasons for Transfers -->
@@ -601,6 +601,7 @@
                                                 <input 
                                                     :readonly="props.transfer.status === 'approved'"
                                                     type="number" 
+                                                    v-model="allocation.updated_quantity"
                                                     :placeholder="allocation.allocated_quantity || 0"
                                                     min="1"
                                                     class="w-full text-center border border-gray-300 px-1 py-1 text-xs" 
@@ -1145,36 +1146,6 @@
                                 </div>
                             </div>
 
-                            <!-- Reject button (only available for pending status) -->
-                            <div class="relative" v-if="props.transfer.status === 'pending'">
-                                <button @click="
-                                    changeStatus(
-                                        props.transfer.id,
-                                        'rejected',
-                                        'is_reject'
-                                    )
-                                    " :disabled="isType['is_reject'] || isLoading"
-                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white bg-red-600 hover:bg-red-700 min-w-[160px]">
-                                    <svg v-if="isType['is_reject']" class="animate-spin h-5 w-5 mr-2"
-                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                            stroke-width="4">
-                                        </circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
-                                    <template v-else>
-                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        <span class="text-sm font-bold text-white">Reject</span>
-                                    </template>
-                                </button>
-                            </div>
-
                             <!-- Status indicator for rejected status -->
                             <div v-if="props.transfer.status === 'rejected'"
                                 class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
@@ -1184,6 +1155,7 @@
                                 </svg>
                                 <span class="text-sm font-bold">Rejected</span>
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -1771,45 +1743,6 @@ const removeItem = (index) => {
 
 // update quantity
 const isUpading = ref([]);
-
-// Simple debounce implementation
-let updateQuantityTimeout = null;
-
-async function updateQuantity(item, index) {
-    isUpading.value[index] = true;
-    
-    // Clear any existing timeout
-    if (updateQuantityTimeout) {
-        clearTimeout(updateQuantityTimeout);
-    }
-    
-    // Set new timeout
-    updateQuantityTimeout = setTimeout(async () => {
-        try {
-            const response = await axios.post(route("transfers.update-quantity"), {
-                item_id: item.id,
-                quantity: item.quantity_to_release,
-            });
-            
-            isUpading.value[index] = false;
-            Swal.fire({
-                title: "Success!",
-                text: response.data,
-                icon: "success",
-                confirmButtonText: "OK",
-            }).then(() => {
-                router.get(route("transfers.show", props.transfer.id), {}, {
-                    preserveScroll: true,
-                    only: ['transfer'],
-                });
-            });
-        } catch (error) {
-            isUpading.value[index] = false;
-            console.log(error);
-            toast.error(error.response?.data || "Failed to update quantity");
-        }
-    }, 500);
-}
 
 // Allocation-based quantity update functions
 const handleQuantityInput = (event, allocation) => {
