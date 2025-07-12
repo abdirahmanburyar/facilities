@@ -29,10 +29,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\TransferCreated;
-use App\// events\TransferStatusChanged;
-use App\// events\InventoryUpdated;
-use App\// events\FacilityInventoryUpdated;
-use App\// events\FacilityInventoryTest// event;
+use App\events\TransferStatusChanged;
+use App\events\InventoryUpdated;
+use App\events\FacilityInventoryUpdated;
+use App\events\FacilityInventoryTestEvent;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\TransferResource;
 
