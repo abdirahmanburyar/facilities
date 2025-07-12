@@ -638,8 +638,8 @@ class TransferController extends Controller
                     'status' => 'required|string'
                 ]);
 
-                $transfer = Transfer::with('dispatchInfo')->find($request->transfer_id);
-                $transfer->dispatchInfo()->create([
+                $transfer = Transfer::with('dispatch')->find($request->transfer_id);
+                $transfer->dispatch()->create([
                     'transfer_id' => $request->transfer_id,
                     'dispatch_date' => $request->dispatch_date,
                     'driver_id' => $request->driver_id,
@@ -668,7 +668,8 @@ class TransferController extends Controller
             $transfer = Transfer::where('id', $id)
             ->with([
                 'items.product.category',
-                'dispatch',
+                'dispatch.driver',
+                'dispatch.logistic_company',
                 'items.inventory_allocations.location',
                 'items.differences', 
                 'backorders', 

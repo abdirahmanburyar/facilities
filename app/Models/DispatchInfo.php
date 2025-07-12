@@ -9,11 +9,23 @@ class DispatchInfo extends Model
     protected $fillable = [
         'order_id',
         'transfer_id',
-        'driver_name',
+        'logistic_company_id',
+        'driver_id',
+        'dispatch_date',
         'no_of_cartoons',
+        'received_cartoons',
         'driver_number',
         'plate_number',
     ];
+
+    public function driver()
+    {
+        return $this->belongsTo(Driver::class);
+    }
+    public function logistic_company()
+    {
+        return $this->belongsTo(LogisticCompany::class);
+    }
 
     public function order()
     {

@@ -658,7 +658,7 @@
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
-                                            <span class="text-sm text-gray-900">{{ dispatch.driver_name }}</span>
+                                            <span class="text-sm text-gray-900">{{ dispatch.driver?.name }}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -670,7 +670,7 @@
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
                                             </svg>
-                                            <span class="text-sm text-gray-600">ID: {{ dispatch.driver_id || 'N/A' }}</span>
+                                            <span class="text-sm text-gray-600">ID: {{ dispatch.driver?.driver_id || 'N/A' }}</span>
                                         </div>
                                     </div>
                                 </div>
