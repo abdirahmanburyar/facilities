@@ -1396,59 +1396,83 @@
                     Dispatch Information
                 </h2>
 
-                <!-- Driver Name -->
-                <div class="mb-4">
-                    <label for="driver_name" class="block text-sm font-medium text-gray-700 mb-1">
-                        Driver Name
-                    </label>
-                    <input id="driver_name" type="text" v-model="dispatchForm.driver_name" required
-                        placeholder="Enter driver name"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
+                <form @submit.prevent="createDispatch" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Driver</label>
+                        <Multiselect v-model="dispatchForm.driver" :options="driverOptions" :searchable="true"
+                            :close-on-select="true" :show-labels="false" :allow-empty="true" placeholder="Select Driver"
+                            track-by="id" label="name" @select="handleDriverSelect"
+                            :class="{ 'border-red-500': dispatchErrors.driver_id }">
+                            <template v-slot:option="{ option }">
+                                <div>
+                                    {{ option.name }}
+                                    <span v-if="option.company" class="text-gray-500 text-sm">
+                                        ({{ option.company.name }})
+                                    </span>
+                                </div>
+                            </template>
+                        </Multiselect>
+                        <p v-if="dispatchErrors.driver_id" class="mt-1 text-sm text-red-600">{{
+                            dispatchErrors.driver_id[0] }}
+                        </p>
+                    </div>
 
-                <!-- Driver Phone Number -->
-                <div class="mb-4">
-                    <label for="driver_number" class="block text-sm font-medium text-gray-700 mb-1">
-                        Driver Phone Number
-                    </label>
-                    <input id="driver_number" type="tel" v-model="dispatchForm.driver_number"
-                        placeholder="Enter driver phone number"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Dispatch Date</label>
+                        <input type="date" v-model="dispatchForm.dispatch_date"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            :class="{ 'border-red-500': dispatchErrors.dispatch_date }">
+                        <p v-if="dispatchErrors.dispatch_date" class="mt-1 text-sm text-red-600">{{
+                            dispatchErrors.dispatch_date[0] }}</p>
+                    </div>
 
-                <!-- Vehicle Plate Number -->
-                <div class="mb-4">
-                    <label for="plate_number" class="block text-sm font-medium text-gray-700 mb-1">
-                        Vehicle Plate Number
-                    </label>
-                    <input id="plate_number" type="text" v-model="dispatchForm.plate_number"
-                        placeholder="Enter plate number"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Number of Cartons</label>
+                        <input type="number" v-model="dispatchForm.no_of_cartoons"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            :class="{ 'border-red-500': dispatchErrors.no_of_cartoons }">
+                        <p v-if="dispatchErrors.no_of_cartoons" class="mt-1 text-sm text-red-600">{{
+                            dispatchErrors.no_of_cartoons[0] }}</p>
+                    </div>
 
-                <!-- Number of Cartons -->
-                <div class="mb-6">
-                    <label for="no_of_cartoons" class="block text-sm font-medium text-gray-700 mb-1">
-                        No. of Cartons
-                    </label>
-                    <input id="no_of_cartoons" type="number" min="0" v-model="dispatchForm.no_of_cartoons"
-                        placeholder="Enter number of cartons"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Driver Phone</label>
+                        <input type="text" v-model="dispatchForm.driver_number"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            :class="{ 'border-red-500': dispatchErrors.driver_number }">
+                        <p v-if="dispatchErrors.driver_number" class="mt-1 text-sm text-red-600">{{
+                            dispatchErrors.driver_number[0] }}</p>
+                    </div>
 
-                <!-- Actions -->
-                <div class="flex justify-end space-x-3">
-                    <button @click="showDispatchForm = false" :disabled="isSaving"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                        Cancel
-                    </button>
-                    <button @click="createDispatch" :disabled="isSaving"
-                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                        {{ isSaving ? "Processing..." : "Save and Dispatch" }}
-                    </button>
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Vehicle Plate Number</label>
+                        <input type="text" v-model="dispatchForm.plate_number"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            :class="{ 'border-red-500': dispatchErrors.plate_number }">
+                        <p v-if="dispatchErrors.plate_number" class="mt-1 text-sm text-red-600">{{
+                            dispatchErrors.plate_number[0] }}</p>
+                    </div>
+
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" @click="showDispatchForm = false" :disabled="isSaving"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-150">
+                            Cancel
+                        </button>
+                        <button type="submit" :disabled="isSaving"
+                            class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-150 flex items-center">
+                            <span v-if="isSaving" class="mr-2">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                            {{ isSaving ? 'Creating...' : 'Save and Dispatch' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </Modal>
+
+
+
+
     </AuthenticatedLayout>
 </template>
 
@@ -1462,6 +1486,9 @@ import axios from "axios";
 import moment from "moment";
 import Swal from "sweetalert2";
 import BackOrder from "./BackOrder.vue";
+import Multiselect from 'vue-multiselect';
+import "vue-multiselect/dist/vue-multiselect.css";
+import "@/Components/multiselect.css";
 
 const toast = useToast();
 const page = usePage();
@@ -1469,6 +1496,14 @@ const page = usePage();
 const props = defineProps({
     transfer: {
         type: Object,
+        required: true,
+    },
+    drivers: {
+        type: Array,
+        required: true,
+    },
+    companyOptions: {
+        type: Array,
         required: true,
     },
 });
@@ -1493,12 +1528,27 @@ const message = ref('');
 const showDispatchForm = ref(false);
 
 const dispatchForm = ref({
-    driver_name: "",
+    driver: null,
+    driver_id: "",
     driver_number: "",
     plate_number: "",
     no_of_cartoons: "",
+    dispatch_date: "",
+    logistic_company_id: "",
     transfer_id: props.transfer?.id,
     status: "Dispatched",
+});
+
+const dispatchErrors = ref({});
+
+// Computed properties for driver options
+const driverOptions = computed(() => {
+    return props.drivers.map(driver => ({
+        id: driver.id,
+        name: driver.name,
+        company: driver.company,
+        isAddNew: false
+    }));
 });
 
 onMounted(() => {
@@ -2050,27 +2100,42 @@ const changeStatus = (transferId, newStatus, type) => {
     });
 };
 
+// Enhanced dispatch methods
+const handleDriverSelect = (selectedDriver) => {
+    if (selectedDriver) {
+        dispatchForm.value.driver_id = selectedDriver.id;
+        dispatchForm.value.driver_number = selectedDriver.phone || '';
+        dispatchForm.value.logistic_company_id = selectedDriver.company?.id || '';
+    }
+};
+
 async function createDispatch() {
     isSaving.value = true;
-    await axios
-        .post(route("transfers.dispatch-info"), dispatchForm.value)
-        .then((response) => {
-            isSaving.value = false;
-            showDispatchForm.value = false;
-            Swal.fire({
-                title: "Success!",
-                text: response.data,
-                icon: "success",
-                confirmButtonText: "OK",
-            }).then(() => {
-                router.get(route("transfers.show", props.transfer?.id));
-            });
-        })
-        .catch((error) => {
-            isSaving.value = false;
-            console.log(error);
-            toast.error(error.response?.data || "Failed to create dispatch");
+    dispatchErrors.value = {};
+
+    try {
+        const response = await axios.post(route("transfers.dispatch-info"), dispatchForm.value);
+        
+        isSaving.value = false;
+        showDispatchForm.value = false;
+        
+        Swal.fire({
+            title: "Success!",
+            text: response.data,
+            icon: "success",
+            confirmButtonText: "OK",
+        }).then(() => {
+            router.get(route("transfers.show", props.transfer?.id));
         });
+    } catch (error) {
+        isSaving.value = false;
+        
+        if (error.response?.data?.errors) {
+            dispatchErrors.value = error.response.data.errors;
+        } else {
+            toast.error(error.response?.data || "Failed to create dispatch");
+        }
+    }
 }
 
 const isSavingQty = ref([]);

@@ -22,6 +22,8 @@ use App\Models\PackingListDifference;
 use App\Models\InventoryAllocation;
 use App\Models\Liquidate;
 use App\Models\ReceivedQuantity;
+use App\Models\Driver;
+use App\Models\LogisticCompany;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -623,21 +625,25 @@ class TransferController extends Controller
     }
     
     public function dispatchInfo(Request $request){
-        
         try {
             return DB::transaction(function() use ($request){
                 $request->validate([
-                    'driver_name',
-                    'driver_number',
-                    'place_number',
-                    'no_of_cartoons',
-                    'transfer_id',
-                    'status'
+                    'dispatch_date' => 'required|date',
+                    'driver_id' => 'required|exists:drivers,id',
+                    'driver_number' => 'required|string',
+                    'plate_number' => 'required|string',
+                    'no_of_cartoons' => 'required|numeric',
+                    'transfer_id' => 'required|exists:transfers,id',
+                    'logistic_company_id' => 'required|exists:logistic_companies,id',
+                    'status' => 'required|string'
                 ]);
-                $transfer = Transfer::with('dispatchInfo')->where('id',$request->transfer_id)->first();
+
+                $transfer = Transfer::with('dispatchInfo')->find($request->transfer_id);
                 $transfer->dispatchInfo()->create([
                     'transfer_id' => $request->transfer_id,
-                    'driver_name' => $request->driver_name,
+                    'dispatch_date' => $request->dispatch_date,
+                    'driver_id' => $request->driver_id,
+                    'logistic_company_id' => $request->logistic_company_id,
                     'driver_number' => $request->driver_number,
                     'plate_number' => $request->plate_number,
                     'no_of_cartoons' => $request->no_of_cartoons,
@@ -680,11 +686,27 @@ class TransferController extends Controller
             ])
             ->first();
             
+            // Get drivers with their companies
+            $drivers = Driver::with('company')->where('is_active', true)->get();
+                
+            // Get all companies for the driver form
+            $companyOptions = LogisticCompany::where('is_active', true)
+                ->get()
+                ->map(function($company) {
+                    return [
+                        'id' => $company->id,
+                        'name' => $company->name,
+                        'isAddNew' => false
+                    ];
+                });
+            
             logger()->info($transfer);
             
             DB::commit();
             return inertia('Transfer/Show', [
-                'transfer' => $transfer
+                'transfer' => $transfer,
+                'drivers' => $drivers,
+                'companyOptions' => $companyOptions
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -1513,7 +1535,7 @@ class TransferController extends Controller
             
             $request->validate([
                 'transfer_id' => 'required|exists:transfers,id',
-                'status' => 'required|string|in:pending,reviewed,approved,in_process,dispatched,delivered,received'
+                'status' => 'required|string|in:pending,reviewed,approved,in_process,dispatched,delivered,received,rejected'
             ]);
 
             $transfer = Transfer::findOrFail($request->transfer_id);
@@ -1522,7 +1544,7 @@ class TransferController extends Controller
             $user = auth()->user();
 
             // Define status progression order
-            $statusOrder = ['pending', 'reviewed', 'approved', 'in_process', 'dispatched', 'delivered', 'received'];
+            $statusOrder = ['pending', 'reviewed', 'approved', 'in_process', 'dispatched', 'delivered', 'received','rejected'];
             $currentStatusIndex = array_search($transfer->status, $statusOrder);
             $newStatusIndex = array_search($newStatus, $statusOrder);
 
@@ -1558,6 +1580,15 @@ class TransferController extends Controller
                     }
                     $transfer->approved_at = now();
                     $transfer->approved_by = $user->id;
+                    break;
+
+                case 'rejected':
+                    if ($transfer->status !== 'reviewed') {
+                        DB::rollBack();
+                        return response()->json('Transfer must be reviewed to reject', 400);
+                    }
+                    $transfer->rejected_at = now();
+                    $transfer->rejected_by = $user->id;
                     break;
 
                 case 'in_process':
@@ -2187,34 +2218,7 @@ class TransferController extends Controller
         }
     }
     
-    /**
-     * Add driver
-     */
-    public function addDriver(Request $request)
-    {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'phone' => 'required|string|max:20',
-                'license_number' => 'nullable|string|max:50'
-            ]);
-            
-            $driverId = DB::table('drivers')->insertGetId([
-                'name' => $request->name,
-                'phone' => $request->phone,
-                'license_number' => $request->license_number,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-            
-            $driver = DB::table('drivers')->where('id', $driverId)->first();
-            
-            return response()->json(['driver' => $driver, 'message' => 'Driver added successfully'], 200);
-            
-        } catch (\Throwable $th) {
-            return response()->json(['error' => $th->getMessage()], 500);
-        }
-    }
+
     
     /**
      * Receive transfer

@@ -164,95 +164,7 @@ const showLegend = ref(false);
                     >
                         Create New Order
                     </Link>
-                    <button
-                        @click="showLegend = true"
-                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
-                        Icon Legend
-                    </button>
-                </div>
-            </div>
-
-            <div class="bg-white mb-6">
-                <div class="flex flex-wrap gap-4 items-center mb-5">
-                    <!-- Search -->
-                    <div
-                        class="relative w-full sm:w-auto flex-grow min-w-[250px]"
-                    >
-                        <input
-                            type="text"
-                            v-model="search"
-                            placeholder="Search by Order No"
-                            class="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <svg
-                            class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                    </div>
-
-                    <!-- Order Type Filter -->
-                    <div
-                        class="w-full sm:w-auto flex-none min-w-[200px] w-[220px]"
-                    >
-                        <Multiselect
-                            v-model="orderType"
-                            :options="orderTypes"
-                            :searchable="true"
-                            :close-on-select="true"
-                            :show-labels="false"
-                            :allow-empty="true"
-                            placeholder="Select Order Type"
-                        >
-                        </Multiselect>
-                    </div>
-
-                    <!-- Date From -->
-                    <div
-                        class="w-full sm:w-auto flex-none min-w-[150px] w-[180px]"
-                    >
-                        <div class="relative">
-                            <input
-                                type="date"
-                                v-model="dateFrom"
-                                class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <label
-                                class="absolute -top-5 left-0 text-xs text-gray-500"
-                                >From Date</label
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Date To -->
-                    <div
-                        class="w-full sm:w-auto flex-none min-w-[150px] w-[180px]"
-                    >
-                        <div class="relative">
-                            <input
-                                type="date"
-                                v-model="dateTo"
-                                class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <label
-                                class="absolute -top-5 left-0 text-xs text-gray-500"
-                                >To Date</label
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Per Page Selector -->
-                    <div class="w-full sm:w-auto flex-none min-w-[150px]">
+                    <div class="flex justify-end items-center gap-2">
                         <select
                             v-model="per_page"
                             @change="props.filters.page = 1"
@@ -263,6 +175,15 @@ const showLegend = ref(false);
                             <option value="50">50 Per page</option>
                             <option value="100">100 Per page</option>
                         </select>
+                        <button
+                            @click="showLegend = true"
+                            class="flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors duration-200 shadow"
+                            aria-label="Show Icon Legend"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 
@@ -308,43 +229,43 @@ const showLegend = ref(false);
                                     <tr>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tl-lg"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Order Number
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Facility
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Order Type
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Order Date
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Expected Date
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Handled By
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tr-lg"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
                                         >
                                             Status
                                         </th>
@@ -354,8 +275,8 @@ const showLegend = ref(false);
                                     <tr v-if="orders.data?.length === 0">
                                         <td
                                             colspan="7"
-                                            class="px-2 py-2 text-center text-sm text-gray-600 border-b"
-                                            style="border-bottom: 1px solid #B7C6E6;"
+                                            class="px-2 py-2 text-center text-sm text-gray-600"
+                                            style="border-bottom: 1px solid #F4F7FB;"
                                         >
                                             No orders found
                                         </td>
@@ -363,33 +284,28 @@ const showLegend = ref(false);
                                     <tr
                                         v-for="order in orders.data"
                                         :key="order.id"
-                                        class="border-b"
-                                        :class="{
-                                            'hover:bg-gray-50': true,
-                                            'text-red-500':
-                                                order.status === 'rejected',
-                                        }"
-                                        style="border-bottom: 1px solid #B7C6E6;"
+                                        class="hover:bg-gray-50 transition-colors duration-150"
+                                        style="border-bottom: 1px solid #F4F7FB;"
                                     >
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
                                             <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
                                             {{ order.facility?.name }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                                             {{ order.order_type }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                                             {{ formatDate(order.order_date) }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                                             {{ formatDate(order.expected_date) }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
                                             {{ order.facility?.handledby?.name || "Not assigned" }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                        <td class="px-2 py-2 whitespace-nowrap">
                                             <div class="flex items-center gap-2">
                                                 <!-- Status Progress Icons - Only show actions taken -->
                                                 <div class="flex items-center gap-1">
@@ -448,10 +364,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#eab308"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.pending / totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.pending === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.pending / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -504,11 +417,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#f59e0b"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.reviewed /
-                                                        totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.reviewed === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.reviewed / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -561,11 +470,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#22c55e"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.approved /
-                                                        totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.approved === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.approved / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -618,11 +523,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#ef4444"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.rejected /
-                                                        totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.rejected === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.rejected / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -675,11 +576,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#3b82f6"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.in_process /
-                                                        totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.in_process === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.in_process / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -732,11 +629,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#8b5cf6"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.dispatched /
-                                                        totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.dispatched === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.dispatched / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div
@@ -789,10 +682,7 @@ const showLegend = ref(false);
                                                 fill="none"
                                                 stroke="#6366f1"
                                                 stroke-width="4"
-                                                :stroke-dasharray="`${
-                                                    (stats.received / totalOrders) *
-                                                    125.6
-                                                } 125.6`"
+                                                :stroke-dasharray="(stats.received === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.received / totalOrders) * 175.93} 175.93`"
                                             />
                                         </svg>
                                         <div

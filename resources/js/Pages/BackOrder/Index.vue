@@ -87,12 +87,12 @@
                 <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
                     <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">SN</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200 rounded-tl-lg">SN</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Back Order ID</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Date</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Source Type</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Notes & Documents</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200">Action</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200 rounded-tr-lg">Action</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
