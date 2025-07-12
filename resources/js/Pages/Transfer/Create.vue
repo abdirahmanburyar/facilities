@@ -576,49 +576,49 @@ function isExpiringSoon(expiryDate) {
 
                     <!-- Items Table Section -->
                     <div class="mb-4 overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr class="bg-gray-50">
-                                    <th class="min-w-[120px] px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                        <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                            <thead>
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="min-w-[120px] px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Item Name
                                     </th>
-                                    <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Category
                                     </th>
-                                    <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         UoM
                                     </th>
-                                    <th class="px-2 py-2 text-center text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Total Quantity on Hand Per Unit
                                     </th>
-                                    <th class="px-2 py-2 text-center text-xs text-black capitalize border border-black" colspan="4">
+                                    <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="4">
                                         Item details
                                     </th>
                                     
-                                    <th class="min-w-[150px] px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="min-w-[150px] px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Reasons for Transfers
                                     </th>
-                                    <th class="min-w-[110px] px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="min-w-[110px] px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Quantity to be transferred
                                     </th>
-                                    <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Total Quantity to be transferred
                                     </th>
-                                    <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
+                                    <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         Action
                                     </th>
                                 </tr>
-                                <tr class="bg-gray-50">
-                                    <th class="px-2 py-1 text-xs border border-black text-left">
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">
                                         QTY
                                     </th>
-                                    <th class="px-2 py-1 text-xs border border-black text-left">
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">
                                         Batch Number
                                     </th>
-                                    <th class="px-2 py-1 text-xs border border-black text-left">
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">
                                         Expiry Date
                                     </th>
-                                    <th class="px-2 py-1 text-xs border border-black text-left">
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">
                                         Location
                                     </th>
                                 </tr>
@@ -629,11 +629,12 @@ function isExpiringSoon(expiryDate) {
                                     <!-- Show details if they exist, otherwise show one row with main item data -->
                                     <tr v-for="(detail, detailIndex) in (item.details?.length > 0 ? item.details : [{}])"
                                         :key="`${index}-${detail.id || detailIndex}`"
-                                        class="hover:bg-gray-50 transition-colors duration-150">
+                                        class="hover:bg-gray-50 transition-colors duration-150 border-b"
+                                        style="border-bottom: 1px solid #B7C6E6;">
                                         
                                         <!-- Item Name - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="min-w-[200px] px-3 py-3 text-xs text-gray-900 border border-black align-top">
+                                            class="min-w-[200px] px-3 py-2 text-xs font-medium text-gray-800 align-top">
                                             <div class="w-full">
                                                 <Multiselect
                                                     v-model="item.product"
@@ -653,45 +654,45 @@ function isExpiringSoon(expiryDate) {
 
                                         <!-- Category - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="px-3 py-3 text-xs text-gray-900 border border-black text-center">
+                                            class="px-3 py-2 text-xs text-gray-700 align-top">
                                             {{ item.product?.category?.name || '' }}
                                         </td>
 
                                         <!-- UoM - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="px-3 py-3 text-xs text-gray-900 border border-black text-center">
+                                            class="px-3 py-2 text-xs text-gray-700 align-top">
                                             {{ item.details?.[0]?.uom || '' }}
                                         </td>
 
                                         <!-- Total Quantity on Hand Per Unit - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="px-3 py-3 text-xs text-center border border-black">
+                                            class="px-3 py-2 text-xs text-gray-800 align-top">
                                             {{ item.available_quantity || 0 }}
                                         </td>
 
                                         <!-- Item Details Columns -->
                                         <!-- Quantity -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center">
+                                        <td class="px-2 py-1 text-xs text-center" :class="detail.expiry_date && isExpiringSoon(detail.expiry_date) ? 'text-red-600 font-medium' : 'text-gray-900'">
                                             {{ detail.quantity || '' }}
                                         </td>
 
                                         <!-- Batch Number -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center">
+                                        <td class="px-2 py-1 text-xs text-center" :class="detail.expiry_date && isExpiringSoon(detail.expiry_date) ? 'text-red-600 font-medium' : 'text-gray-900'">
                                             {{ detail.batch_number || '' }}
                                         </td>
 
                                         <!-- Expiry Date -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center" :class="{ 'text-red-600': detail.expiry_date && isExpiringSoon(detail.expiry_date) }">
+                                        <td class="px-2 py-1 text-xs text-center" :class="detail.expiry_date && isExpiringSoon(detail.expiry_date) ? 'text-red-600 font-medium' : 'text-gray-900'">
                                             {{ detail.expiry_date ? formatDate(detail.expiry_date) : '' }}
                                         </td>
 
                                         <!-- Location -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center">
+                                        <td class="px-2 py-1 text-xs text-center">
                                             {{ detail.location || '' }}
                                         </td>
 
                                         <!-- Reasons for Transfers - per detail -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center">
+                                        <td class="px-2 py-1 text-xs text-center">
                                         <Multiselect
                                             v-if="item.product && detail.quantity"
                                             v-model="detail.transfer_reason"
@@ -703,7 +704,7 @@ function isExpiringSoon(expiryDate) {
                                         </td>
 
                                         <!-- Quantity to be transferred - per detail -->
-                                        <td class="px-2 py-1 text-xs border border-black text-center">
+                                        <td class="px-2 py-1 text-xs text-center">
                                             <input
                                                 v-if="item.product && detail.quantity"
                                                 type="number"
@@ -718,7 +719,7 @@ function isExpiringSoon(expiryDate) {
 
                                         <!-- Total Quantity to be transferred - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="px-3 py-3 text-xs text-center border border-black">
+                                            class="px-3 py-2 text-xs text-gray-800 align-top">
                                             <div class="text-sm font-medium text-blue-600" v-if="item.product">
                                                 {{ item.quantity || 0 }}
                                             </div>
@@ -726,7 +727,7 @@ function isExpiringSoon(expiryDate) {
 
                                         <!-- Action - only on first row for this item -->
                                         <td v-if="detailIndex === 0" :rowspan="Math.max(item.details?.length || 1, 1)"
-                                            class="px-3 py-3 text-xs text-center border border-black">
+                                            class="px-3 py-4 whitespace-nowrap text-xs font-medium align-top">
                                             <button
                                                 type="button"
                                                 @click="removeItem(index)"
