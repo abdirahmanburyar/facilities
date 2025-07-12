@@ -638,7 +638,7 @@
                 </div>
 
             <!-- dispatch information -->
-            <div v-if="props.transfer.status === 'dispatched' && props.transfer.dispatch_info?.length > 0"
+            <div v-if="props.transfer.status === 'dispatched' && props.transfer.dispatch?.length > 0"
                 class="mt-8 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -647,7 +647,7 @@
                 </div>
 
                 <div class="bg-white rounded-lg shadow-lg divide-y divide-gray-200">
-                    <div v-for="dispatch in props.transfer.dispatch_info" :key="dispatch.id" class="p-6">
+                    <div v-for="dispatch in props.transfer.dispatch" :key="dispatch.id" class="p-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Driver & Company Info -->
                             <div class="space-y-4">
