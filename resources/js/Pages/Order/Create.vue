@@ -197,7 +197,6 @@
                                                      label="name"
                                                      @select="checkInventory(index, $event)"
                                                      @remove="handleProductRemoval(index)"
-                                                     required
                                                      :class="{ 'opacity-50': loadingRows.has(index) }"
                                                      class="w-full"
                                                  >
