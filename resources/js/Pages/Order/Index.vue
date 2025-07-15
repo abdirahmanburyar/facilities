@@ -5,70 +5,126 @@ import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import Multiselect from "vue-multiselect";
 import "vue-multiselect/dist/vue-multiselect.css";
 import "@/Components/multiselect.css";
-import moment from "moment";
 import { TailwindPagination } from "laravel-vue-pagination";
+import moment from "moment";
+import axios from "axios";
 
 const props = defineProps({
     orders: Object,
     filters: Object,
     stats: Object,
-    totalOrders: Number,
+    regions: Array,
 });
 
+const districts = ref([]);
+const facilities = ref([]);
+
+// Debounce setup
+let searchTimeout = null;
+
+async function handleRegionSelect(option) {
+    if (!option) {
+        district.value = null;
+        districts.value = [];
+        facility.value = null;
+        facilities.value = [];
+        return;
+    }
+    
+    // Smart validation - clear district if it doesn't belong to selected region
+    if (district.value && districts.value.length > 0) {
+        const districtExists = districts.value.some(d => d.value === district.value);
+        if (!districtExists) {
+            district.value = null;
+        }
+    }
+    
+    facility.value = null;
+    facilities.value = [];
+    await loadDistrict();
+}
+
+async function handleDistrictSelect(option) {
+    if (!option) {
+        facility.value = null;
+        facilities.value = [];
+        return;
+    }
+    
+    // Smart validation - clear facility if it doesn't belong to selected district
+    if (facility.value && facilities.value.length > 0) {
+        const facilityExists = facilities.value.some(f => f.value === facility.value);
+        if (!facilityExists) {
+            facility.value = null;
+        }
+    }
+    
+    await loadFacility();
+}
+
 // Fixed order types
-const orderTypes = ["Quarterly", "Replenishment"];
+const orderTypes = ["All", "Quarterly", "Replenishment"];
+
+// Compute total orders
+const totalOrders = computed(() => {
+    return (
+        props.stats.pending +
+        props.stats.reviewed +
+        props.stats.approved +
+        props.stats.in_process +
+        props.stats.dispatched +
+        props.stats.delivered +
+        props.stats.received +
+        props.stats.rejected
+    );
+});
 
 // Status configuration
 const statusTabs = [
     { value: null, label: "All Orders", color: "blue" },
     { value: "pending", label: "Pending", color: "yellow" },
-    { value: "reviewed", label: "Reviewed", color: "green" },
+    { value: "reviewed", label: "Reviewed", color: "yellow" },
     { value: "approved", label: "Approved", color: "green" },
     { value: "in_process", label: "In Process", color: "blue" },
     { value: "dispatched", label: "Dispatched", color: "purple" },
-    { value: "received", label: "Received", color: "green" },
-    { value: "delivered", label: "Delivered", color: "green" },
+    { value: "delivered", label: "Delivered", color: "orange" },
+    { value: "received", label: "Received", color: "indigo" },
     { value: "rejected", label: "Rejected", color: "red" },
 ];
 
 // Filter states
-const search = ref(props.filters.search || "");
-const currentStatus = ref(props.filters.currentStatus || null);
+const search = ref(props.filters.search);
+const currentStatus = ref(props.filters.currentStatus || null); // Default to "All Orders" (null)
+const facility = ref(props.filters?.facility);
 const orderType = ref(props.filters?.orderType);
+const district = ref(props.filters?.district);
 const dateFrom = ref(props.filters?.dateFrom);
 const dateTo = ref(props.filters?.dateTo);
 const per_page = ref(props.filters.per_page || 25);
+const region = ref(props.filters?.region);
 
-// Debounce setup
-let searchTimeout = null;
+// UI states
+const showIconLegend = ref(false);
 
-function reloadOrder() {
-    const query = {};
-    // Only add non-empty values to the query
-    if (search.value) query.search = search.value;
-    if (currentStatus.value) query.currentStatus = currentStatus.value;
-    if (orderType.value) query.orderType = orderType.value;
-    if (dateFrom.value) query.dateFrom = dateFrom.value;
-    if (dateTo.value) query.dateTo = dateTo.value;
-    if (props.filters.page) query.page = props.filters.page;
-    if (per_page.value) query.per_page = per_page.value;
+// Initialize data on page load
+onMounted(async () => {
+    // Load districts if region is already selected
+    if (region.value) {
+        await loadDistrict();
+    }
+    
+    // Load facilities if district is already selected
+    if (district.value) {
+        await loadFacility();
+    }
+});
 
-    router.get(route("orders.index"), query, {
-        preserveScroll: true,
-        preserveState: true,
-        only: ["orders", "stats"],
-    });
-}
-
-function getResult(page = 1) {
-    props.filters.page = page;
-}
-
-// Handle tab click
-function handleTabClick(status) {
-    currentStatus.value = status;
-    reloadOrder();
-}
+// Cleanup on unmount
+onBeforeUnmount(() => {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+});
 
 // Watch for filter changes with debouncing for search
 watch(
@@ -87,185 +143,403 @@ watch(
 watch(
     [
         () => currentStatus.value,
+        () => facility.value,
         () => orderType.value,
+        () => district.value,
         () => dateFrom.value,
         () => dateTo.value,
+        () => region.value,
         () => per_page.value,
+        () => props.filters.page,
     ],
     () => {
         reloadOrder();
     }
 );
 
-// Cleanup on unmount
-onBeforeUnmount(() => {
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
+function reloadOrder() {
+    const query = {};
+
+    // Only add non-empty values to the query
+    if (search.value) query.search = search.value;
+    if (facility.value) query.facility = facility.value;
+    if (currentStatus.value) query.currentStatus = currentStatus.value;
+    if (orderType.value) query.orderType = orderType.value;
+    if (per_page.value) query.per_page = per_page.value;
+    if (props.filters.page) query.page = props.filters.page;
+    if (district.value) query.district = district.value;
+    if (dateFrom.value) query.dateFrom = dateFrom.value;
+    if (dateTo.value) query.dateTo = dateTo.value;
+    if (region.value) {
+        query.region = region.value;
     }
-});
+
+    router.get(route("orders.index"), query, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ["orders", "stats"],
+    });
+}
+
+function getResult(page = 1) {
+    props.filters.page = page;
+}
+
+async function loadDistrict() {
+    try {
+        const response = await axios.post(route("districts.get-districts"), { 
+            region: region.value 
+        });
+        districts.value = response.data;
+    } catch (error) {
+        console.log(error);
+        districts.value = [];
+    }
+}
+
+async function loadFacility() {
+    try {
+        const response = await axios.post(route("facilities.get-facilities"), { 
+            district: district.value 
+        });
+        facilities.value = response.data;
+    } catch (error) {
+        console.log(error);
+        facilities.value = [];
+    }
+}
 
 const formatDate = (date) => {
     return moment(date).format("DD/MM/YYYY");
 };
-
-const statuses = {
-    pending: "Pending",
-    reviewed: "Reviewed",
-    approved: "Approved",
-    rejected: "Rejected",
-    in_process: "In Process",
-    dispatched: "Dispatched",
-    received: "Received",
-};
-
-const statusColors = {
-    pending: "#eab308",
-    reviewed: "#f59e0b",
-    approved: "#22c55e",
-    rejected: "#ef4444",
-    in_process: "#3b82f6",
-    dispatched: "#8b5cf6",
-    received: "#6366f1",
-};
-
-const textColors = {
-    pending: "text-yellow-600",
-    reviewed: "text-amber-600",
-    approved: "text-green-600",
-    rejected: "text-red-600",
-    in_process: "text-blue-600",
-    dispatched: "text-purple-600",
-    received: "text-indigo-600",
-};
-
-const getPercentage = (key) => {
-    if (props.totalOrders === 0) return 0;
-    return Math.round((props.stats[key] / props.totalOrders) * 100);
-};
-
-const showLegend = ref(false);
 </script>
 
 <template>
     <Head title="All Orders" />
     <AuthenticatedLayout
-        title="Tracks Your Orders"
+        title="Track Your Orders"
         description="Keeping Essentials Ready, Every Time"
         img="/assets/images/orders.png"
     >
-        <div class="mb-6">
-            <!-- Filters Section -->
-            <div class="flex items-center justify-between mb-[30px]">
-                <h1 class="text-xl font-bold text-gray-900">Facility Orders</h1>
-                <div class="flex gap-2">
-                    <Link
-                        :href="route('orders.create')"
-                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
+        <!-- Filters Section -->
+        <div class="relative bg-white mb-2 text-xs">
+            <div
+                class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center mb-5"
+            >
+                <!-- Search -->
+                <div class="relative w-full">
+                    <input
+                        type="text"
+                        v-model="search"
+                        placeholder="Search by Order No"
+                        class="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <svg
+                        class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                     >
-                        Create New Order
-                    </Link>
-                    <div class="flex justify-end items-center gap-2">
-                        <select
-                            v-model="per_page"
-                            @change="props.filters.page = 1"
-                            class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="10">10 Per page</option>
-                            <option value="25">25 Per page</option>
-                            <option value="50">50 Per page</option>
-                            <option value="100">100 Per page</option>
-                        </select>
-                        <button
-                            @click="showLegend = true"
-                            class="flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors duration-200 shadow"
-                            aria-label="Show Icon Legend"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
-                    </div>
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                    </svg>
                 </div>
-                
-                <!-- Status Tabs -->
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8">
-                        <button
-                            v-for="tab in statusTabs"
-                            :key="tab.value"
-                            @click="handleTabClick(tab.value)"
-                            class="whitespace-nowrap py-4 px-1 border-b-4 font-bold text-xs"
-                            :class="[
-                                currentStatus === tab.value
-                                    ? `border-${tab.color}-500 text-${tab.color}-600`
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                            ]"
-                        >
-                            {{ tab.label }}
-                            <span
-                                v-if="
-                                    props.orders.meta?.counts &&
-                                    props.orders.meta.counts[tab.value || 'all']
-                                "
-                                class="ml-2 px-2 py-0.5 text-xs rounded-full"
-                                :class="`bg-${tab.color}-100 text-${tab.color}-800`"
-                            >
-                                {{
-                                    props.orders.meta.counts[tab.value || "all"]
-                                }}
-                            </span>
-                        </button>
-                    </nav>
+
+                <div class="w-full">
+                    <Multiselect
+                        v-model="region"
+                        :options="props.regions"
+                        :searchable="true"
+                        :close-on-select="true"
+                        :allow-empty="true"
+                        @select="handleRegionSelect"
+                        placeholder="Select Region"
+                    >
+                    </Multiselect>
+                </div>
+
+                <!-- District Filter -->
+                <div>
+                    <Multiselect
+                        v-model="district"
+                        :options="districts"
+                        :searchable="true"
+                        :close-on-select="true"
+                        :allow-empty="true"
+                        @select="handleDistrictSelect"
+                        placeholder="Select District"
+                    >
+                    </Multiselect>
+                </div>
+                <!-- Facility Filter -->
+                <div class="w-full">
+                    <Multiselect
+                        v-model="facility"
+                        :options="facilities"
+                        :searchable="true"
+                        :close-on-select="true"
+                        :allow-empty="true"
+                        placeholder="Select Facility"
+                    >
+                    </Multiselect>
+                </div>
+
+                <!-- Order Type Filter -->
+                <div class="w-full">
+                    <Multiselect
+                        v-model="orderType"
+                        :options="orderTypes"
+                        :searchable="true"
+                        :close-on-select="true"
+                        :allow-empty="true"
+                        placeholder="Select Order Type"
+                    >
+                    </Multiselect>
+                </div>
+
+                <!-- Date From -->
+                <div class="w-full flex items-center space-x-2">
+                    <input
+                        type="date"
+                        v-model="dateFrom"
+                        class="w-[300px] px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span class="text-sm">To</span>
+                    <input
+                        type="date"
+                        v-model="dateTo"
+                        class="w-[300px] px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                 </div>
             </div>
+            <!-- Move Icon Legend Button to top right and remove text -->
+            <div class="flex justify-end items-center gap-2">
+                <select
+                    v-model="per_page"
+                    @change="props.filters.page = 1"
+                    class="md:w-[200px] sm:w-[150px] xs:w-full border border-black rounded-3xl"
+                >
+                    <option value="10">10 Per page</option>
+                    <option value="25">25 Per page</option>
+                    <option value="50">50 Per page</option>
+                    <option value="100">100 Per page</option>
+                </select>
+                <button
+                    @click="showIconLegend = true"
+                    class="flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors duration-200 shadow"
+                    aria-label="Show Icon Legend"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+            </div>
+            <!-- Status Tabs -->
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button
+                        v-for="tab in statusTabs"
+                        :key="tab.value"
+                        @click="currentStatus = tab.value"
+                        class="whitespace-nowrap py-4 px-1 font-bold text-xs"
+                        :class="[
+                            currentStatus === tab.value
+                                ? 'border-b-4 border-green-500 text-green-600'
+                                : 'border-b-4 border-transparent text-black hover:text-gray-700 hover:border-gray-300',
+                        ]"
+                    >
+                        {{ tab.label }}
+                        <span
+                            v-if="
+                                props.orders.meta?.counts &&
+                                props.orders.meta.counts[tab.value || 'all']
+                            "
+                            class="ml-2 px-2 py-0.5 text-xs rounded-full"
+                            :class="`bg-${tab.color}-100 text-${tab.color}-800`"
+                        >
+                            {{ props.orders.meta.counts[tab.value || "all"] }}
+                        </span>
+                    </button>
+                </nav>
+            </div>
+        </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-                <!-- Orders Table -->
-                <div class="lg:col-span-10 text-xs">
-                    <div>
-                        <div class="overflow-auto">
-                            <table class="w-full table-sm">
+        <!-- Icon Legend Slideover -->
+        <div
+            v-if="showIconLegend"
+            class="fixed inset-0 overflow-hidden z-50"
+            aria-labelledby="slide-over-title"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div class="absolute inset-0 overflow-hidden">
+                <!-- Background overlay -->
+                <div
+                    class="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                    @click="showIconLegend = false"
+                ></div>
+
+                <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+                    <div class="w-screen max-w-md">
+                        <div class="h-full flex flex-col bg-white shadow-xl">
+                            <!-- Header -->
+                            <div class="px-4 py-6 bg-blue-50 sm:px-6">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="text-lg font-medium text-blue-900" id="slide-over-title">
+                                        Order Status Icons Legend
+                                    </h2>
+                                    <button
+                                        @click="showIconLegend = false"
+                                        class="rounded-md text-blue-400 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <span class="sr-only">Close panel</span>
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="relative flex-1 px-4 sm:px-6 overflow-y-auto">
+                                <div class="space-y-6 py-6">
+                                    <div class="text-sm text-gray-600 mb-4">
+                                        <p>These icons represent the current status of each order in the workflow:</p>
+                                    </div>
+                                    
+                                    <!-- Icon Legend Items -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Pending</h3>
+                                                <p class="text-sm text-gray-600">Order has been submitted and is awaiting review</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/review.png" class="w-8 h-8" alt="Reviewed" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Reviewed</h3>
+                                                <p class="text-sm text-gray-600">Order has been reviewed by management</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/approved.png" class="w-8 h-8" alt="Approved" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Approved</h3>
+                                                <p class="text-sm text-gray-600">Order has been approved for processing</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/rejected.png" class="w-8 h-8" alt="Rejected" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Rejected</h3>
+                                                <p class="text-sm text-gray-600">Order has been rejected and will not proceed</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/inprocess.png" class="w-8 h-8" alt="In Process" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">In Process</h3>
+                                                <p class="text-sm text-gray-600">Order is being prepared and processed</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/dispatch.png" class="w-8 h-8" alt="Dispatched" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Dispatched</h3>
+                                                <p class="text-sm text-gray-600">Order has been dispatched for delivery</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/delivered.png" class="w-8 h-8" alt="Delivered" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Delivered</h3>
+                                                <p class="text-sm text-gray-600">Order has been delivered to the facility</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/received.png" class="w-8 h-8" alt="Received" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Received</h3>
+                                                <p class="text-sm text-gray-600">Order has been received and confirmed by facility</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Workflow Information -->
+                                    <div class="mt-8 p-4 bg-blue-50 rounded-lg">
+                                        <h3 class="font-medium text-blue-900 mb-2">Order Workflow</h3>
+                                        <p class="text-sm text-blue-800">
+                                            Orders progress through these stages sequentially. Each icon represents a completed stage in the process.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-[80px]">
+            <!-- Orders Table -->
+            <div class="lg:col-span-10 text-xs">
+                <div>
+                    <div class="overflow-auto">
+                        <table class="w-full table-sm">
                                 <thead style="background-color: #F4F7FB;">
                                     <tr>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tl-lg"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Number
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Facility
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Type
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Order Date
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Expected Date
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Handled By
                                         </th>
                                         <th
                                             class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tr-lg"
-                                            style="color: #4F6FCB; border-bottom: 2px solid #F4F7FB;"
+                                            style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
                                         >
                                             Status
                                         </th>
@@ -275,8 +549,8 @@ const showLegend = ref(false);
                                     <tr v-if="orders.data?.length === 0">
                                         <td
                                             colspan="7"
-                                            class="px-2 py-2 text-center text-sm text-gray-600"
-                                            style="border-bottom: 1px solid #F4F7FB;"
+                                            class="px-2 py-2 text-center text-sm text-gray-600 border-b"
+                                            style="border-bottom: 1px solid #B7C6E6;"
                                         >
                                             No orders found
                                         </td>
@@ -284,28 +558,33 @@ const showLegend = ref(false);
                                     <tr
                                         v-for="order in orders.data"
                                         :key="order.id"
-                                        class="hover:bg-gray-50 transition-colors duration-150"
-                                        style="border-bottom: 1px solid #F4F7FB;"
+                                        class="border-b"
+                                        :class="{
+                                            'hover:bg-gray-50': true,
+                                            'text-red-500':
+                                                order.status === 'rejected',
+                                        }"
+                                        style="border-bottom: 1px solid #B7C6E6;"
                                     >
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             <Link :href="route('orders.show', order.id)">{{ order.order_number }}</Link>
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ order.facility?.name }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ order.order_type }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ formatDate(order.order_date) }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ formatDate(order.expected_date) }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                                        <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             {{ order.facility?.handledby?.name || "Not assigned" }}
                                         </td>
-                                        <td class="px-2 py-2 whitespace-nowrap">
+                                        <td class="px-2 py-2 whitespace-nowrap border-b" style="border-bottom: 1px solid #B7C6E6;">
                                             <div class="flex items-center gap-2">
                                                 <!-- Status Progress Icons - Only show actions taken -->
                                                 <div class="flex items-center gap-1">
@@ -330,388 +609,419 @@ const showLegend = ref(false);
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-                        <div class="mt-4 flex justify-end">
-                            <TailwindPagination
-                                :data="props.orders"
-                                :limit="2"
-                                @pagination-change-page="getResult"
-                            />
+                    </div>
+                   <div class="mt-4 flex justify-end ">
+                    <TailwindPagination
+                        :data="props.orders"
+                        :limit="2"
+                        @pagination-change-page="getResult"
+                    />
+                   </div>
+                </div>
+            </div>
+            <!-- Status Statistics -->
+            <div class="lg:col-span-1">
+                <div class="sticky text-xs top-4 sticky:mt-5">
+                    <div class="space-y-8">
+                        <!-- Pending -->
+                        <div class="relative">
+                            <div class="flex items-center mb-2">
+                                <div class="w-16 h-16 relative mr-4">
+                                    <svg class="w-16 h-16 transform -rotate-90">
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            fill="none"
+                                            stroke="#e2e8f0"
+                                            stroke-width="4"
+                                        />
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            fill="none"
+                                            stroke="#eab308"
+                                            stroke-width="4"
+                                            :stroke-dasharray="(stats.pending === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.pending / totalOrders) * 175.93} 175.93`"
+                                        />
+                                    </svg>
+                                    <div
+                                        class="absolute inset-0 flex items-center justify-center"
+                                    >
+                                        <span
+                                            class="text-base font-bold text-yellow-600"
+                                            >{{
+                                                totalOrders > 0
+                                                    ? Math.round(
+                                                          (stats.pending /
+                                                              totalOrders) *
+                                                              100
+                                                      )
+                                                    : 0
+                                            }}%</span
+                                        >
+                                    </div>
+                                </div>
+                                <div>
+                                    <div
+                                        class="text-lg font-bold text-gray-900"
+                                    >
+                                        {{ stats.pending }}
+                                    </div>
+                                    <div class="text-base text-gray-600">
+                                        Pending
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <!-- Status Statistics -->
-                <div class="lg:col-span-2">
-                    <div class="sticky text-xs top-4 sticky:mt-5">
-                        <div class="space-y-8">
-                            <!-- Pending -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#eab308"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.pending === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.pending / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-yellow-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.pending /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.pending }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Pending
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Reviewed -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#f59e0b"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.reviewed === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.reviewed / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-amber-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.reviewed /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.reviewed }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Reviewed
-                                        </div>
-                                    </div>
+                    <!-- Reviewed -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#22c55e"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.reviewed === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.reviewed / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-green-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.reviewed /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
                                 </div>
                             </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.reviewed }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Reviewed
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- Approved -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#22c55e"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.approved === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.approved / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-green-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.approved /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.approved }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Approved
-                                        </div>
-                                    </div>
+                    <!-- Approved -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#22c55e"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.approved === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.approved / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-green-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.approved /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
                                 </div>
                             </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.approved }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Approved
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- Rejected -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#ef4444"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.rejected === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.rejected / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-red-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.rejected /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.rejected }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Rejected
-                                        </div>
-                                    </div>
+                    <!-- Rejected -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#ef4444"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.rejected === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.rejected / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-red-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.rejected /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
                                 </div>
                             </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.rejected }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Rejected
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <!-- In Process -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#3b82f6"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.in_process === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.in_process / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-blue-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.in_process /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.in_process }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            In Process
-                                        </div>
-                                    </div>
+                    <!-- In Process -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.in_process === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.in_process / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-blue-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.in_process /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
                                 </div>
                             </div>
-                            
-                            <!-- Dispatched -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#8b5cf6"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.dispatched === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.dispatched / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-purple-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.dispatched /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.dispatched }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Dispatched
-                                        </div>
-                                    </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.in_process }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    In Process
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Received -->
-                            <div class="relative">
-                                <div class="flex items-center mb-2">
-                                    <div class="w-16 h-16 relative mr-4">
-                                        <svg class="w-16 h-16 transform -rotate-90">
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#e2e8f0"
-                                                stroke-width="4"
-                                            />
-                                            <circle
-                                                cx="32"
-                                                cy="32"
-                                                r="28"
-                                                fill="none"
-                                                stroke="#6366f1"
-                                                stroke-width="4"
-                                                :stroke-dasharray="(stats.received === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.received / totalOrders) * 175.93} 175.93`"
-                                            />
-                                        </svg>
-                                        <div
-                                            class="absolute inset-0 flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-indigo-600"
-                                                >{{
-                                                    totalOrders > 0
-                                                        ? Math.round(
-                                                              (stats.received /
-                                                                  totalOrders) *
-                                                                  100
-                                                          )
-                                                        : 0
-                                                }}%</span
-                                            >
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-lg font-bold text-gray-900"
-                                        >
-                                            {{ stats.received }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Received
-                                        </div>
-                                    </div>
+                    <!-- Dispatched -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#8b5cf6"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.dispatched === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.dispatched / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-purple-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.dispatched /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.dispatched }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Dispatched
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivered -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#f59e42"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.delivered === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.delivered / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-base font-bold text-orange-600">
+                                        {{
+                                            totalOrders > 0
+                                                ? Math.round((stats.delivered / totalOrders) * 100)
+                                                : 0
+                                        }}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.delivered }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Delivered
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Received -->
+                    <div class="relative">
+                        <div class="flex items-center mb-2">
+                            <div class="w-16 h-16 relative mr-4">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#e2e8f0"
+                                        stroke-width="4"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#6366f1"
+                                        stroke-width="4"
+                                        :stroke-dasharray="(stats.received === totalOrders && totalOrders > 0) ? '175.93 175.93' : `${(stats.received / totalOrders) * 175.93} 175.93`"
+                                    />
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-base font-bold text-indigo-600"
+                                        >{{
+                                            totalOrders > 0
+                                                ? Math.round(
+                                                      (stats.received /
+                                                          totalOrders) *
+                                                          100
+                                                  )
+                                                : 0
+                                        }}%</span
+                                    >
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.received }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Received
                                 </div>
                             </div>
                         </div>
@@ -720,79 +1030,6 @@ const showLegend = ref(false);
             </div>
         </div>
     </AuthenticatedLayout>
-
-    <!-- Slideover for Icon Legend -->
-    <transition name="slide">
-      <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
-        <!-- Overlay -->
-        <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
-        <!-- Slideover Panel -->
-        <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto">
-          <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-          <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
-          <ul class="space-y-5">
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/pending.png" class="w-10 h-10" alt="Pending" />
-              <div>
-                <div class="font-semibold text-yellow-600">Pending</div>
-                <div class="text-xs text-gray-500">Order is awaiting review or action.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/review.png" class="w-10 h-10" alt="Reviewed" />
-              <div>
-                <div class="font-semibold text-amber-600">Reviewed</div>
-                <div class="text-xs text-gray-500">Order has been reviewed by an authorized user.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/approved.png" class="w-10 h-10" alt="Approved" />
-              <div>
-                <div class="font-semibold text-green-600">Approved</div>
-                <div class="text-xs text-gray-500">Order has been approved and is ready for processing.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/rejected.png" class="w-10 h-10" alt="Rejected" />
-              <div>
-                <div class="font-semibold text-red-600">Rejected</div>
-                <div class="text-xs text-gray-500">Order has been rejected and will not be processed.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/inprocess.png" class="w-10 h-10" alt="In Process" />
-              <div>
-                <div class="font-semibold text-blue-600">In Process</div>
-                <div class="text-xs text-gray-500">Order is currently being processed.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/dispatch.png" class="w-10 h-10" alt="Dispatched" />
-              <div>
-                <div class="font-semibold text-purple-600">Dispatched</div>
-                <div class="text-xs text-gray-500">Order has been dispatched for delivery.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/delivery.png" class="w-10 h-10" alt="Delivered" />
-              <div>
-                <div class="font-semibold text-indigo-600">Delivered</div>
-                <div class="text-xs text-gray-500">Order has been delivered to the destination.</div>
-              </div>
-            </li>
-            <li class="flex items-center gap-4">
-              <img src="/assets/images/received.png" class="w-10 h-10" alt="Received" />
-              <div>
-                <div class="font-semibold text-green-700">Received</div>
-                <div class="text-xs text-gray-500">Order has been received and confirmed by the facility.</div>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </transition>
 </template>
 
 <style scoped>
