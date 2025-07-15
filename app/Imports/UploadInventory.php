@@ -160,7 +160,9 @@ class UploadInventory implements
             return $this->inventoryCache[$productId];
         }
 
-        $inventory = Inventory::where('product_id', $productId)->first();
+        $inventory = FacilityInventory::where('product_id', $productId)
+            ->where('facility_id', $this->facilityId)
+            ->first();
         if ($inventory) {
             $this->inventoryCache[$productId] = $inventory;
         }
@@ -213,7 +215,7 @@ class UploadInventory implements
     {
         return [
             AfterImport::class => function (AfterImport $event) {
-                Log::info('Inventory import completed', [
+                Log::info('Facility inventory import completed', [
                     'importId' => $this->importId
                 ]);
                 

@@ -559,28 +559,6 @@
                 <div class="flex justify-center items-center mb-6">
                     <!-- Status Action Buttons -->
                     <div class="flex flex-wrap items-center justify-center gap-4">
-                        <!-- Pending status indicator -->
-                        <div class="relative">
-                            <div class="flex flex-col">
-                                <button :class="[
-                                    props.order.status === 'pending'
-                                        ? 'bg-green-500 hover:bg-green-600'
-                                        : statusOrder.indexOf(props.order.status) >
-                                            statusOrder.indexOf('pending')
-                                            ? 'bg-green-500'
-                                            : 'bg-gray-300 cursor-not-allowed',
-                                ]" class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]"
-                                    disabled>
-                                    <img src="/assets/images/pending.png" class="w-5 h-5 mr-2" alt="Pending" />
-                                    <span class="text-sm font-bold text-white">Pending since {{
-                                        moment(props.order.created_at).format('DD/MM/YYYY HH:mm') }}</span>
-                                </button>
-                            </div>
-                            <span v-show="props.order?.user" class="text-sm text-gray-600">
-                                By {{ props.order.user?.name || 'System' }}
-                            </span>
-                        </div>
-
                         <!-- Review button -->
                         <div class="relative">
                             <div class="flex flex-col">
@@ -597,10 +575,13 @@
                                     <span class="text-sm font-bold text-white">{{
                                         statusOrder.indexOf(props.order.status) >
                                             statusOrder.indexOf("pending")
-                                            ? "Reviewed on" + moment(props.order.reviewed_at).format('DD/MM/YYYY HH:mm')
+                                            ? "Reviewed"
                                             : "Waiting to be Reviewed"
                                     }}</span>
                                 </button>
+                                <span v-show="props.order?.reviewed_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.order.reviewed_at).format('DD/MM/YYYY HH:mm') }}
+                                </span>
                                 <span v-show="props.order?.reviewed_by" class="text-sm text-gray-600">
                                     By {{ props.order?.reviewed_by?.name }}
                                 </span>
@@ -624,10 +605,13 @@
                                     <span class="text-sm font-bold text-white">{{
                                         statusOrder.indexOf(props.order.status) >
                                             statusOrder.indexOf("reviewed")
-                                            ? "Approved on" + moment(props.order.approved_at).format('DD/MM/YYYY HH:mm')
+                                            ? "Approved"
                                             : "Waiting to be Approved"
                                     }}</span>
                                 </button>
+                                <span v-show="props.order?.approved_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.order.approved_at).format('DD/MM/YYYY HH:mm') }}
+                                </span>
                                 <span v-show="props.order?.approved_by" class="text-sm text-gray-600">
                                     By {{ props.order?.approved_by?.name }}
                                 </span>
@@ -652,10 +636,13 @@
                                     <span class="text-sm font-bold text-white">{{
                                         statusOrder.indexOf(props.order.status) >
                                             statusOrder.indexOf("approved")
-                                            ? "Processed on" + moment(props.order.processed_at).format('DD/MM/YYYY HH:mm')
+                                            ? "Processed"
                                             : "Waiting to be Processed"
                                     }}</span>
                                 </button>
+                                <span v-show="props.order?.processed_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.order.processed_at).format('DD/MM/YYYY HH:mm') }}
+                                </span>
                                 <span v-show="props.order?.processed_by" class="text-sm text-gray-600">
                                     By {{ props.order?.processed_by?.name }}
                                 </span>
@@ -680,10 +667,13 @@
                                     <span class="text-sm font-bold text-white">{{
                                         statusOrder.indexOf(props.order.status) >
                                             statusOrder.indexOf("in_process")
-                                            ? "Dispatched on" + moment(props.order.dispatched_at).format('DD/MM/YYYY HH:mm')
+                                            ? "Dispatched"
                                             : "Waiting to be Dispatched"
                                     }}</span>
                                 </button>
+                                <span v-show="props.order?.dispatched_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.order.dispatched_at).format('DD/MM/YYYY HH:mm') }}
+                                </span>
                                 <span v-show="props.order?.dispatched_by" class="text-sm text-gray-600">
                                     By {{ props.order?.dispatched_by?.name }}
                                 </span>
@@ -697,7 +687,7 @@
                             <!-- Delivery Status -->
                             <div class="relative">
                                 <div class="flex flex-col">
-                                    <button @click="changeStatus(props.order?.id, 'delivered', 'is_delivering')"
+                                    <button @click="openDeliveryForm()"
                                         :disabled="isType['is_delivering'] || props.order?.status != 'dispatched'"
                                         :class="[
                                             props.order.status == 'dispatched'
@@ -714,11 +704,14 @@
                                                 statusOrder.indexOf(
                                                     props.order.status
                                                 ) > statusOrder.indexOf("delivered")
-                                                    ? "Delivered on " + moment(props.order?.received_at).format('DD/MM/YYYY HH: mm')
+                                                    ? "Delivered"
                                             : isType['is_delivering'] ? 'Please Wait....' : "Mark as Delivered"
                                                     }}
                                         </span>
                                     </button>
+                                    <span v-show="props.order?.delivered_at" class="text-sm text-gray-600">
+                                        On {{ moment(props.order.delivered_at).format('DD/MM/YYYY HH:mm') }}
+                                    </span>
                                     <span v-show="props.order?.delivered_by" class="text-sm text-gray-600">
                                         By {{ props.order?.delivered_by?.name }}
                                     </span>
@@ -750,11 +743,14 @@
                                                 statusOrder.indexOf(
                                                     props.order.status
                                                 ) > statusOrder.indexOf("delivered")
-                                                    ? "Received on " + moment(props.order?.received_at).format('DD/MM/YYYY HH: mm')
+                                                    ? "Received"
                                             : isType['is_receiving'] ? 'Please Wait....' : "Mark as Received"
                                                     }}
                                         </span>
                                     </button>
+                                    <span v-show="props.order?.received_at" class="text-sm text-gray-600">
+                                        On {{ moment(props.order.received_at).format('DD/MM/YYYY HH:mm') }}
+                                    </span>
                                     <span v-show="props.order?.received_by" class="text-sm text-gray-600">
                                         By {{ props.order?.received_by?.name }}
                                     </span>
@@ -775,6 +771,12 @@
                                     d="M6 18L18 6M6 6l12 12" />
                             </svg>
                             <span class="text-sm font-bold">Rejected</span>
+                            <span v-show="props.order?.rejected_at" class="text-sm text-gray-600">
+                                On {{ moment(props.order.rejected_at).format('DD/MM/YYYY HH:mm') }}
+                            </span>
+                            <span v-show="props.order?.rejected_by" class="text-sm text-gray-600">
+                                By {{ props.order?.rejected_by?.name }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1137,6 +1139,182 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </Modal>
+
+            <!-- Delivery Form Modal -->
+            <Modal :show="showDeliveryModal" @close="closeDeliveryForm" maxWidth="4xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900">
+                            Mark Order as Delivered
+                        </h2>
+                        <button @click="closeDeliveryForm" class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Dispatch Information Summary -->
+                    <div v-if="props.order.dispatch?.length > 0" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 class="text-lg font-medium text-blue-900 mb-3">Dispatch Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-blue-700">Driver:</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.driver_name || 'N/A' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-blue-700">Phone:</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.driver_number || 'N/A' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-blue-700">Plate Number:</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.plate_number || 'N/A' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-blue-700">Dispatched Cartons:</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.no_of_cartoons || 0 }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium text-blue-700">Dispatch Date:</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString() : 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Form -->
+                    <form @submit.prevent="submitDeliveryForm" class="space-y-6">
+                        <!-- Received Cartons Section -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Received Cartons</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">
+                                        Received Cartons for {{ dispatch.driver_name || 'Driver' }}
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        v-model="deliveryForm.received_cartoons[dispatch.id]"
+                                        :min="0"
+                                        :max="dispatch.no_of_cartoons"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        :placeholder="`Max: ${dispatch.no_of_cartoons}`"
+                                    />
+                                    <p class="text-xs text-gray-500">
+                                        Dispatched: {{ dispatch.no_of_cartoons }} | 
+                                        Received: {{ deliveryForm.received_cartoons[dispatch.id] || 0 }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-medium text-gray-900">Upload Images</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Received Items Photos {{ hasDiscrepancy ? '(Required)' : '(Optional)' }}
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                        <div class="space-y-1 text-center">
+                                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label for="received-images" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                                    <span>Upload images</span>
+                                                    <input 
+                                                        id="received-images" 
+                                                        type="file" 
+                                                        multiple 
+                                                        accept="image/*"
+                                                        @change="handleImageUpload"
+                                                        class="sr-only"
+                                                    />
+                                                </label>
+                                                <p class="pl-1">or drag and drop</p>
+                                            </div>
+                                            <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                                        </div>
+                                    </div>
+                                    <div v-if="deliveryForm.images.length > 0" class="mt-2">
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div v-for="(image, index) in deliveryForm.images" :key="index" class="relative">
+                                                <img :src="image.preview" class="h-20 w-full object-cover rounded" />
+                                                <button @click="removeImage(index)" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Notes (Optional)
+                                    </label>
+                                    <textarea 
+                                        v-model="deliveryForm.notes"
+                                        rows="4"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        placeholder="Add any additional notes about the delivery..."
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Messages -->
+                        <div v-if="!isDeliveryFormValid" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Please fix the following issues:</h3>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li v-if="!Object.values(deliveryForm.received_cartoons).some(qty => qty > 0)">
+                                                At least some cartons must be received
+                                            </li>
+                                            <li v-if="hasDiscrepancy && deliveryForm.images.length === 0 && !deliveryForm.acknowledgeDiscrepancy">
+                                                Either upload images or acknowledge the discrepancy
+                                            </li>
+                                            <li v-if="!Object.entries(deliveryForm.received_cartoons).every(([dispatchId, received]) => {
+                                                const dispatch = props.order.dispatch?.find(d => d.id == dispatchId);
+                                                return dispatch ? (received || 0) <= dispatch.no_of_cartoons : true;
+                                            })">
+                                                Received cartons cannot exceed dispatched cartons
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                            <button 
+                                type="button"
+                                @click="closeDeliveryForm"
+                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit"
+                                :disabled="isSubmittingDelivery || !isDeliveryFormValid"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {{ isSubmittingDelivery ? 'Submitting...' : 'Mark as Delivered' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </Modal>
         </div>
@@ -1710,12 +1888,61 @@ const allItemsFullyReceived = computed(() => {
     );
 });
 
+// Delivery Form Computed Properties
+const hasDiscrepancy = computed(() => {
+    // Check for carton discrepancy
+    const hasCartonDiscrepancy = props.order.dispatch?.some(dispatch => {
+        const received = deliveryForm.value.received_cartoons[dispatch.id] || 0;
+        return received < dispatch.no_of_cartoons;
+    });
+
+    return hasCartonDiscrepancy;
+});
+
+const isDeliveryFormValid = computed(() => {
+    // Basic validation - at least some cartons should be received
+    const hasReceivedCartons = Object.values(deliveryForm.value.received_cartoons).some(qty => qty > 0);
+    
+    // If there's a discrepancy, either images are required OR user must acknowledge
+    if (hasDiscrepancy.value && deliveryForm.value.images.length === 0 && !deliveryForm.value.acknowledgeDiscrepancy) {
+        console.log('Form invalid: Has discrepancy but no images and not acknowledged');
+        return false;
+    }
+    
+    // Validate that received cartons don't exceed dispatched cartons
+    const hasValidCartons = Object.entries(deliveryForm.value.received_cartoons).every(([dispatchId, received]) => {
+        const dispatch = props.order.dispatch?.find(d => d.id == dispatchId);
+        return dispatch ? (received || 0) <= dispatch.no_of_cartoons : true;
+    });
+    
+    const isValid = hasReceivedCartons && hasValidCartons;
+    console.log('Form validation:', {
+        hasReceivedCartons,
+        hasValidCartons,
+        hasDiscrepancy: hasDiscrepancy.value,
+        imagesCount: deliveryForm.value.images.length,
+        isValid
+    });
+    
+    return isValid;
+});
+
 watch(itemsWithZeroReceived, (newVal, oldVal) => {
     console.log('Has item with 0 received_quantity:', newVal);
 });
 
 const isSavingQty = ref([]);
 const updateQuantityTimeouts = ref({});
+
+// Delivery Form State
+const showDeliveryModal = ref(false);
+const isSubmittingDelivery = ref(false);
+const deliveryForm = ref({
+    received_cartoons: {},
+    images: [],
+    notes: '',
+    acknowledgeDiscrepancy: false
+});
 
 // Cleanup on unmount
 onBeforeUnmount(() => {
@@ -1769,5 +1996,114 @@ async function receivedQty(item, index) {
             toast.error(error.response?.data || 'Failed to update received quantity');
         });
 }
+
+// Delivery Form Functions
+const openDeliveryForm = () => {
+    // Initialize form
+    deliveryForm.value.received_cartoons = {};
+    deliveryForm.value.images = [];
+    deliveryForm.value.notes = '';
+    deliveryForm.value.acknowledgeDiscrepancy = false;
+    
+    // Pre-fill cartons with dispatched quantities (assuming all received initially)
+    props.order.dispatch?.forEach(dispatch => {
+        deliveryForm.value.received_cartoons[dispatch.id] = dispatch.no_of_cartoons || 0;
+    });
+    
+    showDeliveryModal.value = true;
+};
+
+const closeDeliveryForm = () => {
+    showDeliveryModal.value = false;
+    deliveryForm.value = {
+        received_cartoons: {},
+        images: [],
+        notes: '',
+        acknowledgeDiscrepancy: false
+    };
+};
+
+const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    
+    files.forEach(file => {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            toast.error(`File ${file.name} is not an image.`);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            deliveryForm.value.images.push({
+                file: file,
+                preview: e.target.result
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    // Clear the input
+    event.target.value = '';
+};
+
+const removeImage = (index) => {
+    deliveryForm.value.images.splice(index, 1);
+};
+
+const submitDeliveryForm = async () => {
+    if (!isDeliveryFormValid.value) {
+        toast.error('Please fill in all required fields and upload images if there are discrepancies.');
+        return;
+    }
+    
+    isSubmittingDelivery.value = true;
+    
+    try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('order_id', props.order.id);
+        formData.append('received_cartoons', JSON.stringify(deliveryForm.value.received_cartoons));
+        
+        // Add acknowledgment to notes if there's a discrepancy
+        let notes = deliveryForm.value.notes;
+        if (hasDiscrepancy.value && deliveryForm.value.acknowledgeDiscrepancy) {
+            notes = (notes ? notes + '\n\n' : '') + 'DISCREPANCY ACKNOWLEDGED: User has acknowledged the discrepancy between dispatched and received cartons.';
+        }
+        formData.append('notes', notes);
+        
+        // Append images
+        deliveryForm.value.images.forEach((image, index) => {
+            formData.append(`images[${index}]`, image.file);
+        });
+        
+        const response = await axios.post(route('delivery.mark-delivered'), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        
+        isSubmittingDelivery.value = false;
+        closeDeliveryForm();
+        
+        toast.success('Order marked as delivered successfully!');
+        
+        // Reload the page to show updated status
+        router.get(route("orders.show", props.order.id), {}, {
+            preserveScroll: true,
+            preserveState: false,
+            replace: true
+        });
+        
+    } catch (error) {
+        isSubmittingDelivery.value = false;
+        console.error('Delivery submission error:', error);
+        toast.error(error.response?.data || 'Failed to mark order as delivered');
+    }
+};
 
 </script>

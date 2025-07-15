@@ -15,6 +15,7 @@ use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\MonthlyInventoryReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReasonController;
+use App\Http\Controllers\DeliveryController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -176,6 +177,15 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
             // receivedQuantity
             Route::post('/update-received-quantity', 'receivedQuantity')->name('orders.receivedQuantity');
+            
+            // mark as delivered with form
+            Route::post('/mark-delivered', [DeliveryController::class, 'markDelivered'])->name('orders.mark-delivered');
+            
+            // delivery routes
+            Route::prefix('delivery')->group(function () {
+                Route::post('/mark-delivered', [DeliveryController::class, 'markDelivered'])->name('delivery.mark-delivered');
+                Route::get('/{orderId}/info', [DeliveryController::class, 'getDeliveryInfo'])->name('delivery.info');
+            });
         });
 
         Route::controller(DispenceController::class)
