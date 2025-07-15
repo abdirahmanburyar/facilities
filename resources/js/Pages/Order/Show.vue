@@ -338,166 +338,187 @@
                     </div>
                 </div>
             </div>
-            <table class="min-w-full border border-black border-collapse">
-                <thead class="bg-blue-500">
-                    <tr class="bg-gray-50">
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            Item
-                        </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            Category
-                        </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            UoM
-                        </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            Facility Inventory Data
-                        </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            No. of Days
-                        </th>
-                        <th class="px-2 py-2 text-left text-xs text-black capitalize border border-black" rowspan="2">
-                            Ordered Quantity
-                        </th>
-                        <th class="w-[150px] px-2 py-2 text-left text-xs text-black capitalize border border-black"
-                            rowspan="2">
-                            Quantity to release
-                        </th>
-                        <th class="px-2 py-2 text-center text-xs text-black capitalize border border-black" colspan="4">
-                            Item Detail
-                        </th>
+            <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                <thead>
+                    <tr style="background-color: #F4F7FB;">
+                        <th class="px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Item</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Category</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">UoM</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Facility Inventory Data</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">No. of Days</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Ordered Quantity</th>
+                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Quantity to release</th>
+                        <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="4">Item Detail</th>
                     </tr>
-                    <tr class="bg-gray-50">
-                        <th class="px-2 py-1 text-xs border border-black text-left">
-                            QTY
-                        </th>
-                        <th class="px-2 py-1 text-xs border border-black text-left">
-                            Batch Number
-                        </th>
-                        <th class="px-2 py-1 text-xs border border-black text-left">
-                            Expiry Date
-                        </th>
-                        <th class="px-2 py-1 text-xs border border-black text-left w-32">
-                            Location
-                        </th>
+                    <tr style="background-color: #F4F7FB;">
+                        <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">QTY</th>
+                        <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Batch Number</th>
+                        <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Expiry Date</th>
+                        <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Location</th>
                     </tr>
                 </thead>
-
                 <tbody>
-                    <!-- Debug Info -->
                     <tr v-if="form.length === 0">
-                        <td colspan="11" class="px-3 py-3 text-center text-gray-500">
+                        <td colspan="11" class="px-3 py-3 text-center text-gray-500 border-b" style="border-bottom: 1px solid #B7C6E6;">
                             No items found. Form length: {{ form.length }}, Order items: {{ props.order.items?.length || 0 }}
                         </td>
                     </tr>
-                    
                     <template v-for="(item, index) in form" :key="item.id">
-                        <!-- Show allocations if they exist, otherwise show one row with main item data -->
-                        <tr v-for="(inv, invIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])"
-                            :key="`${item.id}-${inv.id || invIndex}`"
-                            class="hover:bg-gray-50 transition-colors duration-150">
-                            <!-- Show item details only on first row for this item -->
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                {{ item.product?.name }}
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                {{ item.product?.category?.name }}
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                {{ item.inventory_allocations?.[0]?.uom || item.uom || 'N/A' }}
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                <div class="flex flex-col space-y-1 text-xs">
-                                    <div class="flex">
-                                        <span class="font-medium text-xs w-12">SOH:</span>
-                                        <span>{{ item.soh }}</span>
+                        <template v-if="item.inventory_allocations?.length > 0">
+                            <tr v-for="(inv, invIndex) in item.inventory_allocations" :key="`${item.id}-${inv.id || invIndex}`"
+                                class="hover:bg-gray-50 transition-colors duration-150 border-b"
+                                :style="'border-bottom: 1px solid #F4F7FB;'">
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    {{ item.product?.name }}
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    {{ item.product?.category?.name }}
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    {{ item.inventory_allocations?.[0]?.uom || item.uom || 'N/A' }}
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    <div class="flex flex-col space-y-1 text-xs">
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">SOH:</span>
+                                            <span>{{ item.soh }}</span>
+                                        </div>
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">AMC:</span>
+                                            <span>{{ item.amc || 0 }}</span>
+                                        </div>
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">QOO:</span>
+                                            <span>{{ item.quantity_on_order }}</span>
+                                        </div>
                                     </div>
-                                    <div class="flex">
-                                        <span class="font-medium text-xs w-12">AMC:</span>
-                                        <span>{{ item.amc || 0 }}</span>
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    {{ item.no_of_days }}
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-center text-black align-top">
+                                    {{ item.quantity }}
+                                </td>
+                                <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
+                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
+                                        class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                    <div>
+                                        <label>Received Quantity</label>
+                                        <input type="number" min="0" :max="item.quantity_to_release" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
+                                            @input="handleReceivedQuantityInput(item, index)"
+                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
+                                        <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
+                                        <span class="text-xs text-red-500" v-if="item.received_quantity > item.quantity_to_release">Cannot exceed quantity to release</span>
+                                        <span class="text-xs text-gray-600">Remaining: {{ getRemainingQuantity(item) }}</span>
+                                        <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
                                     </div>
-                                    <div class="flex">
-                                        <span class="font-medium text-xs w-12">QOO:</span>
-                                        <span>{{ item.quantity_on_order }}</span>
+                                    <button
+                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
+                                        @click="openBackOrderModal(item)"
+                                        class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
+                                        Back Order
+                                    </button>
+                                    <label for="days">No. of Days</label>
+                                    <input type="number" placeholder="0" v-model="item.days" readonly
+                                        class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                    <button @click="showBackOrderModal(item)" v-if="
+                                        item.inventory_allocations &&
+                                        item.inventory_allocations.some(
+                                            (a) => a.back_order?.length > 0
+                                        )
+                                    " class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1">
+                                        Show Back Order
+                                    </button>
+                                </td>
+                                <!-- Item Details Columns -->
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{ inv.allocated_quantity || '' }}
+                                </td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{ inv.batch_number || '' }}
+                                </td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{ inv.expiry_date ? moment(inv.expiry_date).format('DD/MM/YYYY') : '' }}
+                                </td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
+                                    <div class="flex flex-col text-xs">
+                                        <span v-if="inv.warehouse?.name">WH: {{ inv.warehouse.name }}</span>
+                                        <span v-if="inv.location?.location">LC: {{ inv.location.location }}</span>
+                                        <span v-if="!inv.warehouse?.name && !inv.location?.location">{{ inv.location || '' }}</span>
                                     </div>
-                                </div>
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                {{ item.no_of_days }}
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-center text-black border border-black align-top">
-                                {{ item.quantity }}
-                            </td>
-
-                            <td v-if="invIndex === 0" :rowspan="Math.max(item.inventory_allocations?.length || 1, 1)"
-                                class="px-3 py-3 text-xs text-gray-900 border border-black align-top">
-                                <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
-                                    class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
-                                <div>
-                                    <label>Received Quantity</label>
-                                    <input type="number" min="0" :max="item.quantity_to_release" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
-                                        @input="handleReceivedQuantityInput(item, index)"
-                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
-                                    <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
-                                    <span class="text-xs text-red-500" v-if="item.received_quantity > item.quantity_to_release">Cannot exceed quantity to release</span>
-                                    <span class="text-xs text-gray-600">Remaining: {{ getRemainingQuantity(item) }}</span>
-                                    <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
-                                </div>
-                                <button
-                                    v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
-                                    @click="openBackOrderModal(item)"
-                                    class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
-                                    Back Order
-                                </button>
-                                <label for="days">No. of Days</label>
-                                <input type="number" placeholder="0" v-model="item.days" readonly
-                                    class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
-                                <button @click="showBackOrderModal(item)" v-if="
-                                    item.inventory_allocations &&
-                                    item.inventory_allocations.some(
-                                        (a) => a.back_order?.length > 0
-                                    )
-                                " class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1">
-                                    Show Back Order
-                                </button>
-                            </td>
-
-                            <!-- Item Details Columns -->
-                            <!-- Quantity -->
-                            <td class="px-2 py-1 text-xs border border-black text-left">
-                                {{ inv.allocated_quantity || '' }}
-                            </td>
-
-                            <!-- Batch Number -->
-                            <td class="px-2 py-1 text-xs border border-black text-left">
-                                {{ inv.batch_number || '' }}
-                            </td>
-
-                            <!-- Expiry Date -->
-                            <td class="px-2 py-1 text-xs border border-black text-left">
-                                {{ inv.expiry_date ? moment(inv.expiry_date).format("DD/MM/YYYY") : '' }}
-                            </td>
-
-                            <!-- Location -->
-                            <td class="px-2 py-1 text-xs border border-black text-left w-32">
-                                <div class="flex flex-col text-xs">
-                                    <span v-if="inv.warehouse?.name">WH: {{ inv.warehouse.name }}</span>
-                                    <span v-if="inv.location?.location">LC: {{ inv.location.location }}</span>
-                                    <span v-if="!inv.warehouse?.name && !inv.location?.location">{{ inv.location || '' }}</span>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        </template>
+                        <template v-else>
+                            <tr class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #F4F7FB;">
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.product?.name }}</td>
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.product?.category?.name }}</td>
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.uom || 'N/A' }}</td>
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    <div class="flex flex-col space-y-1 text-xs">
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">SOH:</span>
+                                            <span>{{ item.soh }}</span>
+                                        </div>
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">AMC:</span>
+                                            <span>{{ item.amc || 0 }}</span>
+                                        </div>
+                                        <div class="flex">
+                                            <span class="font-medium text-xs w-12">QOO:</span>
+                                            <span>{{ item.quantity_on_order }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.no_of_days }}</td>
+                                <td class="px-3 py-3 text-xs text-center text-black align-top">{{ item.quantity }}</td>
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
+                                        class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                    <div>
+                                        <label>Received Quantity</label>
+                                        <input type="number" min="0" :max="item.quantity_to_release" placeholder="0" v-model="item.received_quantity" :disabled="props.order.status !== 'delivered'"
+                                            @input="handleReceivedQuantityInput(item, index)"
+                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm" />
+                                        <span class="text-xs" v-if="isSavingQty[index]">Updating</span>
+                                        <span class="text-xs text-red-500" v-if="item.received_quantity > item.quantity_to_release">Cannot exceed quantity to release</span>
+                                        <span class="text-xs text-gray-600">Remaining: {{ getRemainingQuantity(item) }}</span>
+                                        <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
+                                    </div>
+                                    <button
+                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
+                                        @click="openBackOrderModal(item)"
+                                        class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
+                                        Back Order
+                                    </button>
+                                    <label for="days">No. of Days</label>
+                                    <input type="number" placeholder="0" v-model="item.days" readonly
+                                        class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
+                                    <button @click="showBackOrderModal(item)" v-if="
+                                        item.back_order && item.back_order.length > 0
+                                    " class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1">
+                                        Show Back Order
+                                    </button>
+                                </td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.allocated_quantity || '' }}</td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.batch_number || '' }}</td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.expiry_date ? moment(item.expiry_date).format('DD/MM/YYYY') : '' }}</td>
+                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
+                                    <div class="flex flex-col text-xs">
+                                        <span v-if="item.warehouse?.name">WH: {{ item.warehouse.name }}</span>
+                                        <span v-if="item.location?.location">LC: {{ item.location.location }}</span>
+                                        <span v-if="!item.warehouse?.name && !item.location?.location">{{ item.location || '' }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
                     </template>
                 </tbody>
             </table>
@@ -868,274 +889,216 @@
             <!-- Back Order Modal -->
             <Modal :show="showBackOrderModal" @close="attemptCloseModal" maxWidth="2xl">
                 <div class="p-6">
-                    <div v-if="showIncompleteBackOrderModal" class="mb-6">
-                        <div class="flex items-center mb-4">
-                            <div class="rounded-full bg-yellow-100 p-3 mr-3">
-                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            <div v-if="showIncompleteBackOrderModal" class="rounded-full bg-yellow-100 p-3 mr-3">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            <h2 class="text-lg font-medium text-gray-900">
-                                Incomplete Back Orders
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                {{ showIncompleteBackOrderModal ? 'Incomplete Back Orders' : 'Back Order Details' }}
                             </h2>
                         </div>
+                        <button @click="attemptCloseModal" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
 
-                        <div class="mb-6 bg-gray-50 p-4 rounded-lg">
-                            <p class="text-sm font-medium text-gray-600 mb-2">
-                                Item: {{ selectedItem?.product?.name }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-600 mb-2">
-                                Missing Quantity: {{ missingQuantity }}
-                            </p>
-                            <p class="text-sm font-medium text-gray-600">
-                                Remaining to Allocate: {{ remainingToAllocate }}
-                            </p>
+                    <!-- Error Message -->
+                    <div v-if="message" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-800">{{ message }}</p>
+                            </div>
                         </div>
                     </div>
 
-                    <h2 v-else class="text-sm font-medium text-gray-900 mb-4">
-                        Back Order Details
-                    </h2>
-                    <span v-if="message" class="text-sm text-red-600">{{
-                        message
-                        }}</span>
-
-                    <div class="mb-4 bg-gray-50 p-3 rounded">
-                        <p class="text-xs font-medium text-gray-600">
-                            Product: {{ selectedItem?.product?.name }}
-                        </p>
-
-                        <div class="mt-3 grid grid-cols-2 gap-2">
-                            <div class="border-r pr-2">
-                                <p class="text-sm font-medium text-gray-600">
-                                    Quantity to Release:
-                                </p>
-                                <p class="text-lg font-bold text-gray-800">
-                                    {{ selectedItem?.quantity_to_release || 0 }}
-                                </p>
+                    <!-- Summary Section -->
+                    <div class="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border border-yellow-200">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600 font-medium">Product:</span>
+                                <p class="text-gray-900 font-semibold">{{ selectedItem?.product?.name }}</p>
                             </div>
                             <div>
-                                <p class="text-xs font-medium text-gray-600">
-                                    Received Quantity:
-                                </p>
-                                <p class="text-lg font-bold text-gray-800">
-                                    {{ selectedItem?.received_quantity || 0 }}
-                                </p>
+                                <span class="text-gray-600 font-medium">Expected:</span>
+                                <p class="text-gray-900 font-semibold">{{ selectedItem?.quantity_to_release || 0 }}</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600 font-medium">Received:</span>
+                                <p class="text-gray-900 font-semibold">{{ selectedItem?.received_quantity || 0 }}</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600 font-medium">Mismatches:</span>
+                                <p class="text-yellow-800 font-semibold">{{ missingQuantity }}</p>
                             </div>
                         </div>
-
-                        <div class="mt-3 p-2 bg-yellow-50 rounded border border-yellow-200">
-                            <div class="flex justify-between items-center">
-                                <p class="text-xs font-medium text-gray-700">
-                                    Missing Quantity (Back Order):
-                                </p>
-                                <p class="text-sm font-bold" :class="missingQuantity > 0
-                                    ? 'text-red-600'
-                                    : 'text-green-600'
-                                    ">
-                                    {{ missingQuantity }}
-                                </p>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">
-                                This is the difference between quantity to release
-                                and received quantity
-                            </p>
-                        </div>
-
-                        <div class="mt-3">
-                            <div class="flex justify-between items-center">
-                                <p class="text-xs font-medium text-gray-600">
-                                    Existing Back Orders:
-                                </p>
-                                <p class="text-xs font-bold text-gray-800">
-                                    {{ totalExistingDifferences }}
-                                </p>
-                            </div>
-                            <div class="flex justify-between items-center mt-1">
-                                <p class="text-xs font-medium text-yellow-800">
-                                    Remaining to Allocate:
-                                </p>
-                                <p class="text-xs font-bold" :class="remainingToAllocate > 0
-                                    ? 'text-red-600'
-                                    : 'text-green-600'
-                                    ">
-                                    {{ remainingToAllocate }}
-                                </p>
+                        
+                        <!-- Additional Info for Incomplete Back Orders -->
+                        <div v-if="showIncompleteBackOrderModal" class="mt-4 pt-4 border-t border-yellow-200">
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-600 font-medium">Existing Back Orders:</span>
+                                    <p class="text-gray-900 font-semibold">{{ totalExistingDifferences }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600 font-medium">Remaining to Allocate:</span>
+                                    <p class="text-yellow-800 font-semibold">{{ remainingToAllocate }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Batch-specific back orders -->
-                    <div class="mb-4">
-                        <h3 class="text-xs font-medium text-gray-700 mb-2">
-                            Batch Information
-                        </h3>
-                        <div class="bg-gray-50 p-3 rounded mb-4">
-                            <p class="text-xs text-gray-500 mb-2">
-                                Please allocate the missing quantity ({{
-                                    missingQuantity
-                                }}) across batches and specify the problem type.
-                            </p>
-                            <p class="text-xs text-gray-500">
-                                Back orders represent the difference between
-                                quantity to release and received quantity.
-                            </p>
+                    <!-- Batch Information Section -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                Batch Information
+                            </h3>
+                            <div class="text-sm text-gray-500">
+                                Allocate missing quantity ({{ missingQuantity }}) across batches
+                            </div>
                         </div>
 
-                        <div v-for="(allocation, allocIndex) in selectedItem?.inventory_allocations"
-                            :key="allocation.id" class="border rounded-md p-3 mb-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="font-medium text-gray-700">
-                                    Batch: {{ allocation.batch_number }}
-                                    <span class="ml-2 text-sm text-gray-500">({{
-                                        allocation.allocated_quantity
-                                        }}
-                                        units)</span>
-                                </div>
-                                <div>
+                        <!-- Batch Cards -->
+                        <div class="space-y-4">
+                            <div v-for="(allocation, allocIndex) in selectedItem?.inventory_allocations" :key="allocation.id" 
+                                class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-indigo-100 rounded-full p-2 mr-3">
+                                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-semibold text-gray-900">Batch: {{ allocation.batch_number }}</h4>
+                                            <p class="text-xs text-gray-500">{{ allocation.allocated_quantity }} units allocated</p>
+                                        </div>
+                                    </div>
                                     <button @click="addBatchBackOrder(allocation)"
-                                        class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-                                        :disabled="!canAddMoreToAllocation(allocation) ||
-                                            isSaving
-                                            ">
+                                        :disabled="!canAddMoreToAllocation(allocation) || isSaving || props.order.status == 'received'"
+                                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
                                         Add Issue
                                     </button>
                                 </div>
-                            </div>
-                            <!-- Back order rows for this batch -->
 
-                            <div v-if="getBatchBackOrders(allocation.id).length > 0" class="mt-3">
-                                <table class="min-w-full divide-y divide-gray-200 border">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                                                Issue Type
-                                            </th>
-                                            <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                                                Quantity
-                                            </th>
-                                            <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                                                Notes
-                                            </th>
-                                            <th class="px-2 py-1 text-left text-xs font-medium text-gray-500">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        <tr v-for="(row, rowIndex) in getBatchBackOrders(allocation.id)" :key="rowIndex"
-                                            class="hover:bg-gray-50">
-                                            <td class="px-2 py-1">
-                                                <select v-model="row.status"
-                                                    class="text-sm w-full border-gray-300 rounded-md shadow-sm"
-                                                    :disabled="props.order.status == 'received'">
-                                                    <option v-for="status in [
-                                                        'Missing',
-                                                        'Damaged',
-                                                        'Expired',
-                                                        'Lost',
-                                                    ]" :key="status" :value="status">
-                                                        {{ status }}
-                                                    </option>
-                                                </select>
-                                                <span>{{ row.finalized }}</span>
-                                            </td>
-                                            <td class="px-2 py-1">
-                                                <input :disabled="props.order.status == 'received'" type="number"
-                                                    v-model="row.quantity" @input="
-                                                        validateBatchBackOrderQuantity(
-                                                            row,
-                                                            allocation
-                                                        )
-                                                        " min="0" :max="allocation.allocated_quantity
-                                                            "
-                                                    class="text-sm w-full border-gray-300 rounded-md shadow-sm" />
-                                            </td>
-                                            <td class="px-2 py-1">
-                                                <input :disabled="props.order.status == 'received'" type="text"
-                                                    v-model="row.notes" placeholder="Optional notes"
-                                                    class="text-sm w-full border-gray-300 rounded-md shadow-sm" />
-                                            </td>
-                                            <td class="px-2 py-1 text-center">
-                                                <button :disabled="props.order.status == 'received'" @click="
-                                                    removeBatchBackOrder(
-                                                        row,
-                                                        rowIndex
-                                                    )
-                                                    " class="text-red-600 hover:text-red-800">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                        viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                <!-- Back Order Table for this Batch -->
+                                <div v-if="getBatchBackOrders(allocation.id).length > 0" class="mt-4">
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Issue Type
+                                                    </th>
+                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Quantity
+                                                    </th>
+                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Notes
+                                                    </th>
+                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Actions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                <tr v-for="(row, rowIndex) in getBatchBackOrders(allocation.id)" :key="rowIndex" 
+                                                    class="hover:bg-gray-50 transition-colors duration-150">
+                                                    <td class="px-4 py-3">
+                                                        <select v-model="row.status"
+                                                            :disabled="props.order.status == 'received'"
+                                                            class="w-full rounded-lg border-gray-200 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm">
+                                                            <option v-for="status in ['Missing', 'Damaged', 'Expired', 'Lost']" 
+                                                                :key="status" :value="status">
+                                                                {{ status }}
+                                                            </option>
+                                                        </select>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <input :disabled="props.order.status == 'received'" 
+                                                            type="number" v-model="row.quantity" 
+                                                            @input="validateBatchBackOrderQuantity(row, allocation)"
+                                                            min="0" :max="allocation.allocated_quantity"
+                                                            class="w-full rounded-lg border-gray-200 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm" />
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <input :disabled="props.order.status == 'received'" 
+                                                            type="text" v-model="row.notes" 
+                                                            placeholder="Optional notes..."
+                                                            class="w-full rounded-lg border-gray-200 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm" />
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <button :disabled="props.order.status == 'received'" 
+                                                            @click="removeBatchBackOrder(row, rowIndex)"
+                                                            class="text-red-600 hover:text-red-800 transition-colors duration-150">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-4 flex justify-between items-center">
+                    <!-- Footer Actions -->
+                    <div class="mt-6 flex justify-between items-center">
                         <div class="flex items-center gap-4">
                             <div class="text-sm">
-                                <span :class="{
-                                    'text-green-600': isValidForSave,
-                                    'text-red-600': !isValidForSave,
-                                }">
+                                <span :class="{ 'text-green-600': isValidForSave, 'text-red-600': !isValidForSave }">
                                     {{ totalBatchBackOrderQuantity }}
                                 </span>
-                                <span class="text-gray-600">
-                                    / {{ missingQuantity }} items recorded</span>
-                                <div v-if="
-                                    missingQuantity > 0 &&
-                                    totalBatchBackOrderQuantity ===
-                                    missingQuantity
-                                " class="text-xs text-green-600 mt-1">
-                                    ✓ All missing items accounted for
+                                <span class="text-gray-600">/ {{ missingQuantity }} items recorded</span>
+                                <div v-if="missingQuantity > 0 && totalBatchBackOrderQuantity === missingQuantity" 
+                                    class="text-xs text-green-600 mt-1 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    All missing items accounted for
                                 </div>
-                                <div v-else-if="
-                                    missingQuantity > 0 &&
-                                    totalBatchBackOrderQuantity <
-                                    missingQuantity
-                                " class="text-xs text-yellow-600 mt-1">
-                                    {{
-                                        missingQuantity -
-                                        totalBatchBackOrderQuantity
-                                    }}
-                                    more items need to be allocated
+                                <div v-else-if="missingQuantity > 0 && totalBatchBackOrderQuantity < missingQuantity" 
+                                    class="text-xs text-yellow-600 mt-1">
+                                    {{ missingQuantity - totalBatchBackOrderQuantity }} more items need to be allocated
                                 </div>
-                                <div v-else-if="
-                                    missingQuantity > 0 &&
-                                    totalBatchBackOrderQuantity >
-                                    missingQuantity
-                                " class="text-xs text-red-600 mt-1">
-                                    Over-allocated by
-                                    {{
-                                        totalBatchBackOrderQuantity -
-                                        missingQuantity
-                                    }}
-                                    items
+                                <div v-else-if="missingQuantity > 0 && totalBatchBackOrderQuantity > missingQuantity" 
+                                    class="text-xs text-red-600 mt-1">
+                                    Over-allocated by {{ totalBatchBackOrderQuantity - missingQuantity }} items
                                 </div>
                             </div>
                         </div>
-                        <div class="flex gap-2">
-                            <button @click="saveBackOrders"
-                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                :disabled="!isValidForSave || isSaving || props.order.status == 'received'">
-                                {{
-                                    isSaving
-                                        ? "Saving..."
-                                        : "Save Differences and Exit"
-                                }}
-                            </button>
+                        <div class="flex gap-3">
                             <button :disabled="isSaving" @click="attemptCloseModal"
-                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                                 Exit
+                            </button>
+                            <button @click="saveBackOrders"
+                                :disabled="!isValidForSave || isSaving || props.order.status == 'received'"
+                                class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                {{ isSaving ? "Saving..." : "Save Differences and Exit" }}
                             </button>
                         </div>
                     </div>
