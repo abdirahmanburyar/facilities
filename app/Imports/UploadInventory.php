@@ -69,6 +69,7 @@ class UploadInventory implements
                 // Create new Inventory record
                 $inventory = FacilityInventory::create([
                     'product_id' => $product->id,
+                    'facility_id' => auth()->user()->facility_id,
                     'quantity' => 0,
                 ]);
                 $this->inventoryCache[$product->id] = $inventory;
