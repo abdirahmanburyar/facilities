@@ -34,10 +34,12 @@ class UploadInventory implements
     public $importId;
     protected $productCache = [];
     protected $inventoryCache = [];
+    protected $facilityId;
 
     public function __construct(string $importId)
     {
         $this->importId = $importId;
+        $this->facilityId = auth()->user()->facility_id;
     }
 
     public function model(array $row)
@@ -63,17 +65,17 @@ class UploadInventory implements
                 'batch_no' => $row['batch_no']
             ]);
 
-            // Check if Inventory exists for this product (with caching)
+            // Check if FacilityInventory exists for this product and facility (with caching)
             $inventory = $this->getInventory($product->id);
             if (!$inventory) {
-                // Create new Inventory record
+                // Create new FacilityInventory record
                 $inventory = FacilityInventory::create([
                     'product_id' => $product->id,
-                    'facility_id' => auth()->user()->facility_id,
+                    'facility_id' => $this->facilityId,
                     'quantity' => 0,
                 ]);
                 $this->inventoryCache[$product->id] = $inventory;
-                Log::info('New Inventory created', ['inventory_id' => $inventory->id]);
+                Log::info('New FacilityInventory created', ['inventory_id' => $inventory->id]);
             }
 
             // Parse expiry date - handle Excel serial numbers
@@ -81,7 +83,7 @@ class UploadInventory implements
 
             // Validate that we have all required data
             if (!$inventory || !$product) {
-                Log::error('Missing required data for InventoryItem creation', [
+                Log::error('Missing required data for FacilityInventoryItem creation', [
                     'inventory_id' => $inventory ? $inventory->id : 'null',
                     'product_id' => $product ? $product->id : 'null',
                     'expiry_date' => $expiryDate ? $expiryDate : 'null'
@@ -89,9 +91,9 @@ class UploadInventory implements
                 return null;
             }
 
-            // Prepare InventoryItem data
+            // Prepare FacilityInventoryItem data
             $inventoryItemData = [
-                'inventory_id' => $inventory->id,
+                'facility_inventory_id' => $inventory->id,
                 'product_id' => $product->id,
                 'quantity' => (float) $row['quantity'],
                 'batch_number' => $row['batch_no'],
@@ -101,20 +103,20 @@ class UploadInventory implements
                 'total_cost' => 0.00, // Default value since it's required
             ];
 
-            Log::info('Attempting to create InventoryItem', $inventoryItemData);
+            Log::info('Attempting to create FacilityInventoryItem', $inventoryItemData);
 
             try {
-                // Create InventoryItem
+                // Create FacilityInventoryItem
                 $inventoryItem = FacilityInventoryItem::create($inventoryItemData);
 
-                Log::info('InventoryItem created successfully', [
+                Log::info('FacilityInventoryItem created successfully', [
                     'inventory_item_id' => $inventoryItem->id,
                     'inventory_id' => $inventory->id,
                     'batch_number' => $inventoryItem->batch_number,
                     'quantity' => $inventoryItem->quantity
                 ]);
             } catch (\Exception $e) {
-                Log::error('Failed to create InventoryItem', [
+                Log::error('Failed to create FacilityInventoryItem', [
                     'data' => $inventoryItemData,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
