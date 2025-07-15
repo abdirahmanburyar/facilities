@@ -486,10 +486,17 @@ const isSubmitting = ref(false);
 const submitOrder = async () => {
     isSubmitting.value = true;
 
-    console.log(form.value);
+    // Filter out items with null or empty product_id
+    const submitData = {
+        ...form.value,
+        items: form.value.items.filter(item => item.product_id && item.product_id !== "")
+    };
+
+    console.log("Original form data:", form.value);
+    console.log("Filtered submit data:", submitData);
 
     await axios
-        .post(route("orders.store"), form.value)
+        .post(route("orders.store"), submitData)
         .then((response) => {
             toast.success("Order created successfully");
             isSubmitting.value = false;
