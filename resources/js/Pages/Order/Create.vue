@@ -83,27 +83,27 @@
                             </div>
                         </div>
 
-                        <!-- Expected Date -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Expected Delivery Date
-                                <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
-                                <input
-                                    type="date"
-                                    v-model="form.expected_date"
-                                    :min="minExpectedDate"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    required
-                                />
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
+                                                 <!-- Expected Date -->
+                         <div>
+                             <label class="block text-sm font-medium text-gray-700 mb-2">
+                                 Expected Delivery Date
+                                 <span class="text-red-500">*</span>
+                             </label>
+                             <div class="relative">
+                                 <input
+                                     type="date"
+                                     v-model="form.expected_date"
+                                     :min="minExpectedDate"
+                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                     required
+                                 />
+                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                     </svg>
+                                 </div>
+                             </div>
+                         </div>
                     </div>
 
                     <!-- Notes -->
@@ -181,94 +181,81 @@
                                         :key="index"
                                         class="hover:bg-gray-50 transition-colors duration-200"
                                     >
-                                        <!-- Product Selection -->
-                                        <td class="px-6 py-4">
-                                            <div class="relative">
-                                                <Multiselect
-                                                    v-model="item.product"
-                                                    :value="item.product_id"
-                                                    :options="props.items"
-                                                    :searchable="true"
-                                                    :close-on-select="true"
-                                                    :show-labels="false"
-                                                    :allow-empty="true"
-                                                    placeholder="Select a product..."
-                                                    track-by="id"
-                                                    label="name"
-                                                    @select="checkInventory(index, $event)"
-                                                    required
-                                                    :class="{ 'opacity-50': isLoading }"
-                                                    class="min-w-[200px]"
-                                                >
-                                                    <template #option="{ option }">
-                                                        <div class="flex items-center">
-                                                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                                                </svg>
-                                                            </div>
-                                                            <div>
-                                                                <div class="font-medium text-gray-900">{{ option.name }}</div>
-                                                                <div class="text-sm text-gray-500">{{ option.code }}</div>
-                                                            </div>
-                                                        </div>
-                                                    </template>
-                                                </Multiselect>
-                                                <div
-                                                    v-if="isLoading"
-                                                    class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg"
-                                                >
-                                                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                                </div>
-                                            </div>
-                                        </td>
+                                                                                 <!-- Product Selection -->
+                                         <td class="px-6 py-4">
+                                             <div class="relative">
+                                                 <Multiselect
+                                                     v-model="item.product"
+                                                     :value="item.product_id"
+                                                     :options="props.items"
+                                                     :searchable="true"
+                                                     :close-on-select="true"
+                                                     :show-labels="false"
+                                                     :allow-empty="true"
+                                                     placeholder="Select a product..."
+                                                     track-by="id"
+                                                     label="name"
+                                                     @select="checkInventory(index, $event)"
+                                                     required
+                                                     :class="{ 'opacity-50': isLoading }"
+                                                     class="w-full"
+                                                 >
+                                                     <template #option="{ option }">
+                                                         <div>
+                                                             <div class="font-medium text-gray-900">{{ option.name }}</div>
+                                                             <div class="text-sm text-gray-500">{{ option.code }}</div>
+                                                         </div>
+                                                     </template>
+                                                 </Multiselect>
+                                                 <div
+                                                     v-if="isLoading"
+                                                     class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg"
+                                                 >
+                                                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                                 </div>
+                                             </div>
+                                         </td>
 
-                                        <!-- Required Quantity -->
-                                        <td class="px-6 py-4">
-                                            <input
-                                                type="number"
-                                                v-model="item.quantity"
-                                                min="1"
-                                                readonly
-                                                class="w-20 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
-                                            />
-                                        </td>
+                                                                                 <!-- Required Quantity -->
+                                         <td class="px-6 py-4">
+                                             <input
+                                                 type="number"
+                                                 v-model="item.quantity"
+                                                 min="1"
+                                                 readonly
+                                                 class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
+                                             />
+                                         </td>
 
-                                        <!-- Stock on Hand -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex items-center">
-                                                <input
-                                                    type="number"
-                                                    v-model="item.soh"
-                                                    readonly
-                                                    class="w-20 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
-                                                />
-                                                <span class="ml-2 text-xs text-gray-500">units</span>
-                                            </div>
-                                        </td>
+                                         <!-- Stock on Hand -->
+                                         <td class="px-6 py-4">
+                                             <input
+                                                 type="number"
+                                                 v-model="item.soh"
+                                                 readonly
+                                                 class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
+                                             />
+                                         </td>
 
-                                        <!-- Quantity on Order -->
-                                        <td class="px-6 py-4">
-                                            <input
-                                                type="number"
-                                                v-model="item.quantity_on_order"
-                                                min="0"
-                                                class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
-                                            />
-                                        </td>
+                                         <!-- Quantity on Order -->
+                                         <td class="px-6 py-4">
+                                             <input
+                                                 type="number"
+                                                 v-model="item.quantity_on_order"
+                                                 min="0"
+                                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
+                                             />
+                                         </td>
 
-                                        <!-- Days of Stock -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex items-center">
-                                                <input
-                                                    type="number"
-                                                    v-model="item.no_of_days"
-                                                    readonly
-                                                    class="w-20 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
-                                                />
-                                                <span class="ml-2 text-xs text-gray-500">days</span>
-                                            </div>
-                                        </td>
+                                         <!-- Days of Stock -->
+                                         <td class="px-6 py-4">
+                                             <input
+                                                 type="number"
+                                                 v-model="item.no_of_days"
+                                                 readonly
+                                                 class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 text-center"
+                                             />
+                                         </td>
 
                                         <!-- Action -->
                                         <td class="px-6 py-4">
