@@ -518,7 +518,7 @@
                                     <h3 class="text-sm font-medium text-gray-500">Driver Information</h3>
                                     <div class="mt-2 space-y-2">
                                         <div class="flex items-center">
-                                            <span class="text-sm text-gray-900">{{ dispatch.driver_name || 'N/A' }}</span>
+                                            <span class="text-sm text-gray-900">{{ dispatch.driver?.name }}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-sm text-gray-600">Phone: {{ dispatch.driver_number || 'N/A' }}</span>
@@ -537,7 +537,7 @@
                                     <div class="mt-2 space-y-2">
                                         <div class="flex items-center justify-between">
                                             <span class="text-sm text-gray-600">Cartons:</span>
-                                            <span class="text-sm font-semibold text-gray-800">{{ dispatch.no_of_cartoons || 0 }}</span>
+                                            <span class="text-sm font-semibold text-gray-800">{{ dispatch.received_cartons || 0 }}/{{ dispatch.no_of_cartoons || 0 }}</span>
                                         </div>
                                         <div class="flex items-center justify-between">
                                             <span class="text-sm text-gray-600">Date:</span>

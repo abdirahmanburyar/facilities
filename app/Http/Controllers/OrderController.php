@@ -454,7 +454,7 @@ class OrderController extends Controller
             $order = Order::where('id', $id)
                 ->with([
                     'items.product.category',
-                    'dispatch', 
+                    'dispatch.driver', 
                     'items.inventory_allocations.warehouse', 
                     'items.inventory_allocations.location',
                     'items.inventory_allocations.differences', 
