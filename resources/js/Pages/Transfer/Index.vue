@@ -17,14 +17,13 @@
                             ? 'bg-blue-100' 
                             : 'bg-gray-200 group-hover:bg-gray-300'
                     ]">
-
                         <svg v-if="tab.value === 'in'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
-                                d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
+                                d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                         </svg>
                         <svg v-else-if="tab.value === 'out'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
-                                d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                                d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
                         </svg>
                     </div>
                     
@@ -41,15 +40,7 @@
         <!-- Header Section -->
         <div class="flex flex-col space-y-6">
             <!-- Buttons First -->
-            <div class="flex items-center justify-end gap-3">
-                <!-- Icon Legend Button -->
-                <button @click="showLegend = true"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Icon Legend
-                </button>
+            <div class="flex items-center justify-end">
                 <!-- New Transfer -->
                 <button @click="router.visit(route('transfers.create'))"
                     class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -57,7 +48,7 @@
                 </button>
             </div>
 
-            <!-- Filters Section -->
+            <!-- Filters Section (Direction-specific filters can be added here) -->
             <div class="mb-4">
                 <div class="grid grid-cols-4 gap-3">
                     <!-- Search -->
@@ -97,23 +88,19 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-4 gap-3 mt-2">
-                    <div class="col-span-1">
-                        <div class="flex items-center gap-2">
-                            <input type="date" v-model="date_from"
-                                class="border border-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                @change="date_to = null"
-                                placeholder="From Date" />
-                            <span class="text-sm text-gray-600">to</span>
-                            <input type="date" v-model="date_to"
-                                class="border border-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                :min="date_from"
-                                placeholder="To Date" />
-                        </div>
-                    </div>
+                <div class="flex items-center gap-2 w-full mt-2">
+                    <input type="date" v-model="date_from"
+                        class="border border-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        @change="date_to = null"
+                        placeholder="From Date" />
+                        <span>To</span>
+                    <input type="date" v-model="date_to"
+                        class="border border-gray-300 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        :min="date_from"
+                        placeholder="To Date" />
                 </div>
 
-                <div class="flex justify-end mt-2">
+                <div class="flex justify-end items-center gap-2 mt-2">
                     <select class="rounded-3xl" name="per_page" id="per_page" @change="props.filters.page = 1"
                         v-model="per_page">
                         <option value="2">2 per page</option>
@@ -121,6 +108,16 @@
                         <option value="50">50 per page</option>
                         <option value="100">100 per page</option>
                     </select>
+                    <!-- Icon Legend Button -->
+                    <button
+                        @click="showIconLegend = true"
+                        class="flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors duration-200 shadow"
+                        aria-label="Show Icon Legend"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -139,88 +136,357 @@
             </div>
         </div>
 
+        <!-- Icon Legend Slideover -->
+        <div
+            v-if="showIconLegend"
+            class="fixed inset-0 overflow-hidden z-50"
+            aria-labelledby="slide-over-title"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div class="absolute inset-0 overflow-hidden">
+                <!-- Background overlay -->
+                <div
+                    class="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                    @click="showIconLegend = false"
+                ></div>
+
+                <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+                    <div class="w-screen max-w-md">
+                        <div class="h-full flex flex-col bg-white shadow-xl">
+                            <!-- Header -->
+                            <div class="px-4 py-6 bg-blue-50 sm:px-6">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="text-lg font-medium text-blue-900" id="slide-over-title">
+                                        Transfer Status Icons Legend
+                                    </h2>
+                                    <button
+                                        @click="showIconLegend = false"
+                                        class="rounded-md text-blue-400 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <span class="sr-only">Close panel</span>
+                                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="relative flex-1 px-4 sm:px-6 overflow-y-auto">
+                                <div class="space-y-6 py-6">
+                                    <div class="text-sm text-gray-600 mb-4">
+                                        <p>These icons represent the current status of each transfer in the workflow:</p>
+                                    </div>
+                                    
+                                    <!-- Icon Legend Items -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Pending</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been submitted and is awaiting approval</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/approved.png" class="w-8 h-8" alt="Approved" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Approved</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been approved for processing</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/inprocess.png" class="w-8 h-8" alt="In Process" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">In Process</h3>
+                                                <p class="text-sm text-gray-600">Transfer is being prepared and processed</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/dispatch.png" class="w-8 h-8" alt="Dispatched" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Dispatched</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been dispatched for delivery</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/delivery.png" class="w-8 h-8" alt="Delivered" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Delivered</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been delivered to destination</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/received.png" class="w-8 h-8" alt="Received" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Received</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been received and confirmed by destination</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                            <img src="/assets/images/rejected.png" class="w-8 h-8" alt="Rejected" />
+                                            <div>
+                                                <h3 class="font-medium text-gray-900">Rejected</h3>
+                                                <p class="text-sm text-gray-600">Transfer has been rejected and will not proceed</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transfer Workflow Information -->
+                                    <div class="mt-8 p-4 bg-blue-50 rounded-lg">
+                                        <h3 class="font-medium text-blue-900 mb-2">Transfer Workflow</h3>
+                                        <p class="text-sm text-blue-800">
+                                            Transfers progress through these stages sequentially. Each icon represents a completed stage in the process.
+                                        </p>
+                                    </div>
+
+                                    <!-- Transfer Types Information -->
+                                    <div class="mt-6 p-4 bg-green-50 rounded-lg">
+                                        <h3 class="font-medium text-green-900 mb-2">Transfer Types</h3>
+                                        <div class="text-sm text-green-800 space-y-2">
+                                            <p><strong>Warehouse to Warehouse:</strong> Transfers between different warehouse locations</p>
+                                            <p><strong>Facility to Facility:</strong> Transfers between different healthcare facilities</p>
+                                            <p><strong>Facility to Warehouse:</strong> Returns from facilities to warehouse</p>
+                                            <p><strong>Warehouse to Facility:</strong> Supplies sent from warehouse to facilities</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
-        <div class="grid grid-cols-12 mb-[40px] mt-2">
+        <div class="grid grid-cols-12 gap-1 mb-[40px]">
             <!-- Table Section (9 cols) -->
-            <div class="md:col-span-9 sm:col-span-12">
-                <div class="w-full overflow-x-auto">
-                    <table class="w-full rounded-t-3xl overflow-hidden table-sm">
-                        <thead>
-                            <tr style="background-color: #F4F7FB;">
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b rounded-tl-3xl"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
-                                    ID
+            <div class="md:col-span-9 sm:col-span-12 mt-3">
+                <div class="overflow-auto">
+                    <table class="w-full table-sm">
+                        <thead style="background-color: #F4F7FB;">
+                            <tr>
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tl-lg"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
+                                    Transfer ID
                                 </th>
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
                                     Date
                                 </th>
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
+                                    From
+                                </th>
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
                                     To
                                 </th>
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
-                                    Type
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
+                                    Transfer Type
                                 </th>
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
                                     Items
                                 </th>
-                                <th scope="col"
-                                    class="px-3 py-3 text-left text-xs font-bold uppercase border-b rounded-tr-3xl"
-                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;">
+                                <th
+                                    class="px-2 py-2 text-left text-xs font-bold uppercase border-b rounded-tr-lg"
+                                    style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;"
+                                >
                                     Status
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200">
+                        <tbody class="bg-white">
                             <tr v-if="props.transfers.data.length === 0">
-                                <td colspan="6" class="text-center py-8 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                    <div class="flex flex-col items-center justify-center">
-                                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                                            </path>
-                                        </svg>
-                                        <p class="mt-2 text-sm font-medium text-gray-900">
-                                            No transfer data available
-                                        </p>
-                                        <p class="mt-1 text-sm text-gray-500">
-                                            Create a new transfer or adjust your
-                                            filters to see results
-                                        </p>
-                                    </div>
+                                <td
+                                    colspan="7"
+                                    class="px-2 py-2 text-center text-sm text-gray-600 border-b"
+                                    style="border-bottom: 1px solid #B7C6E6;"
+                                >
+                                    No transfers found
                                 </td>
                             </tr>
-                            <tr v-for="transfer in props.transfers.data" :key="transfer.id"
-                                class="hover:bg-gray-50 transition-colors duration-150">
-                                <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                    <Link :href="route('transfers.show', transfer.id)"
-                                        class="text-blue-600 hover:text-blue-800 hover:underline">
-                                        {{ transfer.transferID }}
-                                    </Link>
+                            <tr
+                                v-for="transfer in props.transfers.data"
+                                :key="transfer.id"
+                                class="border-b"
+                                :class="{
+                                    'hover:bg-gray-50': true,
+                                    'text-red-500':
+                                        transfer.status === 'rejected',
+                                }"
+                                style="border-bottom: 1px solid #B7C6E6;"
+                            >
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    <Link :href="route('transfers.show', transfer.id)">{{ transfer.transferID }}</Link>
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                    {{ moment(transfer.transfer_date).format('DD/MM/YYYY') }}
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{
+                                        moment(transfer.transfer_date).format('DD/MM/YYYY')
+                                    }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                    {{ transfer.to_warehouse?.name || transfer.to_facility?.name }}
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{
+                                        transfer.from_warehouse?.name ||
+                                        transfer.from_facility?.name
+                                    }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-900 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    {{
+                                        transfer.to_warehouse?.name ||
+                                        transfer.to_facility?.name
+                                    }}
+                                </td>
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ transfer.transfer_type }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                <td class="px-2 py-2 whitespace-nowrap text-xs text-gray-600 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ transfer.items_count }}
                                 </td>
-                                <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 border-b rounded-tr-3xl" style="border-bottom: 1px solid #B7C6E6;">
-                                    {{ transfer.status }}
+                                <td class="px-2 py-2 whitespace-nowrap border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    <div class="flex items-center gap-2">
+                                        <!-- Status Progress Icons - Only show actions taken -->
+                                        <div class="flex items-center gap-2">
+                                            <!-- Show status progression up to current status - icons with labels -->
+                                            <!-- Always show pending as it's the initial state -->
+                                            <div class="flex items-center gap-1">
+                                                <img src="/assets/images/pending.png" class="w-8 h-8" alt="Pending"
+                                                    title="Pending" />
+                                            </div>
+
+                                            <!-- Show reviewed if status is reviewed or further -->
+                                            <template v-if="
+                                                [
+                                                    'reviewed',
+                                                    'approved',
+                                                    'in_process',
+                                                    'dispatched',
+                                                    'transferred',
+                                                    'delivered',
+                                                    'received',
+                                                ].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/review.png" class="w-8 h-8"
+                                                        alt="Reviewed" title="Reviewed" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show approved if status is approved or further -->
+                                            <template v-if="
+                                                [
+                                                    'approved',
+                                                    'in_process',
+                                                    'dispatched',
+                                                    'transferred',
+                                                    'delivered',
+                                                    'received',
+                                                ].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/approved.png" class="w-8 h-8"
+                                                        alt="Approved" title="Approved" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show processed if status is in_process or further -->
+                                            <template v-if="
+                                                [
+                                                    'in_process',
+                                                    'dispatched',
+                                                    'transferred',
+                                                    'delivered',
+                                                    'received',
+                                                ].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/inprocess.png" class="w-8 h-8"
+                                                        alt="Processed" title="Processed" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show dispatched if status is dispatched or further -->
+                                            <template v-if="
+                                                [
+                                                    'dispatched',
+                                                    'transferred',
+                                                    'delivered',
+                                                    'received',
+                                                ].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/dispatch.png" class="w-8 h-8"
+                                                        alt="Dispatched" title="Dispatched" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show delivered if status is delivered or further -->
+                                            <template v-if="
+                                                [
+                                                    'delivered',
+                                                    'received',
+                                                ].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/delivery.png" class="w-8 h-8"
+                                                        alt="Delivered" title="Delivered" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show received if status is received -->
+                                            <template v-if="
+                                                ['received'].includes(
+                                                    transfer.status?.toLowerCase()
+                                                )
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/received.png" class="w-8 h-8"
+                                                        alt="Received" title="Received" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Show rejected if status is rejected (special case) -->
+                                            <template v-if="
+                                                transfer.status?.toLowerCase() ===
+                                                'rejected'
+                                            ">
+                                                <div class="flex items-center gap-1">
+                                                    <img src="/assets/images/rejected.png" class="w-8 h-8"
+                                                        alt="Rejected" title="Rejected" />
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -239,13 +505,37 @@
                         <!-- Pending -->
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-amber-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-amber-400 transition-all duration-500 ease-out"
-                                    :style="{
-                                        height: `${(pendingCount / totalCount) * 100}%`
-                                    }">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/pending_small.png" class="h-8 w-8 object-contain"
+                                        alt="Pending" />
                                 </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ pendingCount }}
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(pendingCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((pendingCount / totalCount) * 100) }}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reviewed -->
+                        <div class="flex flex-col items-center">
+                            <div class="h-[250px] w-8 bg-blue-50 relative overflow-hidden shadow-md rounded-2xl">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/review.png" class="h-8 w-6 object-contain"
+                                        alt="Reviewed" />
+                                </div>
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(reviewedCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((reviewedCount / totalCount) * 100) }}%
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -253,27 +543,37 @@
                         <!-- Approved -->
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-blue-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-blue-400 transition-all duration-500 ease-out"
-                                    :style="{
-                                        height: `${(approvedCount / totalCount) * 100}%`
-                                    }">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/approved_small.png" class="h-8 w-8 object-contain"
+                                        alt="Approved" />
                                 </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ approvedCount }}
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(approvedCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((approvedCount / totalCount) * 100) }}%
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- In Process -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[250px] w-8 bg-yellow-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-yellow-400 transition-all duration-500 ease-out"
-                                    :style="{
-                                        height: `${(inProcessCount / totalCount) * 100}%`
-                                    }">
+                            <div class="h-[250px] w-8 bg-slate-50 relative overflow-hidden shadow-md rounded-2xl">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/inprocess.png" class="h-8 w-8 object-contain"
+                                        alt="In Process" />
                                 </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ inProcessCount }}
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(inProcessCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((inProcessCount / totalCount) * 100) }}%
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -281,41 +581,56 @@
                         <!-- Dispatched -->
                         <div class="flex flex-col items-center">
                             <div class="h-[250px] w-8 bg-purple-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-purple-400 transition-all duration-500 ease-out"
-                                    :style="{
-                                        height: `${(dispatchedCount / totalCount) * 100}%`
-                                    }">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/dispatch.png" class="h-8 w-8 object-contain"
+                                        alt="Dispatched" />
                                 </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ dispatchedCount }}
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(dispatchedCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((dispatchedCount / totalCount) * 100) }}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delivered -->
+                        <div class="flex flex-col items-center">
+                            <div class="h-[250px] w-8 bg-orange-50 relative overflow-hidden shadow-md rounded-2xl">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/delivery.png" class="h-8 w-8 object-contain"
+                                        alt="Delivered" />
+                                </div>
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-orange-600 to-orange-400 transition-all duration-500"
+                                    :style="{
+                                        height: `${(deliveredCount / totalCount) * 100}%`,
+                                    }">
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((deliveredCount / totalCount) * 100) }}%
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Received -->
                         <div class="flex flex-col items-center">
-                            <div class="h-[250px] w-8 bg-green-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-green-400 transition-all duration-500 ease-out"
+                            <div class="h-[250px] w-8 bg-emerald-50 relative overflow-hidden shadow-md rounded-2xl">
+                                <div class="absolute top-0 inset-x-0 flex justify-center pt-2">
+                                    <img src="/assets/images/received.png" class="h-8 w-8 object-contain"
+                                        alt="Received" />
+                                </div>
+                                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(receivedCount / totalCount) * 100}%`
+                                        height: `${(receivedCount / totalCount) * 100}%`,
                                     }">
-                                </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ receivedCount }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Rejected -->
-                        <div class="flex flex-col items-center">
-                            <div class="h-[250px] w-8 bg-red-50 relative overflow-hidden shadow-md rounded-2xl">
-                                <div class="absolute bottom-0 left-0 right-0 bg-red-400 transition-all duration-500 ease-out"
-                                    :style="{
-                                        height: `${(rejectedCount / totalCount) * 100}%`
-                                    }">
-                                </div>
-                                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-black">
-                                    {{ rejectedCount }}
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
+                                        {{ Math.round((receivedCount / totalCount) * 100) }}%
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -324,72 +639,6 @@
             </div>
         </div>
     </AuthenticatedLayout>
-
-    <!-- Slideover for Icon Legend -->
-    <transition name="slide">
-        <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
-            <!-- Overlay -->
-            <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
-            <!-- Slideover Panel -->
-            <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto">
-                <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-                <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
-                <ul class="space-y-5">
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/pending.png" class="w-10 h-10" alt="Pending" />
-                        <div>
-                            <div class="font-semibold text-yellow-600">Pending</div>
-                            <div class="text-xs text-gray-500">Transfer is awaiting review or action.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/review.png" class="w-10 h-10" alt="Reviewed" />
-                        <div>
-                            <div class="font-semibold text-amber-600">Reviewed</div>
-                            <div class="text-xs text-gray-500">Transfer has been reviewed by an authorized user.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/approved.png" class="w-10 h-10" alt="Approved" />
-                        <div>
-                            <div class="font-semibold text-green-600">Approved</div>
-                            <div class="text-xs text-gray-500">Transfer has been approved and is ready for processing.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/rejected.png" class="w-10 h-10" alt="Rejected" />
-                        <div>
-                            <div class="font-semibold text-red-600">Rejected</div>
-                            <div class="text-xs text-gray-500">Transfer has been rejected and will not be processed.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/inprocess.png" class="w-10 h-10" alt="In Process" />
-                        <div>
-                            <div class="font-semibold text-blue-600">In Process</div>
-                            <div class="text-xs text-gray-500">Transfer is currently being processed.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/dispatch.png" class="w-10 h-10" alt="Dispatched" />
-                        <div>
-                            <div class="font-semibold text-purple-600">Dispatched</div>
-                            <div class="text-xs text-gray-500">Transfer has been dispatched for delivery.</div>
-                        </div>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <img src="/assets/images/received.png" class="w-10 h-10" alt="Received" />
-                        <div>
-                            <div class="font-semibold text-green-700">Received</div>
-                            <div class="text-xs text-gray-500">Transfer has been received and confirmed by the destination.</div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </transition>
 </template>
 
 <script setup>
@@ -410,7 +659,7 @@ const props = defineProps({
     warehouses: Array,
 });
 
-// Transfer direction tabs
+// Transfer direction tabs (facilities version - simpler)
 const transferDirectionTabs = ref([
     { value: 'in', label: 'Incoming' },
     { value: 'out', label: 'Outgoing' },
@@ -433,7 +682,7 @@ const statusTabs = ref([
 const currentTab = ref('all');
 
 // Icon Legend state
-const showLegend = ref(false);
+const showIconLegend = ref(false);
 
 // Filter states
 const search = ref(props.filters.search || '');
@@ -452,10 +701,13 @@ const facilityType = ref([
     'Warehouse to Warehouse'
 ]);
 
-// Computed properties for statistics
+// Computed properties for statistics (facilities version - client-side calculation)
 const totalCount = computed(() => props.transfers.total || 0);
 const pendingCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'pending').length || 0;
+});
+const reviewedCount = computed(() => {
+    return props.transfers.data?.filter(t => t.status === 'reviewed').length || 0;
 });
 const approvedCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'approved').length || 0;
@@ -466,22 +718,14 @@ const inProcessCount = computed(() => {
 const dispatchedCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'dispatched').length || 0;
 });
+const deliveredCount = computed(() => {
+    return props.transfers.data?.filter(t => t.status === 'delivered').length || 0;
+});
 const receivedCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'received').length || 0;
 });
 const rejectedCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'rejected').length || 0;
-});
-const thisMonthCount = computed(() => {
-    const thisMonth = moment().format('YYYY-MM');
-    return props.transfers.data?.filter(t => 
-        moment(t.transfer_date).format('YYYY-MM') === thisMonth
-    ).length || 0;
-});
-const completionRate = computed(() => {
-    if (totalCount.value === 0) return 0;
-    const completed = receivedCount.value;
-    return Math.round((completed / totalCount.value) * 100);
 });
 
 // Watch for filter changes
