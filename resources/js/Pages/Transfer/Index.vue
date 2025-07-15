@@ -276,7 +276,6 @@
                                     {{ inProcessCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">In Process</span>
                         </div>
 
                         <!-- Dispatched -->
