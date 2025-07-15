@@ -139,7 +139,7 @@
                         <button
                             type="button"
                             @click="addItem"
-                            :disabled="isLoading"
+                            :disabled="loadingRows.size > 0"
                             class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,8 +196,9 @@
                                                      track-by="id"
                                                      label="name"
                                                      @select="checkInventory(index, $event)"
+                                                     @remove="handleProductRemoval(index)"
                                                      required
-                                                     :class="{ 'opacity-50': isLoading }"
+                                                     :class="{ 'opacity-50': loadingRows.has(index) }"
                                                      class="w-full"
                                                  >
                                                      <template #option="{ option }">
@@ -208,7 +209,7 @@
                                                      </template>
                                                  </Multiselect>
                                                  <div
-                                                     v-if="isLoading"
+                                                     v-if="loadingRows.has(index)"
                                                      class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg"
                                                  >
                                                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -306,14 +307,14 @@
                     <div class="flex items-center space-x-4">
                         <Link
                             :href="route('orders.index')"
-                            :disabled="isSubmitting || isLoading"
+                            :disabled="isSubmitting || loadingRows.size > 0"
                             class="inline-flex items-center px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </Link>
                         <button
                             type="submit"
-                            :disabled="isSubmitting || isLoading || form.items.length === 0"
+                            :disabled="isSubmitting || loadingRows.size > 0 || form.items.length === 0"
                             class="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -330,7 +331,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useToast } from "vue-toastification";
 import { Link } from "@inertiajs/vue3";
@@ -365,25 +366,12 @@ const form = ref({
     items: [],
 });
 
-const isLoading = ref(false);
+const loadingRows = ref(new Set());
 
-const addItem = () => {
-    form.value.items.push({
-        product_id: "",
-        product: null,
-        quantity: 0,
-        soh: 0,
-        quantity_on_order: 0,
-        no_of_days: 0,
-    });
-};
 
-const removeItem = (index) => {
-    form.value.items.splice(index, 1);
-};
 
 async function checkInventory(index, selected) {
-    isLoading.value = true;
+    loadingRows.value.add(index);
     form.value.items[index].product_id = selected.id;
     form.value.items[index].product = selected;
     form.value.items[index].soh = 0;
@@ -403,11 +391,14 @@ async function checkInventory(index, selected) {
             form.value.items[index].no_of_days = parseInt(
                 response.data.no_of_days
             );
-            isLoading.value = false;
+            loadingRows.value.delete(index);
+            
+            // Automatically add a new empty row after successful product selection
+            addNewRowIfNeeded();
         })
         .catch((error) => {
             console.log(error);
-            isLoading.value = false;
+            loadingRows.value.delete(index);
             Swal.fire({
                 icon: "error",
                 title: "Error",
@@ -415,13 +406,80 @@ async function checkInventory(index, selected) {
                 confirmButtonText: "OK",
             }).then((result) => {
                 if (result.isConfirmed) {
-                    isLoading.value = false;
                     form.value.items[index].product_id = "";
                     form.value.items[index].product = null;
                 }
             });
         });
 }
+
+// Function to handle product removal (when user clears the selection)
+const handleProductRemoval = (index) => {
+    // Clear the product data for this row
+    form.value.items[index].product_id = "";
+    form.value.items[index].product = null;
+    form.value.items[index].soh = 0;
+    form.value.items[index].quantity = 0;
+    form.value.items[index].amc = 0;
+    form.value.items[index].no_of_days = 0;
+    form.value.items[index].quantity_on_order = 0;
+    
+    // Ensure we still have at least one empty row
+    addNewRowIfNeeded();
+};
+
+// Function to add new row if needed
+const addNewRowIfNeeded = () => {
+    // Check if the last row has a product selected
+    const lastIndex = form.value.items.length - 1;
+    const lastItem = form.value.items[lastIndex];
+    
+    // If the last row has a product selected, add a new empty row
+    if (lastItem && lastItem.product_id && lastItem.product_id !== "") {
+        addItem();
+    }
+    
+    // Also check for any rows with null product_id and ensure we have at least one empty row
+    const hasEmptyRow = form.value.items.some(item => !item.product_id || item.product_id === "");
+    
+    if (!hasEmptyRow) {
+        addItem();
+    }
+    
+    // Additional check: if all rows have products selected, add one more empty row
+    const allRowsHaveProducts = form.value.items.every(item => item.product_id && item.product_id !== "");
+    if (allRowsHaveProducts) {
+        addItem();
+    }
+};
+
+// Enhanced addItem function to ensure we always have at least one empty row
+const addItem = () => {
+    form.value.items.push({
+        product_id: "",
+        product: null,
+        quantity: 0,
+        soh: 0,
+        quantity_on_order: 0,
+        no_of_days: 0,
+    });
+};
+
+// Enhanced removeItem function to ensure we always have at least one empty row
+const removeItem = (index) => {
+    form.value.items.splice(index, 1);
+    
+    // If we removed the last item or if there are no empty rows, add one
+    if (form.value.items.length === 0) {
+        addItem();
+    } else {
+        // Check if we still have an empty row after removal
+        const hasEmptyRow = form.value.items.some(item => !item.product_id || item.product_id === "");
+        if (!hasEmptyRow) {
+            addItem();
+        }
+    }
+};
 
 const isSubmitting = ref(false);
 
@@ -464,6 +522,17 @@ const submitOrder = async () => {
             isSubmitting.value = false;
         });
 };
+
+// Watcher to ensure we always have at least one empty row
+watch(() => form.value.items, (newItems) => {
+    // Check if we have any empty rows (no product_id or empty product_id)
+    const hasEmptyRow = newItems.some(item => !item.product_id || item.product_id === "");
+    
+    // If no empty rows exist, add one
+    if (!hasEmptyRow && newItems.length > 0) {
+        addItem();
+    }
+}, { deep: true });
 
 // Initialize with one empty item
 addItem();
