@@ -248,7 +248,6 @@
                                     {{ pendingCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">Pending</span>
                         </div>
 
                         <!-- Approved -->
@@ -263,7 +262,6 @@
                                     {{ approvedCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">Approved</span>
                         </div>
 
                         <!-- In Process -->
@@ -293,7 +291,6 @@
                                     {{ dispatchedCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">Dispatched</span>
                         </div>
 
                         <!-- Received -->
@@ -308,7 +305,6 @@
                                     {{ receivedCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">Received</span>
                         </div>
 
                         <!-- Rejected -->
@@ -323,7 +319,6 @@
                                     {{ rejectedCount }}
                                 </div>
                             </div>
-                            <span class="text-xs text-black mt-2">Rejected</span>
                         </div>
                     </div>
                 </div>

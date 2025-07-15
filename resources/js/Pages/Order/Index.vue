@@ -586,14 +586,14 @@ const formatDate = (date) => {
                                     >
                                 </div>
                             </div>
-                            <!-- <div>
+                            <div>
                                 <div class="text-lg font-bold text-gray-900">
                                     {{ stats.reviewed }}
                                 </div>
                                 <div class="text-base text-gray-600">
                                     Reviewed
                                 </div>
-                            </div> -->
+                            </div>
                         </div>
                     </div>
 
@@ -635,6 +635,14 @@ const formatDate = (date) => {
                                                 : 0
                                         }}%</span
                                     >
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.approved }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Approved
                                 </div>
                             </div>
                         </div>
@@ -680,6 +688,14 @@ const formatDate = (date) => {
                                     >
                                 </div>
                             </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.rejected }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Rejected
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -721,6 +737,14 @@ const formatDate = (date) => {
                                                 : 0
                                         }}%</span
                                     >
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.in_process }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    In Process
                                 </div>
                             </div>
                         </div>
@@ -766,6 +790,14 @@ const formatDate = (date) => {
                                     >
                                 </div>
                             </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.dispatched }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Dispatched
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -800,6 +832,14 @@ const formatDate = (date) => {
                                                 : 0
                                         }}%
                                     </span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.delivered }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Delivered
                                 </div>
                             </div>
                         </div>
@@ -843,6 +883,14 @@ const formatDate = (date) => {
                                                 : 0
                                         }}%</span
                                     >
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-900">
+                                    {{ stats.received }}
+                                </div>
+                                <div class="text-base text-gray-600">
+                                    Received
                                 </div>
                             </div>
                         </div>
