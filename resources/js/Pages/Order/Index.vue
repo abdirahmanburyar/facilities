@@ -586,14 +586,14 @@ const formatDate = (date) => {
                                     >
                                 </div>
                             </div>
-                            <div>
+                            <!-- <div>
                                 <div class="text-lg font-bold text-gray-900">
                                     {{ stats.reviewed }}
                                 </div>
                                 <div class="text-base text-gray-600">
                                     Reviewed
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 
