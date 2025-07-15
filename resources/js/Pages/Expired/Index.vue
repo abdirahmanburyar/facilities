@@ -329,10 +329,10 @@
                         </div>
                     </li>
                     <li class="flex items-center gap-4">
-                        <img src="/assets/images/facility.png" class="w-10 h-10" alt="Transfer" />
+                        <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Transfer" />
                         <div>
                             <div class="font-semibold text-blue-600">Transfer</div>
-                            <div class="text-xs text-gray-500">Transfer items to another facility or warehouse.</div>
+                            <div class="text-xs text-gray-500">Transfer items to another facility.</div>
                         </div>
                     </li>
                     <li class="flex items-center gap-4">
@@ -392,12 +392,11 @@ const props = defineProps({
     products: Array,
     dosage: Array,
     categories: Array,
-    warehouses: Array,
     filters: Object,
     summary: Object,
 })
 
-const activeTab = ref('all')
+const activeTab = ref(props.filters.tab || 'all')
 
 // Icon Legend state
 const showLegend = ref(false)
@@ -446,23 +445,24 @@ const disposeItem = (item) => {
 };
 
 const search = ref(props.filters.search || "");
-const location = ref(props.filters.location || "");
 const dosage = ref(props.filters.dosage || "");
 const category = ref(props.filters.category || "");
-const warehouse = ref(props.filters.warehouse || "");
 const per_page = ref(props.filters.per_page || 25);
 
-const loadedLocation = ref([]);
+
 
 // Apply filters
 const applyFilters = () => {
     const query = {};
     // Add all filter values to query object
     if (search.value) query.search = search.value;
-    if (location.value) query.location = location.value;
-    if (warehouse.value) query.warehouse = warehouse.value;
     if (dosage.value) query.dosage = dosage.value;
     if (category.value) query.category = category.value;
+
+    // Add active tab to query
+    if (activeTab.value && activeTab.value !== 'all') {
+        query.tab = activeTab.value;
+    }
 
     // Always include per_page in query if it exists
     if (per_page.value) query.per_page = per_page.value;
@@ -474,25 +474,22 @@ const applyFilters = () => {
         only: [
             "inventories",
             "products",
-            "warehouses",
             "filters",
             "summary",
-            "locations",
             "dosage",
             "category",
         ],
     });
 };
 
-// Watch for changes in search input
+// Watch for changes in search input and tabs
 watch(
     [
         () => search.value,
-        () => location.value,
         () => per_page.value,
-        () => warehouse.value,
         () => dosage.value,
         () => category.value,
+        () => activeTab.value,
         () => props.filters.page,
     ],
     () => {
@@ -565,29 +562,26 @@ const submitDisposal = async () => {
 };
 
 const filteredStats = computed(() => {
-    const yearItems = props.summary.expiring_within_1_year
-    const sixMonthItems = props.summary.expiring_within_6_months
-    const expiredItems = props.summary.expired
-    const disposedItems = props.summary.disposed
-
+    // When a specific tab is selected, the backend will filter the data
+    // So we show the appropriate stats based on the current tab
     if (activeTab.value === 'all') {
         return {
-            year: yearItems,
-            six_months: sixMonthItems,
-            expired: expiredItems,
-            disposed: disposedItems
+            year: props.summary.expiring_within_1_year || 0,
+            six_months: props.summary.expiring_within_6_months || 0,
+            expired: props.summary.expired || 0,
+            disposed: props.summary.disposed || 0
         }
     } else if (activeTab.value === 'year') {
         return {
-            year: yearItems,
-            six_months: sixMonthItems,
+            year: props.summary.expiring_within_1_year || 0,
+            six_months: 0,
             expired: 0,
             disposed: 0
         }
     } else if (activeTab.value === 'six_months') {
         return {
             year: 0,
-            six_months: sixMonthItems,
+            six_months: props.summary.expiring_within_6_months || 0,
             expired: 0,
             disposed: 0
         }
@@ -595,8 +589,8 @@ const filteredStats = computed(() => {
         return {
             year: 0,
             six_months: 0,
-            expired: expiredItems,
-            disposed: disposedItems
+            expired: props.summary.expired || 0,
+            disposed: 0
         }
     }
     return { year: 0, six_months: 0, expired: 0, disposed: 0 }

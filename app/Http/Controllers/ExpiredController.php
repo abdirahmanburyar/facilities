@@ -9,7 +9,7 @@ use App\Models\Disposal;
 use App\Models\Transfer;
 use App\Models\Facility;
 use App\Models\Category;
-use App\Models\Warehouse;
+
 use App\Models\Dosage;
 use App\Models\Reason;
 use Carbon\Carbon;
@@ -60,6 +60,24 @@ class ExpiredController extends Controller
                 $q->where('name', $request->dosage);
             });
         }
+
+        // Tab filtering
+        if ($request->filled('tab')) {
+            $tab = $request->tab;
+            if ($tab === 'expired') {
+                // Show only expired items
+                $query->where('expiry_date', '<', $now);
+            } elseif ($tab === 'six_months') {
+                // Show items expiring within 6 months (180 days)
+                $query->where('expiry_date', '>', $now)
+                      ->where('expiry_date', '<=', $sixMonthsFromNow);
+            } elseif ($tab === 'year') {
+                // Show items expiring within 1 year (365 days)
+                $query->where('expiry_date', '>', $now)
+                      ->where('expiry_date', '<=', $oneYearFromNow);
+            }
+            // 'all' tab shows everything (no additional filtering)
+        }
     
         // Paginate while still a query builder
         $paginatedInventories = $query->paginate(
@@ -92,18 +110,49 @@ class ExpiredController extends Controller
         $category = Category::pluck('name')->toArray();
         $dosage = Dosage::pluck('name')->toArray();
     
-        return inertia('Expired/Index', [
-            'inventories' => ExpiredResource::collection($paginatedInventories),
-            'summary' => [
+        // Calculate summary based on current tab filter
+        $summary = [];
+        if ($request->filled('tab')) {
+            $tab = $request->tab;
+            if ($tab === 'expired') {
+                $summary = [
+                    'total' => $paginatedInventories->total(),
+                    'expiring_within_6_months' => 0,
+                    'expiring_within_1_year' => 0,
+                    'expired' => $paginatedInventories->total(),
+                ];
+            } elseif ($tab === 'six_months') {
+                $summary = [
+                    'total' => $paginatedInventories->total(),
+                    'expiring_within_6_months' => $paginatedInventories->total(),
+                    'expiring_within_1_year' => 0,
+                    'expired' => 0,
+                ];
+            } elseif ($tab === 'year') {
+                $summary = [
+                    'total' => $paginatedInventories->total(),
+                    'expiring_within_6_months' => 0,
+                    'expiring_within_1_year' => $paginatedInventories->total(),
+                    'expired' => 0,
+                ];
+            }
+        } else {
+            // For 'all' tab or no tab specified, calculate from the filtered collection
+            $summary = [
                 'total' => $paginatedInventories->total(),
                 'expiring_within_6_months' => $paginatedInventories->getCollection()->where('expiring_soon', true)->count(),
                 'expiring_within_1_year' => $paginatedInventories->getCollection()->where('expired', false)->where('days_until_expiry', '<=', 365)->count(),
                 'expired' => $paginatedInventories->getCollection()->where('expired', true)->count(),
-            ],
+            ];
+        }
+
+        return inertia('Expired/Index', [
+            'inventories' => ExpiredResource::collection($paginatedInventories),
+            'summary' => $summary,
             'products' => $products,
             'categories' => $category,
             'dosage' => $dosage,
-            'filters' => $request->only('search', 'product_id', 'dosage','category', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page'),
+            'filters' => $request->only('search', 'product_id', 'dosage','category', 'batch_number', 'expiry_date_from', 'expiry_date_to', 'per_page', 'page', 'tab'),
         ]);
     }    
 
@@ -196,21 +245,19 @@ class ExpiredController extends Controller
             }
             $facilities = Facility::get();
             $transferID = Transfer::generateTransferId();
-            $warehouses = Warehouse::get();
             $facilityID = auth()->user()->facility_id;
 
             return inertia("Expired/Transfer", [
                 "inventory" => $inv,
                 'facilities' => $facilities,
                 'transferID' => $transferID,
-                'warehouses' => $warehouses,
                 'facilityID' => $facilityID,
                 'reasons' => Reason::pluck('name')->toArray()
             ]);
         }
 
         $request->validate([
-            'destination_type' => 'required|in:warehouse,facility',
+            'destination_type' => 'required|in:facility',
             'destination_id' => 'required|integer',
             'quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:500'
