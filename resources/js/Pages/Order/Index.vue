@@ -13,54 +13,10 @@ const props = defineProps({
     orders: Object,
     filters: Object,
     stats: Object,
-    regions: Array,
 });
-
-const districts = ref([]);
-const facilities = ref([]);
 
 // Debounce setup
 let searchTimeout = null;
-
-async function handleRegionSelect(option) {
-    if (!option) {
-        district.value = null;
-        districts.value = [];
-        facility.value = null;
-        facilities.value = [];
-        return;
-    }
-    
-    // Smart validation - clear district if it doesn't belong to selected region
-    if (district.value && districts.value.length > 0) {
-        const districtExists = districts.value.some(d => d.value === district.value);
-        if (!districtExists) {
-            district.value = null;
-        }
-    }
-    
-    facility.value = null;
-    facilities.value = [];
-    await loadDistrict();
-}
-
-async function handleDistrictSelect(option) {
-    if (!option) {
-        facility.value = null;
-        facilities.value = [];
-        return;
-    }
-    
-    // Smart validation - clear facility if it doesn't belong to selected district
-    if (facility.value && facilities.value.length > 0) {
-        const facilityExists = facilities.value.some(f => f.value === facility.value);
-        if (!facilityExists) {
-            facility.value = null;
-        }
-    }
-    
-    await loadFacility();
-}
 
 // Fixed order types
 const orderTypes = ["All", "Quarterly", "Replenishment"];
@@ -95,29 +51,13 @@ const statusTabs = [
 // Filter states
 const search = ref(props.filters.search);
 const currentStatus = ref(props.filters.currentStatus || null); // Default to "All Orders" (null)
-const facility = ref(props.filters?.facility);
 const orderType = ref(props.filters?.orderType);
-const district = ref(props.filters?.district);
 const dateFrom = ref(props.filters?.dateFrom);
 const dateTo = ref(props.filters?.dateTo);
 const per_page = ref(props.filters.per_page || 25);
-const region = ref(props.filters?.region);
 
 // UI states
 const showIconLegend = ref(false);
-
-// Initialize data on page load
-onMounted(async () => {
-    // Load districts if region is already selected
-    if (region.value) {
-        await loadDistrict();
-    }
-    
-    // Load facilities if district is already selected
-    if (district.value) {
-        await loadFacility();
-    }
-});
 
 // Cleanup on unmount
 onBeforeUnmount(() => {
@@ -143,12 +83,9 @@ watch(
 watch(
     [
         () => currentStatus.value,
-        () => facility.value,
         () => orderType.value,
-        () => district.value,
         () => dateFrom.value,
         () => dateTo.value,
-        () => region.value,
         () => per_page.value,
         () => props.filters.page,
     ],
@@ -162,17 +99,12 @@ function reloadOrder() {
 
     // Only add non-empty values to the query
     if (search.value) query.search = search.value;
-    if (facility.value) query.facility = facility.value;
     if (currentStatus.value) query.currentStatus = currentStatus.value;
     if (orderType.value) query.orderType = orderType.value;
     if (per_page.value) query.per_page = per_page.value;
     if (props.filters.page) query.page = props.filters.page;
-    if (district.value) query.district = district.value;
     if (dateFrom.value) query.dateFrom = dateFrom.value;
     if (dateTo.value) query.dateTo = dateTo.value;
-    if (region.value) {
-        query.region = region.value;
-    }
 
     router.get(route("orders.index"), query, {
         preserveScroll: true,
@@ -183,30 +115,6 @@ function reloadOrder() {
 
 function getResult(page = 1) {
     props.filters.page = page;
-}
-
-async function loadDistrict() {
-    try {
-        const response = await axios.post(route("districts.get-districts"), { 
-            region: region.value 
-        });
-        districts.value = response.data;
-    } catch (error) {
-        console.log(error);
-        districts.value = [];
-    }
-}
-
-async function loadFacility() {
-    try {
-        const response = await axios.post(route("facilities.get-facilities"), { 
-            district: district.value 
-        });
-        facilities.value = response.data;
-    } catch (error) {
-        console.log(error);
-        facilities.value = [];
-    }
 }
 
 const formatDate = (date) => {
@@ -224,7 +132,7 @@ const formatDate = (date) => {
         <!-- Filters Section -->
         <div class="relative bg-white mb-2 text-xs">
             <div
-                class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center mb-5"
+                class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-5"
             >
                 <!-- Search -->
                 <div class="relative w-full">
@@ -247,45 +155,6 @@ const formatDate = (date) => {
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         />
                     </svg>
-                </div>
-
-                <div class="w-full">
-                    <Multiselect
-                        v-model="region"
-                        :options="props.regions"
-                        :searchable="true"
-                        :close-on-select="true"
-                        :allow-empty="true"
-                        @select="handleRegionSelect"
-                        placeholder="Select Region"
-                    >
-                    </Multiselect>
-                </div>
-
-                <!-- District Filter -->
-                <div>
-                    <Multiselect
-                        v-model="district"
-                        :options="districts"
-                        :searchable="true"
-                        :close-on-select="true"
-                        :allow-empty="true"
-                        @select="handleDistrictSelect"
-                        placeholder="Select District"
-                    >
-                    </Multiselect>
-                </div>
-                <!-- Facility Filter -->
-                <div class="w-full">
-                    <Multiselect
-                        v-model="facility"
-                        :options="facilities"
-                        :searchable="true"
-                        :close-on-select="true"
-                        :allow-empty="true"
-                        placeholder="Select Facility"
-                    >
-                    </Multiselect>
                 </div>
 
                 <!-- Order Type Filter -->
