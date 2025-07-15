@@ -185,4 +185,70 @@ class InventoryController extends Controller
         }   
     }
     
+
+    public function import(Request $request)
+    {
+        try {
+            if (!$request->hasFile('file')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No file was uploaded'
+                ], 422);
+            }
+    
+            $file = $request->file('file');
+    
+            // Validate file type
+            $extension = $file->getClientOriginalExtension();
+            if (!$file->isValid() || !in_array($extension, ['xlsx', 'xls', 'csv'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid file type. Please upload an Excel file (.xlsx, .xls) or CSV file'
+                ], 422);
+            }
+    
+            // Validate file size (max 50MB)
+            if ($file->getSize() > 50 * 1024 * 1024) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File size too large. Maximum allowed size is 50MB'
+                ], 422);
+            }
+    
+            $importId = (string) Str::uuid();
+    
+            Log::info('Queueing product import with Maatwebsite Excel', [
+                'import_id' => $importId,
+                'original_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'extension' => $extension
+            ]);
+    
+            // Initialize cache progress to 0
+            Cache::put($importId, 0);
+    
+            // Queue the import job
+            Excel::queueImport(new UploadInventory($importId), $file)->onQueue('imports');
+
+            // broadcast(new UpdateProductUpload($importId, 0));
+
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Import has been queued successfully',
+                'import_id' => $importId
+            ]);
+    
+        } catch (\Exception $e) {
+            Log::error('Product import failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Import failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
