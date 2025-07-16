@@ -484,7 +484,7 @@ function isExpiringSoon(expiryDate) {
                 </div>
             </div>
             <!-- Form Section -->
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div class="bg-white rounded-2xl border border-slate-200 p-8">
                 <form @submit.prevent="submit" class="space-y-8">
                     <!-- Transfer Date -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -575,8 +575,8 @@ function isExpiringSoon(expiryDate) {
                     </div>
 
                     <!-- Items Table Section -->
-                    <div class="mb-4 overflow-x-auto">
-                        <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                    <div class="mb-4">
+                        <table class="w-full text-sm text-left table-sm rounded-t-lg">
                             <thead>
                                 <tr style="background-color: #F4F7FB;">
                                     <th class="min-w-[120px] px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">

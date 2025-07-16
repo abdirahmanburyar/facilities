@@ -145,7 +145,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Generate report items from facility inventory movements
+     * Generate report items from facility inventory movements with detailed quantity breakdowns
      */
     private function generateReportItems(Facility $facility, FacilityMonthlyReport $report): void
     {
@@ -156,7 +156,7 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
         echo "Generating report for facility {$facility->id} for period {$this->reportPeriod}\n";
         echo "Date range: {$startDate} to {$endDate}\n";
 
-        // First, get all products that have current inventory at this facility
+        // Get all products that have current inventory at this facility
         $inventoryProducts = DB::table('facility_inventories')
             ->select('product_id')
             ->where('facility_id', $facility->id)
@@ -166,27 +166,52 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
 
         echo "Found {$inventoryProducts->count()} products with current inventory\n";
 
-        // Get movement data for the reporting period
-        $movementData = FacilityInventoryMovement::select([
+        // Get detailed movement data for the reporting period with all quantities
+        $detailedMovementData = FacilityInventoryMovement::select([
+                'product_id',
+                'facility_received_quantity',
+                'facility_issued_quantity',
+                'created_at',
+                'movement_type',
+                'reference_type',
+                'reference_id',
+                'batch_number',
+                'expiry_date',
+                'unit_cost',
+                'total_cost'
+            ])
+            ->where('facility_id', $facility->id)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('product_id')
+            ->orderBy('created_at')
+            ->get();
+
+        echo "Found {$detailedMovementData->count()} individual movements in period\n";
+
+        // Get aggregated movement data for totals
+        $aggregatedMovementData = FacilityInventoryMovement::select([
                 'product_id',
                 DB::raw('SUM(COALESCE(facility_received_quantity, 0)) as total_received'),
                 DB::raw('SUM(COALESCE(facility_issued_quantity, 0)) as total_issued'),
-                DB::raw('COUNT(*) as movement_count')
+                DB::raw('COUNT(*) as movement_count'),
+                DB::raw('COUNT(CASE WHEN facility_received_quantity > 0 THEN 1 END) as received_transactions'),
+                DB::raw('COUNT(CASE WHEN facility_issued_quantity > 0 THEN 1 END) as issued_transactions')
             ])
             ->where('facility_id', $facility->id)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('product_id')
             ->get();
 
-        echo "Found {$movementData->count()} products with movements in period\n";
+        echo "Found {$aggregatedMovementData->count()} products with movements in period\n";
 
         // Get all unique products (from both inventory and movements)
-        $allProductIds = $inventoryProducts->merge($movementData->pluck('product_id'))->unique();
+        $allProductIds = $inventoryProducts->merge($aggregatedMovementData->pluck('product_id'))->unique();
         
         echo "Total unique products to process: {$allProductIds->count()}\n";
 
-        // Create a lookup array for movements
-        $movementLookup = $movementData->keyBy('product_id');
+        // Create lookup arrays
+        $aggregatedLookup = $aggregatedMovementData->keyBy('product_id');
+        $detailedLookup = $detailedMovementData->groupBy('product_id');
 
         // Process in chunks to manage memory usage
         $chunkSize = 100;
@@ -194,26 +219,29 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
         $itemsCreated = 0;
 
         // Process all products in chunks
-        $allProductIds->chunk($chunkSize)->each(function ($productChunk, $chunkIndex) use ($facility, $report, $movementLookup, &$totalProcessed, &$itemsCreated) {
+        $allProductIds->chunk($chunkSize)->each(function ($productChunk, $chunkIndex) use ($facility, $report, $aggregatedLookup, $detailedLookup, &$totalProcessed, &$itemsCreated) {
 
             foreach ($productChunk as $productId) {
                 try {
                     // Get product information
-                    $product = Product::select(['id', 'name'])->find($productId);
+                    $product = Product::select(['id', 'name', 'category_id'])->find($productId);
                     if (!$product) {
                         echo "Product {$productId} not found, skipping\n";
                         continue;
                     }
 
-                    // Get movement data for this product (if any)
-                    $movement = $movementLookup->get($productId);
+                    // Get aggregated movement data for this product (if any)
+                    $aggregatedMovement = $aggregatedLookup->get($productId);
+                    
+                    // Get detailed movements for this product
+                    $detailedMovements = $detailedLookup->get($productId, collect());
 
                     // Calculate opening balance
                     $openingBalance = $this->calculateOpeningBalance($facility, $product);
 
                     // Get the aggregated quantities (default to 0 if no movements)
-                    $stockReceived = $movement ? (float) $movement->total_received : 0.0;
-                    $stockIssued = $movement ? (float) $movement->total_issued : 0.0;
+                    $stockReceived = $aggregatedMovement ? (float) $aggregatedMovement->total_received : 0.0;
+                    $stockIssued = $aggregatedMovement ? (float) $aggregatedMovement->total_issued : 0.0;
 
                     // Set default adjustments (can be manually updated later)
                     $positiveAdjustments = 0.0;
@@ -225,9 +253,14 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                     // Calculate stockout days
                     $stockoutDays = $this->calculateStockoutDays($facility, $product);
 
-                    echo "Processing product {$product->id} ({$product->name}): Opening={$openingBalance}, Received={$stockReceived}, Issued={$stockIssued}, Closing={$closingBalance}\n";
+                    // Prepare detailed quantity breakdown
+                    $quantityBreakdown = $this->prepareQuantityBreakdown($detailedMovements, $product);
 
-                    // Create the report item
+                    echo "Processing product {$product->id} ({$product->name}): Opening={$openingBalance}, Received={$stockReceived}, Issued={$stockIssued}, Closing={$closingBalance}\n";
+                    echo "  - Detailed movements: {$detailedMovements->count()} transactions\n";
+                    echo "  - Quantity breakdown: " . json_encode($quantityBreakdown) . "\n";
+
+                    // Create the report item with detailed breakdown
                     FacilityMonthlyReportItem::create([
                         'parent_id' => $report->id,
                         'product_id' => $product->id,
@@ -238,6 +271,10 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
                         'negative_adjustments' => $negativeAdjustments,
                         'closing_balance' => $closingBalance,
                         'stockout_days' => $stockoutDays,
+                        'quantity_breakdown' => json_encode($quantityBreakdown), // Store detailed breakdown
+                        'movement_count' => $aggregatedMovement ? $aggregatedMovement->movement_count : 0,
+                        'received_transactions' => $aggregatedMovement ? $aggregatedMovement->received_transactions : 0,
+                        'issued_transactions' => $aggregatedMovement ? $aggregatedMovement->issued_transactions : 0,
                     ]);
 
                     $itemsCreated++;
@@ -253,6 +290,130 @@ class GenerateMonthlyInventoryReportJob implements ShouldQueue, ShouldBeUnique
         });
 
         echo "Completed generating {$itemsCreated} report items for facility {$facility->id}\n";
+    }
+
+    /**
+     * Prepare detailed quantity breakdown for a product
+     */
+    private function prepareQuantityBreakdown($movements, $product): array
+    {
+        $breakdown = [
+            'total_movements' => $movements->count(),
+            'received_breakdown' => [],
+            'issued_breakdown' => [],
+            'by_batch' => [],
+            'by_movement_type' => [],
+            'by_reference_type' => [],
+            'daily_totals' => [],
+            'cost_analysis' => [
+                'total_received_cost' => 0,
+                'total_issued_cost' => 0,
+                'average_unit_cost' => 0,
+            ]
+        ];
+
+        $totalReceivedCost = 0;
+        $totalIssuedCost = 0;
+        $totalUnits = 0;
+
+        foreach ($movements as $movement) {
+            $date = $movement->created_at->format('Y-m-d');
+            $batchKey = $movement->batch_number ?: 'no-batch';
+            $movementType = $movement->movement_type ?: 'unknown';
+            $referenceType = $movement->reference_type ?: 'unknown';
+
+            // Daily totals
+            if (!isset($breakdown['daily_totals'][$date])) {
+                $breakdown['daily_totals'][$date] = [
+                    'received' => 0,
+                    'issued' => 0,
+                    'transactions' => 0
+                ];
+            }
+
+            // Received quantities
+            if ($movement->facility_received_quantity > 0) {
+                $receivedQty = (float) $movement->facility_received_quantity;
+                $breakdown['received_breakdown'][] = [
+                    'date' => $movement->created_at->format('Y-m-d H:i:s'),
+                    'quantity' => $receivedQty,
+                    'batch_number' => $movement->batch_number,
+                    'expiry_date' => $movement->expiry_date,
+                    'unit_cost' => $movement->unit_cost,
+                    'total_cost' => $movement->total_cost,
+                    'movement_type' => $movement->movement_type,
+                    'reference_type' => $movement->reference_type,
+                    'reference_id' => $movement->reference_id
+                ];
+
+                $breakdown['daily_totals'][$date]['received'] += $receivedQty;
+                $totalReceivedCost += (float) ($movement->total_cost ?: 0);
+                $totalUnits += $receivedQty;
+            }
+
+            // Issued quantities
+            if ($movement->facility_issued_quantity > 0) {
+                $issuedQty = (float) $movement->facility_issued_quantity;
+                $breakdown['issued_breakdown'][] = [
+                    'date' => $movement->created_at->format('Y-m-d H:i:s'),
+                    'quantity' => $issuedQty,
+                    'batch_number' => $movement->batch_number,
+                    'movement_type' => $movement->movement_type,
+                    'reference_type' => $movement->reference_type,
+                    'reference_id' => $movement->reference_id
+                ];
+
+                $breakdown['daily_totals'][$date]['issued'] += $issuedQty;
+                $totalIssuedCost += (float) ($movement->total_cost ?: 0);
+            }
+
+            // Batch breakdown
+            if (!isset($breakdown['by_batch'][$batchKey])) {
+                $breakdown['by_batch'][$batchKey] = [
+                    'received' => 0,
+                    'issued' => 0,
+                    'expiry_date' => $movement->expiry_date
+                ];
+            }
+            $breakdown['by_batch'][$batchKey]['received'] += (float) ($movement->facility_received_quantity ?: 0);
+            $breakdown['by_batch'][$batchKey]['issued'] += (float) ($movement->facility_issued_quantity ?: 0);
+
+            // Movement type breakdown
+            if (!isset($breakdown['by_movement_type'][$movementType])) {
+                $breakdown['by_movement_type'][$movementType] = [
+                    'received' => 0,
+                    'issued' => 0,
+                    'transactions' => 0
+                ];
+            }
+            $breakdown['by_movement_type'][$movementType]['received'] += (float) ($movement->facility_received_quantity ?: 0);
+            $breakdown['by_movement_type'][$movementType]['issued'] += (float) ($movement->facility_issued_quantity ?: 0);
+            $breakdown['by_movement_type'][$movementType]['transactions']++;
+
+            // Reference type breakdown
+            if (!isset($breakdown['by_reference_type'][$referenceType])) {
+                $breakdown['by_reference_type'][$referenceType] = [
+                    'received' => 0,
+                    'issued' => 0,
+                    'transactions' => 0
+                ];
+            }
+            $breakdown['by_reference_type'][$referenceType]['received'] += (float) ($movement->facility_received_quantity ?: 0);
+            $breakdown['by_reference_type'][$referenceType]['issued'] += (float) ($movement->facility_issued_quantity ?: 0);
+            $breakdown['by_reference_type'][$referenceType]['transactions']++;
+
+            $breakdown['daily_totals'][$date]['transactions']++;
+        }
+
+        // Cost analysis
+        $breakdown['cost_analysis'] = [
+            'total_received_cost' => $totalReceivedCost,
+            'total_issued_cost' => $totalIssuedCost,
+            'average_unit_cost' => $totalUnits > 0 ? $totalReceivedCost / $totalUnits : 0,
+            'total_units_processed' => $totalUnits
+        ];
+
+        return $breakdown;
     }
 
     /**
