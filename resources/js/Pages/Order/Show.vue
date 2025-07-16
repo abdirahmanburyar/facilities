@@ -304,6 +304,30 @@
             <!-- Order Items Table -->
             <h2 class="text-xs text-gray-900 mb-4">Order Items</h2>
             
+            <!-- Warning for invalid items when order status is delivered -->
+            <div v-if="props.order.status === 'delivered' && getInvalidItemsForReceiving.length > 0" 
+                class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Cannot Mark Order as Received</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <p>The following items have issues that prevent the order from being marked as received:</p>
+                            <ul class="list-disc list-inside mt-1 space-y-1">
+                                <li v-for="item in getInvalidItemsForReceiving" :key="item.id" class="font-medium">
+                                    {{ item.product?.name }} - Quantity to Release: 0, Received: 0, No back orders
+                                </li>
+                            </ul>
+                            <p class="mt-2">Please either enter received quantities or create back orders for these items.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Receive Instructions -->
             <div v-if="props.order.status === 'delivered'" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div class="flex items-start">
@@ -366,7 +390,10 @@
                     <template v-for="(item, index) in form" :key="item.id">
                         <template v-if="item.inventory_allocations?.length > 0">
                             <tr v-for="(inv, invIndex) in item.inventory_allocations" :key="`${item.id}-${inv.id || invIndex}`"
-                                class="hover:bg-gray-50 transition-colors duration-150 border-b"
+                                :class="[
+                                    'hover:bg-gray-50 transition-colors duration-150 border-b',
+                                    { 'bg-red-50 border-l-4 border-l-red-500': isItemInvalidForReceiving(item) }
+                                ]"
                                 :style="'border-bottom: 1px solid #F4F7FB;'">
                                 <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
                                     class="px-3 py-3 text-xs text-gray-900 align-top">
@@ -448,16 +475,15 @@
                                     {{ inv.expiry_date ? moment(inv.expiry_date).format('DD/MM/YYYY') : '' }}
                                 </td>
                                 <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
-                                    <div class="flex flex-col text-xs">
-                                        <span v-if="inv.warehouse?.name">WH: {{ inv.warehouse.name }}</span>
-                                        <span v-if="inv.location?.location">LC: {{ inv.location.location }}</span>
-                                        <span v-if="!inv.warehouse?.name && !inv.location?.location">{{ inv.location || '' }}</span>
-                                    </div>
+                                    <span v-if="!inv.warehouse?.name && !inv.location">{{ inv.location || '' }}</span>
                                 </td>
                             </tr>
                         </template>
                         <template v-else>
-                            <tr class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #F4F7FB;">
+                            <tr :class="[
+                                'hover:bg-gray-50 transition-colors duration-150 border-b',
+                                { 'bg-red-50 border-l-4 border-l-red-500': isItemInvalidForReceiving(item) }
+                            ]" style="border-bottom: 1px solid #F4F7FB;">
                                 <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.product?.name }}</td>
                                 <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.product?.category?.name }}</td>
                                 <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.uom || 'N/A' }}</td>
@@ -1776,6 +1802,52 @@ const changeStatus = (orderId, newStatus, type) => {
         }
     }
     
+    // Special handling for received action - check for items with zero quantity and no back orders
+    if (newStatus === 'received') {
+        const invalidItems = form.value.filter(item => {
+            const quantityToRelease = parseFloat(item.quantity_to_release) || 0;
+            const receivedQuantity = parseFloat(item.received_quantity) || 0;
+            
+            // Check if both quantity_to_release and received_quantity are 0
+            const hasZeroQuantities = quantityToRelease === 0 && receivedQuantity === 0;
+            
+            // Check if there are any back orders for this item
+            const hasBackOrders = item.inventory_allocations?.some(allocation => 
+                allocation.back_order && allocation.back_order.length > 0
+            ) || item.back_order?.length > 0;
+            
+            return hasZeroQuantities && !hasBackOrders;
+        });
+        
+        if (invalidItems.length > 0) {
+            const itemNames = invalidItems.map(item => item.product?.name || 'Unknown Product').join(', ');
+            
+            Swal.fire({
+                title: "Cannot Mark as Received",
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">The following items cannot be received because they have:</p>
+                        <ul class="list-disc list-inside mb-3 text-sm">
+                            <li>Quantity to Release: 0</li>
+                            <li>Received Quantity: 0</li>
+                            <li>No back orders recorded</li>
+                        </ul>
+                        <p class="font-semibold text-red-600">${itemNames}</p>
+                        <p class="mt-3 text-sm">Please either:</p>
+                        <ul class="list-disc list-inside text-sm">
+                            <li>Enter received quantities for these items, or</li>
+                            <li>Create back orders for missing quantities</li>
+                        </ul>
+                    </div>
+                `,
+                icon: "error",
+                confirmButtonColor: "#d33",
+                confirmButtonText: "OK"
+            });
+            return;
+        }
+    }
+    
     Swal.fire({
         title: "Are you sure?",
         text: `Do you want to change the order status to ${newStatus}?`,
@@ -1831,11 +1903,17 @@ const performStatusChange = async (orderId, newStatus, type) => {
             // Reset loading state
             isLoading.value = false;
 
-            toast.error(error.response?.data || "Failed to update order status");
+            // Use SweetAlert for error display
+            Swal.fire({
+                title: "Error!",
+                html: error.response?.data || "Failed to update order status",
+                icon: "error",
+                confirmButtonColor: "#d33",
+                confirmButtonText: "OK"
+            });
         });
 };
 
-const notSubmitted = ref(false);
 
 const itemsWithZeroReceived = computed(() => {
     return props.order?.items?.some(item => item.received_quantity === 0);
@@ -1850,6 +1928,40 @@ const allItemsFullyReceived = computed(() => {
         (item.received_quantity || 0) >= (item.quantity_to_release || 0)
     );
 });
+
+// Computed property to identify items that cannot be received
+const getInvalidItemsForReceiving = computed(() => {
+    return form.value.filter(item => {
+        const quantityToRelease = parseFloat(item.quantity_to_release) || 0;
+        const receivedQuantity = parseFloat(item.received_quantity) || 0;
+        
+        // Check if both quantity_to_release and received_quantity are 0
+        const hasZeroQuantities = quantityToRelease === 0 && receivedQuantity === 0;
+        
+        // Check if there are any back orders for this item
+        const hasBackOrders = item.inventory_allocations?.some(allocation => 
+            allocation.back_order && allocation.back_order.length > 0
+        ) || item.back_order?.length > 0;
+        
+        return hasZeroQuantities && !hasBackOrders;
+    });
+});
+
+// Function to check if a specific item is invalid for receiving
+const isItemInvalidForReceiving = (item) => {
+    const quantityToRelease = parseFloat(item.quantity_to_release) || 0;
+    const receivedQuantity = parseFloat(item.received_quantity) || 0;
+    
+    // Check if both quantity_to_release and received_quantity are 0
+    const hasZeroQuantities = quantityToRelease === 0 && receivedQuantity === 0;
+    
+    // Check if there are any back orders for this item
+    const hasBackOrders = item.inventory_allocations?.some(allocation => 
+        allocation.back_order && allocation.back_order.length > 0
+    ) || item.back_order?.length > 0;
+    
+    return hasZeroQuantities && !hasBackOrders;
+};
 
 // Delivery Form Computed Properties
 const hasDiscrepancy = computed(() => {

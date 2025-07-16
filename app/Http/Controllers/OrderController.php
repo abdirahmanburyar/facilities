@@ -346,7 +346,7 @@ class OrderController extends Controller
                 'status' => 'required'
             ]);
 
-            $order = Order::with('items.inventory_allocations.differences')
+            $order = Order::with(['items.inventory_allocations.differences', 'backorders'])
                 ->where('id', $request->order_id)
                 ->first();
                 
@@ -357,6 +357,63 @@ class OrderController extends Controller
                 $order->save();
                 DB::commit();
                 return response()->json("Marked as Delivered", 200);
+            }
+
+            // Validation: Check for items that need proper accounting before marking as received
+            if($request->status == 'received') {
+                $invalidItems = [];
+                
+                foreach ($order->items as $item) {
+                    $hasPackingListDifferences = false;
+                    $totalPackingListQuantity = 0;
+                    
+                    // Check if there are any packing list differences for this item
+                    foreach ($item->inventory_allocations as $allocation) {
+                        if ($allocation->differences->count() > 0) {
+                            $hasPackingListDifferences = true;
+                            $totalPackingListQuantity += $allocation->differences->sum('quantity');
+                        }
+                    }
+                    
+                    // Check if there are any back orders for this order
+                    $hasBackOrders = $order->backorders()->exists();
+                    
+                    // Case 1: Both quantities are zero and no back orders
+                    if ((float)$item->quantity_to_release == 0 && (float)$item->received_quantity == 0 && !$hasBackOrders) {
+                        $invalidItems[] = [
+                            'product_name' => $item->product->name ?? 'Unknown Product',
+                            'quantity_to_release' => $item->quantity_to_release,
+                            'received_quantity' => $item->received_quantity,
+                            'issue' => 'Zero quantities with no back orders recorded'
+                        ];
+                    }
+                    // Case 2: quantity_to_release > 0 but no packing list differences and no back orders
+                    // This indicates lost inventory that needs to be accounted for
+                    elseif ((float)$item->quantity_to_release > 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                        $invalidItems[] = [
+                            'product_name' => $item->product->name ?? 'Unknown Product',
+                            'quantity_to_release' => $item->quantity_to_release,
+                            'received_quantity' => $item->received_quantity,
+                            'issue' => 'Allocated inventory lost in transit - needs packing list difference or back order'
+                        ];
+                    }
+                    // Case 3: quantity_to_release > 0, received_quantity >= 0, but no packing list differences
+                    // This could indicate missing documentation for received items
+                    elseif ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity >= 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                        $invalidItems[] = [
+                            'product_name' => $item->product->name ?? 'Unknown Product',
+                            'quantity_to_release' => $item->quantity_to_release,
+                            'received_quantity' => $item->received_quantity,
+                            'issue' => 'Missing packing list difference documentation'
+                        ];
+                    }
+                }
+                
+                if (!empty($invalidItems)) {
+                    DB::rollBack();
+                    $errorMessage = "⚠️ Some items have not been properly recorded or processed. Please review the Order Items before marking as received.\n\n";                    
+                    return response()->json($errorMessage, 500);
+                }
             }
             
             $debugInfo = []; // For debugging purposes
