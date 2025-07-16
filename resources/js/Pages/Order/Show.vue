@@ -1775,8 +1775,7 @@ const statusOrder = [
 // Function to change order status
 const isType = ref([]);
 const changeStatus = (orderId, newStatus, type) => {
-    console.log(orderId, newStatus, type);
-    
+   
     // Special handling for approve action - check if quantity_to_release is 0
     if (newStatus === 'approved') {
         const totalQuantityToRelease = form.value.reduce((total, item) => {
@@ -1893,6 +1892,7 @@ const performStatusChange = async (orderId, newStatus, type) => {
                 // Reload the page to show the updated status
                 router.get(route("orders.show", props.order.id), {}, {
                     preserveScroll: true,
+                    preserveState: true,
                     only: ['orders']
                 });
             });
