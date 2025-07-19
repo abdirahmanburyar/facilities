@@ -514,7 +514,7 @@ function getResults(page = 1) {
                                                 />
                                             </div>
                                             <Link
-                                                :href="route('supplies.purchase_order')"
+                                                :href="route('orders.create')"
                                                 v-if="inventory.quantity > inventory.reorder_level"
                                                 class="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
                                             >
