@@ -397,8 +397,8 @@ class BackOrderController extends Controller
             
             // Get inventory allocation details
             $inventoryAllocation = $item->inventoryAllocation;
-            $unitCost = $inventoryAllocation ? $inventoryAllocation->unit_cost : null;
-            $totalCost = $unitCost ? ($unitCost * $request->quantity) : null;
+            $unitCost = $inventoryAllocation ? $inventoryAllocation->unit_cost : 0;
+            $totalCost = $unitCost * $request->quantity;
             
             // Create a record in BackOrderHistory with inventory details
             $backOrderHistoryData = [
