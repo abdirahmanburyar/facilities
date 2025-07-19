@@ -18,7 +18,7 @@ class InventoryItem extends Model
         'expiry_date',
         'batch_number',
         'barcode',
-        'location_id',
+        'location',
         'notes',
         'uom',
         'unit_cost',
