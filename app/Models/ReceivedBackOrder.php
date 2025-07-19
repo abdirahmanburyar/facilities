@@ -4,32 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class ReceivedBackOrder extends Model
+class ReceivedBackorder extends Model
 {
     use HasFactory;
 
-    protected $table = 'received_backorders';
-
     protected $fillable = [
         'received_backorder_number',
-        'product_id',
         'received_by',
-        'barcode',
-        'expire_date',
-        'batch_number',
-        'uom',
         'received_at',
-        'quantity',
         'status',
         'type',
+        'warehouse_id',
         'facility_id',
-        'location',
-        'unit_cost',
-        'reported_by',
-        'total_cost',
-        'note',
         'reviewed_by',
         'reviewed_at',
         'approved_by',
@@ -44,31 +33,31 @@ class ReceivedBackOrder extends Model
         'order_id',
         'transfer_id',
         'packing_list_number',
+        'purchase_order_id',
+        'purchase_order_number',
         'supplier_id',
         'supplier_name',
+        'inventory_adjustment_id'
     ];
 
     protected $casts = [
-        'expire_date' => 'date',
         'received_at' => 'date',
         'reviewed_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'attachments' => 'array',
-        'unit_cost' => 'decimal:2',
-        'total_cost' => 'decimal:2',
     ];
 
     /**
-     * Get the product that owns the received backorder.
+     * Get the items for this received backorder
      */
-    public function product(): BelongsTo
+    public function items(): HasMany
     {
-        return $this->belongsTo(Product::class);
+        return $this->hasMany(ReceivedBackorderItem::class);
     }
 
     /**
-     * Get the user who received the backorder.
+     * Get the user who received the backorder
      */
     public function receivedBy(): BelongsTo
     {
@@ -76,7 +65,7 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Get the user who reviewed the backorder.
+     * Get the user who reviewed the backorder
      */
     public function reviewedBy(): BelongsTo
     {
@@ -84,7 +73,7 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Get the user who approved the backorder.
+     * Get the user who approved the backorder
      */
     public function approvedBy(): BelongsTo
     {
@@ -92,7 +81,7 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Get the user who rejected the backorder.
+     * Get the user who rejected the backorder
      */
     public function rejectedBy(): BelongsTo
     {
@@ -100,15 +89,7 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Get the facility that owns the received backorder.
-     */
-    public function facility(): BelongsTo
-    {
-        return $this->belongsTo(Facility::class);
-    }
-
-    /**
-     * Get the back order that owns the received backorder.
+     * Get the back order that owns the received backorder
      */
     public function backOrder(): BelongsTo
     {
@@ -116,15 +97,23 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Get the order that owns the received backorder.
+     * Get the warehouse for this received backorder
      */
-    public function order(): BelongsTo
+    public function warehouse(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Warehouse::class);
     }
 
     /**
-     * Get the transfer that owns the received backorder.
+     * Get the facility for this received backorder
+     */
+    public function facility(): BelongsTo
+    {
+        return $this->belongsTo(Facility::class);
+    }
+
+    /**
+     * Get the transfer associated with this received backorder
      */
     public function transfer(): BelongsTo
     {
@@ -132,11 +121,27 @@ class ReceivedBackOrder extends Model
     }
 
     /**
-     * Generate a unique received backorder number for facilities
+     * Get the order associated with this received backorder
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Get the inventory adjustment associated with this received backorder
+     */
+    public function inventoryAdjustment(): BelongsTo
+    {
+        return $this->belongsTo(InventoryAdjustment::class);
+    }
+
+    /**
+     * Generate a unique received backorder number
      */
     public static function generateReceivedBackorderNumber(): string
     {
-        $prefix = 'FRB'; // Facility Received Backorder
+        $prefix = 'RB';
         $year = date('Y');
         $month = date('m');
         
@@ -163,10 +168,10 @@ class ReceivedBackOrder extends Model
     {
         parent::boot();
 
-        static::creating(function ($receivedBackOrder) {
-            if (empty($receivedBackOrder->received_backorder_number)) {
-                $receivedBackOrder->received_backorder_number = self::generateReceivedBackorderNumber();
+        static::creating(function ($receivedBackorder) {
+            if (empty($receivedBackorder->received_backorder_number)) {
+                $receivedBackorder->received_backorder_number = self::generateReceivedBackorderNumber();
             }
         });
     }
-} 
+}

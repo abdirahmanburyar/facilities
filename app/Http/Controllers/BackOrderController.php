@@ -395,15 +395,38 @@ class BackOrderController extends Controller
                 throw new \Exception('Item not found');
             }
             
-            // Create a record in BackOrderHistory
-            BackOrderHistory::create([
+            // Get inventory allocation details
+            $inventoryAllocation = $item->inventoryAllocation;
+            $unitCost = $inventoryAllocation ? $inventoryAllocation->unit_cost : null;
+            $totalCost = $unitCost ? ($unitCost * $request->quantity) : null;
+            
+            // Create a record in BackOrderHistory with inventory details
+            $backOrderHistoryData = [
                 'back_order_id' => $item->back_order_id,
                 'product_id' => $item->product_id,
                 'quantity' => $request->quantity,
                 'status' => 'Received',
-                'note' => "Received {$request->quantity} items",
+                'note' => "Received {$request->quantity} items by " . auth()->user()->name,
                 'performed_by' => auth()->id(),
-            ]);
+                'unit_cost' => $unitCost,
+                'total_cost' => $totalCost,
+            ];
+            
+            // Add inventory allocation details if available
+            if ($inventoryAllocation) {
+                $backOrderHistoryData['batch_number'] = $inventoryAllocation->batch_number ?? 'N/A';
+                $backOrderHistoryData['barcode'] = $inventoryAllocation->barcode ?? 'N/A';
+                $backOrderHistoryData['expiry_date'] = $inventoryAllocation->expiry_date ?? now()->addYears(1)->toDateString();
+                $backOrderHistoryData['uom'] = $inventoryAllocation->uom ?? 'N/A';
+            } else {
+                // Set default values if no inventory allocation
+                $backOrderHistoryData['batch_number'] = 'N/A';
+                $backOrderHistoryData['barcode'] = 'N/A';
+                $backOrderHistoryData['expiry_date'] = now()->addYears(1)->toDateString();
+                $backOrderHistoryData['uom'] = 'N/A';
+            }
+            
+            BackOrderHistory::create($backOrderHistoryData);
             
             // Update the packing list difference
             $item->decrement('quantity', $request->quantity);
