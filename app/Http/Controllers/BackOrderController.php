@@ -405,6 +405,16 @@ class BackOrderController extends Controller
                 $totalCost = 0.0;
             }
             
+            // Determine type based on inventory allocation
+            $type = null;
+            if ($inventoryAllocation) {
+                if ($inventoryAllocation->transfer_item_id !== null) {
+                    $type = "Transfer";
+                } elseif ($inventoryAllocation->order_item_id !== null) {
+                    $type = "Order";
+                }
+            }
+            
             // Create a record in BackOrderHistory with inventory details
             $backOrderHistoryData = [
                 'back_order_id' => $item->back_order_id,
@@ -418,6 +428,13 @@ class BackOrderController extends Controller
             
             // Explicitly set total_cost after array creation
             $backOrderHistoryData['total_cost'] = $totalCost;
+            
+            // Set order_item_id or transfer_item_id based on type
+            if ($type === "Order" && $inventoryAllocation && $inventoryAllocation->order_item_id) {
+                $backOrderHistoryData['order_item_id'] = $inventoryAllocation->order_item_id;
+            } elseif ($type === "Transfer" && $inventoryAllocation && $inventoryAllocation->transfer_item_id) {
+                $backOrderHistoryData['transfer_item_id'] = $inventoryAllocation->transfer_item_id;
+            }
             
             // Debug logging
             logger()->info('BackOrderHistory Data:', [
@@ -499,14 +516,27 @@ class BackOrderController extends Controller
 
                 // Get inventory allocation details
                 $inventoryAllocation = $packingListDiff ? $packingListDiff->inventoryAllocation : null;
-                $unitCost = $inventoryAllocation ? $inventoryAllocation->unit_cost : null;
-                $totalCost = $unitCost ? ($unitCost * $receivedQuantity) : null;
+                $unitCost = $inventoryAllocation && $inventoryAllocation->unit_cost ? (float) $inventoryAllocation->unit_cost : 0.0;
+                $totalCost = (float) ($unitCost * $receivedQuantity);
+                
+                // Ensure total_cost is never null
+                if ($totalCost === null || is_nan($totalCost)) {
+                    $totalCost = 0.0;
+                }
+                
+                // Determine type based on inventory allocation
+                $type = null;
+                if ($inventoryAllocation) {
+                    if ($inventoryAllocation->transfer_item_id !== null) {
+                        $type = "Transfer";
+                    } elseif ($inventoryAllocation->order_item_id !== null) {
+                        $type = "Order";
+                    }
+                }
                 
                 // Create BackOrderHistory record with all inventory details
                 $backOrderHistoryData = [
                     'packing_list_id' => null,
-                    'order_id' => $request->source_type === 'order' ? $request->source_id : null,
-                    'transfer_id' => $request->source_type === 'transfer' ? $request->source_id : null,
                     'product_id' => $request->product_id,
                     'quantity' => $receivedQuantity,
                     'status' => 'Received',
@@ -514,8 +544,25 @@ class BackOrderController extends Controller
                     'performed_by' => auth()->user()->id,
                     'back_order_id' => $request->back_order_id,
                     'unit_cost' => $unitCost,
-                    'total_cost' => $totalCost,
                 ];
+                
+                // Explicitly set total_cost after array creation
+                $backOrderHistoryData['total_cost'] = $totalCost;
+                
+                // Set order_item_id or transfer_item_id based on type from inventory allocation
+                if ($type === "Order" && $inventoryAllocation && $inventoryAllocation->order_item_id) {
+                    $backOrderHistoryData['order_item_id'] = $inventoryAllocation->order_item_id;
+                } elseif ($type === "Transfer" && $inventoryAllocation && $inventoryAllocation->transfer_item_id) {
+                    $backOrderHistoryData['transfer_item_id'] = $inventoryAllocation->transfer_item_id;
+                }
+                
+                // Debug logging for receiveBackOrder method
+                logger()->info('ReceiveBackOrder - BackOrderHistory Data:', [
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $totalCost,
+                    'quantity' => $receivedQuantity,
+                    'inventory_allocation' => $inventoryAllocation ? $inventoryAllocation->toArray() : null
+                ]);
                 
                 // Add inventory allocation details if available
                 if ($inventoryAllocation) {
@@ -531,6 +578,9 @@ class BackOrderController extends Controller
                     $backOrderHistoryData['uom'] = 'N/A';
                 }
                 
+                // Final debug logging before create
+                logger()->info('Final BackOrderHistory Data before create:', $backOrderHistoryData);
+                
                 $backOrderHistory = BackOrderHistory::create($backOrderHistoryData);
 
                 // Create ReceivedBackOrder record with inventory allocation details
@@ -538,30 +588,43 @@ class BackOrderController extends Controller
                     'product_id' => $request->product_id,
                     'received_by' => auth()->user()->id,
                     'quantity' => $receivedQuantity,
-                    'status' => 'received',
-                    'type' => $request->status,
+                    'status' => 'pending',
+                    'type' => $type ?? $request->status, // Use type from inventory allocation, fallback to request status
                     'note' => "Received {$receivedQuantity} items by " . auth()->user()->name,
                     'received_at' => now()->toDateString(),
                     'back_order_id' => $request->back_order_id,
-                    'order_id' => $request->source_type === 'order' ? $request->source_id : null,
-                    'transfer_id' => $request->source_type === 'transfer' ? $request->source_id : null,
                 ];
                 
-                // Set facility information based on source type
-                if ($request->source_type === 'order') {
-                    // Get order facility details
-                    $order = \App\Models\Order::find($request->source_id);
-                    if ($order && $order->facility) {
-                        $receivedBackOrderData['facility_id'] = $order->facility->id;
-                        $receivedBackOrderData['facility'] = $order->facility->name;
+                // Set order_id or transfer_id based on type from inventory allocation
+                if ($type === "Order" && $inventoryAllocation && $inventoryAllocation->order_item_id) {
+                    // Get the order_id from the order_item
+                    $orderItem = \App\Models\OrderItem::find($inventoryAllocation->order_item_id);
+                    if ($orderItem) {
+                        $receivedBackOrderData['order_id'] = $orderItem->order_id;
                     }
-                } elseif ($request->source_type === 'transfer') {
+                } elseif ($type === "Transfer" && $inventoryAllocation && $inventoryAllocation->transfer_item_id) {
+                    // Get the transfer_id from the transfer_item
+                    $transferItem = \App\Models\TransferItem::find($inventoryAllocation->transfer_item_id);
+                    if ($transferItem) {
+                        $receivedBackOrderData['transfer_id'] = $transferItem->transfer_id;
+                    }
+                }
+                
+                // Set facility information based on type from inventory allocation
+                if ($type === 'Order' && $inventoryAllocation && $inventoryAllocation->order_item_id) {
+                    // Get order facility details
+                    $orderItem = \App\Models\OrderItem::find($inventoryAllocation->order_item_id);
+                    if ($orderItem && $orderItem->order && $orderItem->order->facility) {
+                        $receivedBackOrderData['facility_id'] = $orderItem->order->facility->id;
+                        $receivedBackOrderData['facility'] = $orderItem->order->facility->name;
+                    }
+                } elseif ($type === 'Transfer' && $inventoryAllocation && $inventoryAllocation->transfer_item_id) {
                     // Get transfer facility details
-                    $transfer = \App\Models\Transfer::find($request->source_id);
-                    if ($transfer) {
-                        $receivedBackOrderData['facility_id'] = $transfer->to_facility_id;
+                    $transferItem = \App\Models\TransferItem::find($inventoryAllocation->transfer_item_id);
+                    if ($transferItem && $transferItem->transfer) {
+                        $receivedBackOrderData['facility_id'] = $transferItem->transfer->to_facility_id;
                         // Get facility name
-                        $toFacility = \App\Models\Facility::find($transfer->to_facility_id);
+                        $toFacility = \App\Models\Facility::find($transferItem->transfer->to_facility_id);
                         if ($toFacility) {
                             $receivedBackOrderData['facility'] = $toFacility->name;
                         }
@@ -590,6 +653,24 @@ class BackOrderController extends Controller
                 $receivedBackOrderData['received_backorder_number'] = \App\Models\ReceivedBackOrder::generateReceivedBackorderNumber();
                 
                 $receivedBackOrder = \App\Models\ReceivedBackOrder::create($receivedBackOrderData);
+
+                // Create ReceivedBackorderItem record
+                $receivedBackorderItemData = [
+                    'received_backorder_id' => $receivedBackOrder->id,
+                    'product_id' => $request->product_id,
+                    'quantity' => $receivedQuantity,
+                    'unit_cost' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0,
+                    'total_cost' => ($packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0) * $receivedQuantity,
+                    'barcode' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->barcode ?? 'N/A' : 'N/A',
+                    'expire_date' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->expiry_date ?? null : null,
+                    'batch_number' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->batch_number ?? 'N/A' : 'N/A',
+                    'warehouse_id' => null, // Set to null for facilities
+                    'uom' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->uom ?? 'N/A' : 'N/A',
+                    'location' => null, // Set to null for facilities
+                    'note' => "Received {$receivedQuantity} items by " . auth()->user()->name,
+                ];
+
+                \App\Models\ReceivedBackorderItem::create($receivedBackorderItemData);
 
                 // Handle the packing list difference record
                 if ($remainingQuantity <= 0) {

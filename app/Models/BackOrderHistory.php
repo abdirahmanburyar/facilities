@@ -16,8 +16,8 @@ class BackOrderHistory extends Model
 
     protected $fillable = [
         'packing_list_id',
-        'order_id',
-        'transfer_id',
+        'order_item_id',
+        'transfer_item_id',
         'barcode',
         'batch_number',
         'expiry_date',
@@ -34,6 +34,8 @@ class BackOrderHistory extends Model
 
     protected $casts = [
         'expiry_date' => 'date',
+        'unit_cost' => 'decimal:2',
+        'total_cost' => 'decimal:2',
     ];
 
     public function order(): BelongsTo
