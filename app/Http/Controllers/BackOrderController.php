@@ -649,50 +649,28 @@ class BackOrderController extends Controller
                     $receivedBackOrderData['total_cost'] = 0;
                 }
                 
-                // Check if a received back order already exists for this back order
-                $receivedBackOrder = \App\Models\ReceivedBackOrder::where('back_order_id', $request->back_order_id)
-                    ->where('status', 'pending')
-                    ->first();
+                // Generate the received_backorder_number manually to ensure it's set
+                $receivedBackOrderData['received_backorder_number'] = \App\Models\ReceivedBackOrder::generateReceivedBackorderNumber();
                 
-                if (!$receivedBackOrder) {
-                    // Generate the received_backorder_number manually to ensure it's set
-                    $receivedBackOrderData['received_backorder_number'] = \App\Models\ReceivedBackOrder::generateReceivedBackorderNumber();
-                    
-                    $receivedBackOrder = \App\Models\ReceivedBackOrder::create($receivedBackOrderData);
-                }
+                $receivedBackOrder = \App\Models\ReceivedBackOrder::create($receivedBackOrderData);
 
-                // Check if this specific item already exists in the received back order
-                $existingItem = \App\Models\ReceivedBackorderItem::where('received_backorder_id', $receivedBackOrder->id)
-                    ->where('product_id', $request->product_id)
-                    ->where('batch_number', $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->batch_number ?? 'N/A' : 'N/A')
-                    ->where('barcode', $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->barcode ?? 'N/A' : 'N/A')
-                    ->first();
-                
-                if ($existingItem) {
-                    // Update existing item quantity
-                    $existingItem->increment('quantity', $receivedQuantity);
-                    $existingItem->update([
-                        'total_cost' => ($packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0) * ($existingItem->quantity + $receivedQuantity),
-                    ]);
-                } else {
-                    // Create new ReceivedBackorderItem record
-                    $receivedBackorderItemData = [
-                        'received_backorder_id' => $receivedBackOrder->id,
-                        'product_id' => $request->product_id,
-                        'quantity' => $receivedQuantity,
-                        'unit_cost' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0,
-                        'total_cost' => ($packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0) * $receivedQuantity,
-                        'barcode' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->barcode ?? 'N/A' : 'N/A',
-                        'expire_date' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->expiry_date ?? null : null,
-                        'batch_number' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->batch_number ?? 'N/A' : 'N/A',
-                        'warehouse_id' => null, // Set to null for facilities
-                        'uom' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->uom ?? 'N/A' : 'N/A',
-                        'location' => null, // Set to null for facilities
-                        'note' => "Received {$receivedQuantity} items by " . auth()->user()->name,
-                    ];
+                // Create ReceivedBackorderItem record
+                $receivedBackorderItemData = [
+                    'received_backorder_id' => $receivedBackOrder->id,
+                    'product_id' => $request->product_id,
+                    'quantity' => $receivedQuantity,
+                    'unit_cost' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0,
+                    'total_cost' => ($packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->unit_cost ?? 0 : 0) * $receivedQuantity,
+                    'barcode' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->barcode ?? 'N/A' : 'N/A',
+                    'expire_date' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->expiry_date ?? null : null,
+                    'batch_number' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->batch_number ?? 'N/A' : 'N/A',
+                    'warehouse_id' => null, // Set to null for facilities
+                    'uom' => $packingListDiff && $packingListDiff->inventoryAllocation ? $packingListDiff->inventoryAllocation->uom ?? 'N/A' : 'N/A',
+                    'location' => null, // Set to null for facilities
+                    'note' => "Received {$receivedQuantity} items by " . auth()->user()->name,
+                ];
 
-                    \App\Models\ReceivedBackorderItem::create($receivedBackorderItemData);
-                }
+                \App\Models\ReceivedBackorderItem::create($receivedBackorderItemData);
 
                 // Handle the packing list difference record
                 if ($remainingQuantity <= 0) {
