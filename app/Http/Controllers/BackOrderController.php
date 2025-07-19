@@ -400,6 +400,11 @@ class BackOrderController extends Controller
             $unitCost = $inventoryAllocation && $inventoryAllocation->unit_cost ? (float) $inventoryAllocation->unit_cost : 0.0;
             $totalCost = (float) ($unitCost * $request->quantity);
             
+            // Ensure total_cost is never null
+            if ($totalCost === null || is_nan($totalCost)) {
+                $totalCost = 0.0;
+            }
+            
             // Create a record in BackOrderHistory with inventory details
             $backOrderHistoryData = [
                 'back_order_id' => $item->back_order_id,
@@ -409,8 +414,10 @@ class BackOrderController extends Controller
                 'note' => "Received {$request->quantity} items by " . auth()->user()->name,
                 'performed_by' => auth()->id(),
                 'unit_cost' => $unitCost,
-                'total_cost' => $totalCost,
             ];
+            
+            // Explicitly set total_cost after array creation
+            $backOrderHistoryData['total_cost'] = $totalCost;
             
             // Debug logging
             logger()->info('BackOrderHistory Data:', [
@@ -419,6 +426,9 @@ class BackOrderController extends Controller
                 'quantity' => $request->quantity,
                 'inventory_allocation' => $inventoryAllocation ? $inventoryAllocation->toArray() : null
             ]);
+            
+            // Additional debug logging
+            logger()->info('Final BackOrderHistory Data Array:', $backOrderHistoryData);
             
             // Add inventory allocation details if available
             if ($inventoryAllocation) {
