@@ -604,15 +604,15 @@
                                                 :max="allocation.allocated_quantity || 0"
                                                 @input="validateReceivedQuantity(allocation, allocIndex)"
                                                 min="0"
-                                                :readonly="props.transfer.status === 'received'"
+                                                :readonly="props.transfer.status !== 'delivered'"
                                                 :class="[
                                                     'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-                                                    props.transfer.status === 'received' ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                    props.transfer.status !== 'delivered' ? 'bg-gray-100 cursor-not-allowed' : ''
                                                 ]"
                                             />
                                             <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
                                             <button 
-                                                v-if="(allocation.allocated_quantity || 0) !== (allocation.received_quantity || 0)"
+                                                v-if="(allocation.allocated_quantity || 0) !== (allocation.received_quantity || 0) && ['delivered', 'received'].includes(props.transfer.status)"
                                                 @click="openBackOrderModal(item, allocation)"
                                                 class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1 block">
                                                 Back Order
