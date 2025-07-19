@@ -397,8 +397,8 @@ class BackOrderController extends Controller
             
             // Get inventory allocation details
             $inventoryAllocation = $item->inventoryAllocation;
-            $unitCost = $inventoryAllocation ? $inventoryAllocation->unit_cost : 0;
-            $totalCost = $unitCost * $request->quantity;
+            $unitCost = $inventoryAllocation && $inventoryAllocation->unit_cost ? (float) $inventoryAllocation->unit_cost : 0.0;
+            $totalCost = (float) ($unitCost * $request->quantity);
             
             // Create a record in BackOrderHistory with inventory details
             $backOrderHistoryData = [
@@ -411,6 +411,14 @@ class BackOrderController extends Controller
                 'unit_cost' => $unitCost,
                 'total_cost' => $totalCost,
             ];
+            
+            // Debug logging
+            logger()->info('BackOrderHistory Data:', [
+                'unit_cost' => $unitCost,
+                'total_cost' => $totalCost,
+                'quantity' => $request->quantity,
+                'inventory_allocation' => $inventoryAllocation ? $inventoryAllocation->toArray() : null
+            ]);
             
             // Add inventory allocation details if available
             if ($inventoryAllocation) {
