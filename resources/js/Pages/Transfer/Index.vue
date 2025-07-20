@@ -714,6 +714,7 @@ import moment from "moment";
 
 const props = defineProps({
     transfers: Object,
+    statistics: Object,
     filters: Object,
     facilities: Array,
     warehouses: Array,
@@ -822,32 +823,22 @@ watch(transfer_type, (newType, oldType) => {
     }
 });
 
-// Computed properties for statistics (facilities version - client-side calculation)
-const totalCount = computed(() => props.transfers.total || 0);
-const pendingCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'pending').length || 0;
+// Computed properties for statistics (facilities version - using backend statistics)
+const totalCount = computed(() => {
+    if (props.statistics) {
+        return Object.values(props.statistics).reduce((sum, stat) => sum + (stat.count || 0), 0);
+    }
+    return props.transfers.total || 0;
 });
-const reviewedCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'reviewed').length || 0;
-});
-const approvedCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'approved').length || 0;
-});
-const inProcessCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'in_process').length || 0;
-});
-const dispatchedCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'dispatched').length || 0;
-});
-const deliveredCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'delivered').length || 0;
-});
-const receivedCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'received').length || 0;
-});
-const rejectedCount = computed(() => {
-    return props.transfers.data?.filter(t => t.status === 'rejected').length || 0;
-});
+
+const pendingCount = computed(() => props.statistics?.pending?.count || 0);
+const reviewedCount = computed(() => props.statistics?.reviewed?.count || 0);
+const approvedCount = computed(() => props.statistics?.approved?.count || 0);
+const inProcessCount = computed(() => props.statistics?.in_process?.count || 0);
+const dispatchedCount = computed(() => props.statistics?.dispatched?.count || 0);
+const deliveredCount = computed(() => props.statistics?.delivered?.count || 0);
+const receivedCount = computed(() => props.statistics?.received?.count || 0);
+const rejectedCount = computed(() => props.statistics?.rejected?.count || 0);
 
 // Helper function to calculate percentage safely
 const calculatePercentage = (count, total) => {
