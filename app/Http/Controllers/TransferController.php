@@ -1682,8 +1682,8 @@ class TransferController extends Controller
                         // Use the actual received_quantity for this allocation
                         $receivedQuantity = $allocation->received_quantity ?? 0;
                         
-                        // Use updated_quantity if it's set (not null/undefined), otherwise use allocated_quantity
-                        $effectiveQuantity = ($allocation->updated_quantity !== null && $allocation->updated_quantity !== undefined) ? $allocation->updated_quantity : $allocation->allocated_quantity;
+                        // Use updated_quantity if it's set (not null), otherwise use allocated_quantity
+                        $effectiveQuantity = ($allocation->updated_quantity !== null) ? $allocation->updated_quantity : $allocation->allocated_quantity;
                         
                         // Validate that received quantity doesn't exceed effective quantity
                         if ($receivedQuantity > $effectiveQuantity) {
