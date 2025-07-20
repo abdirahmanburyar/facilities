@@ -736,31 +736,28 @@
                     <!-- Status Action Buttons -->
                     <div class="flex flex-wrap items-center justify-center gap-4 px-1 py-2">
 
-                            <!-- Review button -->
+                            <!-- Review Status Display (Read-only) -->
                             <div class="relative">
                                 <div class="flex flex-col">
                                     <button :class="[
                                         props.transfer.status === 'pending'
-                                            ? 'bg-yellow-500 hover:bg-yellow-600'
+                                            ? 'bg-yellow-500'
                                             : statusOrder.indexOf(
                                                 props.transfer.status
                                             ) > statusOrder.indexOf('pending')
                                                 ? 'bg-green-500'
-                                                : 'bg-gray-300 cursor-not-allowed',
+                                                : 'bg-gray-300',
                                     ]"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
                                         <img src="/assets/images/review.png" class="w-5 h-5 mr-2" alt="Review" />
                                         <span class="text-sm font-bold text-white">{{
                                             statusOrder.indexOf(
                                                 props.transfer.status
                                             ) > statusOrder.indexOf("pending")
                                                 ? "Reviewed"
-                                                : isType["is_reviewing"]
-                                                    ? "Please Wait..."
-                                                    : props.transfer.status ===
-                                                        "pending"
-                                                        ? "Waiting to be reviewed"
-                                                        : "Review"
+                                                : props.transfer.status === "pending"
+                                                    ? "Waiting to be reviewed"
+                                                    : "Review"
                                         }}</span>
                                     </button>
                                     <span v-show="props.transfer?.reviewed_at" class="text-sm text-gray-600">
@@ -775,58 +772,31 @@
                                 </div>
                             </div>
 
-                            <!-- Approved button -->
+                            <!-- Approve Status Display (Read-only) -->
                             <div class="relative" v-if="props.transfer.status !== 'rejected'">
                                 <div class="flex flex-col">
-                                    <button @click="
-                                        changeStatus(
-                                            props.transfer.id,
-                                            'approved',
-                                            'is_approve'
-                                        )
-                                        " :disabled="isType['is_approve'] ||
-                                        props.transfer.status !== 'reviewed' ||
-                                        !canApprove
-                                        " :class="[
+                                    <button :class="[
                                         props.transfer.status == 'reviewed'
-                                            ? 'bg-yellow-500 hover:bg-yellow-600'
+                                            ? 'bg-yellow-500'
                                             : statusOrder.indexOf(
                                                 props.transfer.status
                                             ) >
                                                 statusOrder.indexOf('reviewed')
                                                 ? 'bg-green-500'
-                                                : 'bg-gray-300 cursor-not-allowed',
+                                                : 'bg-gray-300',
                                     ]"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                                        <svg v-if="
-                                            isLoading &&
-                                            props.transfer.status === 'reviewed'
-                                        " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                stroke-width="4">
-                                            </circle>
-                                            <path class="opacity-75" fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                            </path>
-                                        </svg>
-                                        <template v-else>
-                                            <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
-                                            <span class="text-sm font-bold text-white">{{
-                                                statusOrder.indexOf(
-                                                    props.transfer.status
-                                                ) >
-                                                    statusOrder.indexOf("reviewed")
-                                                    ? "Approved"
-                                                    : isType["is_approve"]
-                                                        ? "Please Wait..."
-                                                        : props.transfer.status ===
-                                                            "reviewed" &&
-                                                            !canApprove
-                                                            ? "Waiting to be approved"
-                                                            : "Approve"
-                                            }}</span>
-                                        </template>
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
+                                        <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
+                                        <span class="text-sm font-bold text-white">{{
+                                            statusOrder.indexOf(
+                                                props.transfer.status
+                                            ) >
+                                                statusOrder.indexOf("reviewed")
+                                                ? "Approved"
+                                                : props.transfer.status === "reviewed"
+                                                    ? "Waiting to be approved"
+                                                    : "Approve"
+                                        }}</span>
                                     </button>
                                     <span v-show="props.transfer?.approved_at" class="text-sm text-gray-600">
                                         On {{ moment(props.transfer?.approved_at).format("DD/MM/YYYY HH:mm") }}
