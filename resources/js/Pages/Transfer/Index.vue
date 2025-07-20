@@ -511,11 +511,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(pendingCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(pendingCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((pendingCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(pendingCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -530,11 +530,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(reviewedCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(reviewedCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((reviewedCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(reviewedCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -549,11 +549,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(approvedCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(approvedCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((approvedCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(approvedCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -568,11 +568,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(inProcessCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(inProcessCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((inProcessCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(inProcessCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -587,11 +587,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(dispatchedCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(dispatchedCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((dispatchedCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(dispatchedCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -606,11 +606,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-orange-600 to-orange-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(deliveredCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(deliveredCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((deliveredCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(deliveredCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -625,11 +625,11 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
                                     :style="{
-                                        height: `${(receivedCount / totalCount) * 100}%`,
+                                        height: `${calculatePercentage(receivedCount, totalCount)}%`,
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ Math.round((receivedCount / totalCount) * 100) }}%
+                                        {{ calculatePercentage(receivedCount, totalCount) }}%
                                     </div>
                                 </div>
                             </div>
@@ -727,6 +727,12 @@ const receivedCount = computed(() => {
 const rejectedCount = computed(() => {
     return props.transfers.data?.filter(t => t.status === 'rejected').length || 0;
 });
+
+// Helper function to calculate percentage safely
+const calculatePercentage = (count, total) => {
+    if (!total || total === 0) return 0;
+    return Math.round((count / total) * 100);
+};
 
 // Watch for filter changes
 watch([search, transfer_type, facility, warehouse, date_from, date_to, per_page, currentTab, currentDirectionTab], () => {
