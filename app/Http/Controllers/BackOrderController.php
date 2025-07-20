@@ -545,14 +545,6 @@ class BackOrderController extends Controller
                     $backOrderHistoryData['transfer_item_id'] = $inventoryAllocation->transfer_item_id;
                 }
                 
-                // Debug logging for receiveBackOrder method
-                logger()->info('ReceiveBackOrder - BackOrderHistory Data:', [
-                    'unit_cost' => $unitCost,
-                    'total_cost' => $totalCost,
-                    'quantity' => $receivedQuantity,
-                    'inventory_allocation' => $inventoryAllocation ? $inventoryAllocation->toArray() : null
-                ]);
-                
                 // Add inventory allocation details if available
                 if ($inventoryAllocation) {
                     $backOrderHistoryData['batch_number'] = $inventoryAllocation->batch_number ?? 'N/A';
@@ -567,8 +559,6 @@ class BackOrderController extends Controller
                     $backOrderHistoryData['uom'] = 'N/A';
                 }
                 
-                // Final debug logging before create
-                logger()->info('Final BackOrderHistory Data before create:', $backOrderHistoryData);
                 
                 $backOrderHistory = BackOrderHistory::create($backOrderHistoryData);
 
@@ -662,12 +652,12 @@ class BackOrderController extends Controller
                 \App\Models\ReceivedBackorderItem::create($receivedBackorderItemData);
 
                 // Handle the packing list difference record
-                if ($remainingQuantity <= 0) {
-                    $packingListDiff->delete();
-                } else {
-                    $packingListDiff->quantity = $remainingQuantity;
-                    $packingListDiff->save();
-                }
+                // if ($remainingQuantity <= 0) {
+                //     $packingListDiff->delete();
+                // } else {
+                //     $packingListDiff->quantity = $remainingQuantity;
+                //     $packingListDiff->save();
+                // }
 
                 return response()->json([
                     'message' => "Successfully received {$receivedQuantity} items" . ($remainingQuantity > 0 ? ", {$remainingQuantity} items remaining" : ""),
