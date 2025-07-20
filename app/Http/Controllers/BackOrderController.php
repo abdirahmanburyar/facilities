@@ -238,17 +238,17 @@ class BackOrderController extends Controller
             ]);
             
             // Update the packing list difference
-            $item->decrement('quantity', $request->quantity);
-            if ($item->quantity <= 0) {
+            // $item->decrement('quantity', $request->quantity);
+            // if ($item->quantity <= 0) {
                 $item->update([
                     'finalized' => "Liquidated"
                 ]);
-            }
+            // }
 
             // Update inventory allocation if exists
-            if ($item->inventoryAllocation) {
-                $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-            }
+            // if ($item->inventoryAllocation) {
+            //     $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+            // }
             
             // Commit the transaction
             DB::commit();
@@ -455,9 +455,9 @@ class BackOrderController extends Controller
             // Update the packing list difference
             // $item->decrement('quantity', $request->quantity);
             // if ($item->quantity <= 0) {
-            //     $item->update([
-            //         'finalized' => "Received"
-            //     ]);
+                $item->update([
+                    'finalized' => "Received"
+                ]);
             // }
 
             // Update inventory allocation if exists
