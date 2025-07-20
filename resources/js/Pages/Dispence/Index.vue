@@ -48,7 +48,7 @@
                     <!-- Items Count Filter -->
                     <div>
                         <select v-model="items_filter" 
-                            @change="props.filters.page = 1"
+                            
                             class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                             <option value="">All Items Count</option>
                             <option value="1-5">1-5 Items</option>
@@ -60,6 +60,7 @@
                     <!-- Per Page -->
                     <div>
                         <select v-model="per_page" 
+                        @change="props.filters.page = 1"
                             class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                             <option value="10">10 per page</option>
                             <option value="25">25 per page</option>
@@ -222,7 +223,7 @@
             </div>
 
             <!-- Pagination -->
-            <div class="flex justify-end mt-2">
+            <div class="flex justify-end mt-2 mb-[80px]">
                 <TailwindPagination :data="props.dispences" @pagination-change-page="getResults" />
             </div>
         </div>
