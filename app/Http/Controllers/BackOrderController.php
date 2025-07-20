@@ -453,13 +453,7 @@ class BackOrderController extends Controller
             BackOrderHistory::create($backOrderHistoryData);
             
             // Update the packing list difference
-            // $item->decrement('quantity', $request->quantity);
-            if ($item->quantity <= 0) {
-                $item->update([
-                    'finalized' => "Received"
-                ]);
-            }
-
+            $item->decrement('quantity', $request->quantity);
             // Update inventory allocation if exists
             if ($item->inventoryAllocation) {
                 $item->inventoryAllocation->increment('received_quantity', $request->quantity);
