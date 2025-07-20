@@ -12,6 +12,7 @@ use App\Models\Transfer;
 
 use App\Models\Order;
 use App\Models\InventoryReport;
+use App\Models\EligibleItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -19,6 +20,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        // Get current user's facility_id
+        $user = auth()->user();
+        $facilityId = $user->facility_id;
+
         // Get distinct facility types and their counts (only main types)
         $facilityTypes = Facility::select('facility_type', DB::raw('count(*) as count'))
             ->whereIn('facility_type', ['Health Centre', 'Primary Health Unit', 'Regional Hospital', 'District Hospital'])
@@ -36,20 +41,27 @@ class DashboardController extends Controller
         
 
 
-        // Product category counts - filtered by current user's facility
+        // Get current user's facility type
+        $facility = \App\Models\Facility::find($facilityId);
+        $facilityType = $facility ? $facility->facility_type : null;
+
+        // Product category counts - filtered by current user's facility through EligibleItem
         $productCategoryCounts = [
-            'Drugs' => Product::whereHas('category', function($q) { $q->where('name', 'Durgs'); })
-                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
-                    $q->where('facility_id', $facilityId); 
-                })->count(),
-            'Consumable' => Product::whereHas('category', function($q) { $q->where('name', 'Consumables'); })
-                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
-                    $q->where('facility_id', $facilityId); 
-                })->count(),
-            'Lab' => Product::whereHas('category', function($q) { $q->where('name', 'Lab'); })
-                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
-                    $q->where('facility_id', $facilityId); 
-                })->count(),
+            'Drugs' => EligibleItem::whereHas('product.category', function($q) { 
+                    $q->where('name', 'Durgs'); 
+                })
+                ->where('facility_type', $facilityType)
+                ->count(),
+            'Consumable' => EligibleItem::whereHas('product.category', function($q) { 
+                    $q->where('name', 'Consumables'); 
+                })
+                ->where('facility_type', $facilityType)
+                ->count(),
+            'Lab' => EligibleItem::whereHas('product.category', function($q) { 
+                    $q->where('name', 'Lab'); 
+                })
+                ->where('facility_type', $facilityType)
+                ->count(),
         ];
 
         // Transfer received count - filtered by current user's facility
@@ -59,12 +71,6 @@ class DashboardController extends Controller
             })
             ->where('status', 'received')
             ->count();
-
-
-
-        // Get current user's facility_id
-        $user = auth()->user();
-        $facilityId = $user->facility_id;
 
         // Order status statistics - filtered by current user's facility
         $orderStats = [

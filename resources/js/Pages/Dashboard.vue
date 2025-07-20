@@ -141,15 +141,7 @@ const productCategoryChartData = computed(() => ({
     }]
 }));
 
-const facilitiesChartData = computed(() => ({
-    labels: ['Facilities'],
-    datasets: [{
-        label: 'Count',
-        data: [getCount('FAC')],
-        backgroundColor: ['#10B981'],
-        borderWidth: 0,
-    }]
-}));
+
 
 // Computed properties for dashboard stats
 const totalOrdersCount = computed(() => {
@@ -446,7 +438,7 @@ watch(dateRange, (newRange) => {
         </div>
 
         <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Product Categories Chart -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
                 <div class="mb-6">
@@ -457,15 +449,7 @@ watch(dateRange, (newRange) => {
                     </div>
                 </div>
 
-            <!-- Facilities Chart -->
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div class="mb-6">
-                    <h3 class="text-xl font-bold text-gray-900">Facilities Overview</h3>
-                            </div>
-                <div class="h-64">
-                    <Bar :data="facilitiesChartData" :options="horizontalBarChartOptions" />
-                        </div>
-                            </div>
+
 
             <!-- Orders Chart -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
