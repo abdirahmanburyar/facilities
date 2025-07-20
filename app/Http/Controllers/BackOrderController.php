@@ -434,18 +434,7 @@ class BackOrderController extends Controller
                 $backOrderHistoryData['order_item_id'] = $inventoryAllocation->order_item_id;
             } elseif ($type === "Transfer" && $inventoryAllocation && $inventoryAllocation->transfer_item_id) {
                 $backOrderHistoryData['transfer_item_id'] = $inventoryAllocation->transfer_item_id;
-            }
-            
-            // Debug logging
-            logger()->info('BackOrderHistory Data:', [
-                'unit_cost' => $unitCost,
-                'total_cost' => $totalCost,
-                'quantity' => $request->quantity,
-                'inventory_allocation' => $inventoryAllocation ? $inventoryAllocation->toArray() : null
-            ]);
-            
-            // Additional debug logging
-            logger()->info('Final BackOrderHistory Data Array:', $backOrderHistoryData);
+            }            
             
             // Add inventory allocation details if available
             if ($inventoryAllocation) {
@@ -464,17 +453,17 @@ class BackOrderController extends Controller
             BackOrderHistory::create($backOrderHistoryData);
             
             // Update the packing list difference
-            $item->decrement('quantity', $request->quantity);
-            if ($item->quantity <= 0) {
-                $item->update([
-                    'finalized' => "Received"
-                ]);
-            }
+            // $item->decrement('quantity', $request->quantity);
+            // if ($item->quantity <= 0) {
+            //     $item->update([
+            //         'finalized' => "Received"
+            //     ]);
+            // }
 
             // Update inventory allocation if exists
-            if ($item->inventoryAllocation) {
-                $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-            }
+            // if ($item->inventoryAllocation) {
+            //     $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+            // }
             
             // Commit the transaction
             DB::commit();
