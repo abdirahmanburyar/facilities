@@ -1679,17 +1679,19 @@ class TransferController extends Controller
                     // Debug information for this item
                     
                     foreach ($item->inventory_allocations as $allocation) {
-                        // Calculate total back order quantity for this allocation using PackingListDifference
-                        $backOrderQuantity = $allocation->differences()->whereNull('finalized')->sum('quantity');
+                        // Use the actual received_quantity for this allocation
+                        $receivedQuantity = $allocation->received_quantity ?? 0;
                         
-                        // Use update_quantity if it's set (not zero), otherwise use allocated_quantity
-                        $effectiveQuantity = ($allocation->update_quantity ?? 0) !== 0 ? $allocation->update_quantity : $allocation->allocated_quantity;
+                        // Use updated_quantity if it's set (not null/undefined), otherwise use allocated_quantity
+                        $effectiveQuantity = ($allocation->updated_quantity !== null && $allocation->updated_quantity !== undefined) ? $allocation->updated_quantity : $allocation->allocated_quantity;
                         
-                        if((int) $effectiveQuantity < (int) $backOrderQuantity){
+                        // Validate that received quantity doesn't exceed effective quantity
+                        if ($receivedQuantity > $effectiveQuantity) {
                             DB::rollback();
-                            return response()->json('Backorder quantities exceeded the allocated quantity', 500);
+                            return response()->json('Received quantity cannot exceed effective quantity', 500);
                         }
-                        $finalQuantity = $effectiveQuantity - $backOrderQuantity;
+                        
+                        $finalQuantity = $receivedQuantity;
                         
                         $inventory = FacilityInventory::where('facility_id', $transfer->to_facility_id)
                             ->where('product_id', $allocation->product_id)
