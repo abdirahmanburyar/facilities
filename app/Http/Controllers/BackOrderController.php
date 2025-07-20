@@ -454,15 +454,15 @@ class BackOrderController extends Controller
             
             // Update the packing list difference
             // $item->decrement('quantity', $request->quantity);
-            // if ($item->quantity <= 0) {
+            if ($item->quantity <= 0) {
                 $item->update([
                     'finalized' => "Received"
                 ]);
-            // }
+            }
 
             // Update inventory allocation if exists
             if ($item->inventoryAllocation) {
-                $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+                $item->inventoryAllocation->increment('received_quantity', $request->quantity);
             }
             
             // Commit the transaction
