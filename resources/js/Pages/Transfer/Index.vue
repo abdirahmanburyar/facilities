@@ -25,10 +25,6 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
                                 d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
                         </svg>
-                        <svg v-else-if="tab.value === 'other'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
-                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                        </svg>
                     </div>
                     
                     <span class="tracking-wide">{{ tab.label }}</span>
@@ -787,9 +783,8 @@ const getTransferTypesForDirection = (direction) => {
                 "Facility to Warehouse",
                 "Facility to Facility"
             ];
-        case 'other':
         default:
-            // Other Transfers: all types
+            // Default: all types
             return allFacilityTypes;
     }
 };
