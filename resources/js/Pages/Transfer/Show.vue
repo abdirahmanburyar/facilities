@@ -517,7 +517,7 @@
                                         <!-- QTY -->
                                         <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
                                             {{
-                                                allocation.allocated_quantity ||
+                                                (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity) ||
                                                 0
                                             }}
                                         </td>
@@ -576,12 +576,12 @@
                                         <!-- Quantity to Transfer -->
                                         <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
                                             <div class="flex flex-col items-center gap-1">
-                                                <span class="font-medium">{{ allocation.allocated_quantity || 0 }}</span>
+                                                <span class="font-medium">{{ allocation.allocated_quantity }}</span>
                                                 <input 
                                                     :readonly="!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id"
                                                     type="number" 
                                                     v-model="allocation.updated_quantity"
-                                                    :placeholder="allocation.allocated_quantity || 0"
+                                                    :placeholder="(allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity) || 0"
                                                     min="1"
                                                     :class="[
                                                         'w-full text-center border border-gray-300 px-1 py-1 text-xs',
@@ -601,18 +601,18 @@
                                             <input 
                                                 type="number" 
                                                 v-model="allocation.received_quantity" 
-                                                :max="allocation.allocated_quantity || 0"
+                                                :max="getMaxReceivedQuantity(allocation)"
                                                 @input="validateReceivedQuantity(allocation, allocIndex)"
                                                 min="0"
-                                                :readonly="props.transfer.status !== 'delivered' || props.transfer.to_facility_id !== $page.props.auth.user?.facility_id"
+                                                :readonly="props.transfer.to_facility_id !== $page.props.auth.user?.facility_id"
                                                 :class="[
                                                     'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-                                                    (props.transfer.status !== 'delivered' || props.transfer.to_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                    (props.transfer.to_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
                                                 ]"
                                             />
                                             <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
                                             <button 
-                                                v-if="(allocation.allocated_quantity || 0) !== (allocation.received_quantity || 0) && ['delivered', 'received'].includes(props.transfer.status)"
+                                                v-if="((allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity) || 0) !== (allocation.received_quantity || 0) && ['delivered', 'received'].includes(props.transfer.status)"
                                                 @click="openBackOrderModal(item, allocation)"
                                                 class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1 block">
                                                 Back Order
@@ -1191,11 +1191,11 @@
                         </div>
                         <div>
                             <span class="text-gray-600 font-medium">Expected:</span>
-                            <p class="text-gray-900 font-semibold">{{ selectedItem?.quantity_to_release || 0 }}</p>
+                            <p class="text-gray-900 font-semibold">{{ getTotalExpectedQuantity() }}</p>
                         </div>
                         <div>
                             <span class="text-gray-600 font-medium">Received:</span>
-                            <p class="text-gray-900 font-semibold">{{ selectedItem?.received_quantity || 0 }}</p>
+                            <p class="text-gray-900 font-semibold">{{ getTotalReceivedQuantity() }}</p>
                         </div>
                         <div>
                             <span class="text-gray-600 font-medium">Mismatches:</span>
@@ -1245,7 +1245,10 @@
                                     </div>
                                     <div>
                                         <h4 class="text-sm font-semibold text-gray-900">Batch: {{ allocation.batch_number }}</h4>
-                                        <p class="text-xs text-gray-500">{{ allocation.allocated_quantity }} units allocated</p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity }} units 
+                                                                                            {{ allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? 'updated' : 'allocated' }}
+                                        </p>
                                     </div>
                                 </div>
                                 <button @click="addBatchBackOrder(allocation)"
@@ -1293,7 +1296,7 @@
                                                 <td class="px-4 py-3">
                                                     <input type="number" v-model="row.quantity" 
                                                         @input="validateBatchBackOrderQuantity(row, allocation)"
-                                                        min="0" :max="allocation.allocated_quantity"
+                                                        min="0" :max="allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity"
                                                         class="w-full rounded-lg border-gray-200 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm" />
                                                 </td>
                                                 <td class="px-4 py-3">
@@ -1454,6 +1457,7 @@ import Modal from "@/Components/Modal.vue";
 import { useToast } from "vue-toastification";
 import axios from "axios";
 import moment from "moment";
+import { watch } from "vue";
 import Swal from "sweetalert2";
 import BackOrder from "./BackOrder.vue";
 import Multiselect from 'vue-multiselect';
@@ -1634,9 +1638,43 @@ async function validateReceivedQuantity(allocation, allocIndex) {
     // Set loading state
     isReceived.value[allocIndex] = true;
 
-    // Validate the quantity
-    if (allocation.received_quantity > allocation.allocated_quantity) {
-        allocation.received_quantity = allocation.allocated_quantity;
+    // PRIMARY VALIDATION: Check against effective quantity (updated_quantity or allocated_quantity)
+    if (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined) {
+        // If updated_quantity is set, received_quantity cannot exceed it
+        if (allocation.received_quantity > allocation.updated_quantity) {
+            allocation.received_quantity = allocation.updated_quantity;
+            toast.warning(`Received quantity cannot exceed updated quantity. Reset to ${allocation.updated_quantity}`);
+            return; // Exit early - don't proceed with back order validation
+        }
+    } else {
+        // If no updated_quantity, validate against allocated_quantity
+        if (allocation.received_quantity > allocation.allocated_quantity) {
+            allocation.received_quantity = allocation.allocated_quantity;
+            toast.warning(`Received quantity cannot exceed allocated quantity. Reset to ${allocation.allocated_quantity}`);
+            return; // Exit early - don't proceed with back order validation
+        }
+    }
+    
+    // SECONDARY VALIDATION: Check if there are existing back orders
+    // Only proceed if primary validation passed
+    if (allocation.differences && allocation.differences.length > 0) {
+        const totalBackOrderQuantity = allocation.differences.reduce((sum, diff) => sum + (diff.quantity || 0), 0);
+        
+        if (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined) {
+            // If updated_quantity is set, use it minus back orders
+            const maxReceivedQuantity = allocation.updated_quantity - totalBackOrderQuantity;
+            if (allocation.received_quantity > maxReceivedQuantity) {
+                allocation.received_quantity = maxReceivedQuantity;
+                toast.warning(`Received quantity cannot exceed updated quantity minus back orders. Reset to ${maxReceivedQuantity}`);
+            }
+        } else {
+            // If no updated_quantity, use allocated_quantity minus back orders
+            const maxReceivedQuantity = allocation.allocated_quantity - totalBackOrderQuantity;
+            if (allocation.received_quantity > maxReceivedQuantity) {
+                allocation.received_quantity = maxReceivedQuantity;
+                toast.warning(`Received quantity cannot exceed allocated quantity minus back orders. Reset to ${maxReceivedQuantity}`);
+            }
+        }
     }
 
     // Set new timeout with 500ms delay for debouncing
@@ -1702,8 +1740,8 @@ const isExpiringItem = (expiryDate) => {
 const getMaxReceivedQuantity = (allocation) => {
     if (!allocation) return 0;
     
-    // Use update_quantity if it's set (not zero), otherwise use allocated_quantity
-    const effectiveQuantity = (allocation.update_quantity ?? 0) !== 0 ? allocation.update_quantity : allocation.allocated_quantity;
+    // Use updated_quantity if it's set (not null/undefined), otherwise use allocated_quantity
+    const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
     
     // If there are differences (back orders), subtract them from the effective quantity
     if (allocation.differences && allocation.differences.length > 0) {
@@ -1712,6 +1750,38 @@ const getMaxReceivedQuantity = (allocation) => {
     }
     
     return effectiveQuantity || 0;
+};
+
+// Get total expected quantity for the selected item
+const getTotalExpectedQuantity = () => {
+    if (!selectedItem.value) return 0;
+    
+    let totalExpectedQuantity = 0;
+    
+    if (selectedItem.value.inventory_allocations) {
+        selectedItem.value.inventory_allocations.forEach(allocation => {
+            // Use updated_quantity if it's set (not null/undefined), otherwise use allocated_quantity
+            const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+            totalExpectedQuantity += effectiveQuantity || 0;
+        });
+    }
+    
+    return totalExpectedQuantity;
+};
+
+// Get total received quantity for the selected item
+const getTotalReceivedQuantity = () => {
+    if (!selectedItem.value) return 0;
+    
+    let totalReceivedQuantity = 0;
+    
+    if (selectedItem.value.inventory_allocations) {
+        selectedItem.value.inventory_allocations.forEach(allocation => {
+            totalReceivedQuantity += allocation.received_quantity || 0;
+        });
+    }
+    
+    return totalReceivedQuantity;
 };
 
 const removeItem = (index) => {
@@ -1747,16 +1817,18 @@ const updateAllocationQuantity = async (event, allocation) => {
     
     if (!newQuantity || newQuantity <= 0) {
         toast.error("Please enter a valid quantity");
-        // Reset input to original quantity
-        event.target.value = allocation.allocated_quantity;
+        // Reset input to effective quantity
+        const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+        event.target.value = effectiveQuantity;
         return;
     }
 
     // Check if transfer is eligible for updates
     if (!['pending', 'reviewed'].includes(props.transfer.status)) {
         toast.error("Cannot update quantity for transfers that are not in pending status");
-        // Reset input to original quantity
-        event.target.value = allocation.allocated_quantity;
+        // Reset input to effective quantity
+        const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+        event.target.value = effectiveQuantity;
         return;
     }
 
@@ -1776,8 +1848,9 @@ const updateAllocationQuantity = async (event, allocation) => {
         isUpdatingQuantity.value[allocation.id] = false;
         console.error(error);
         toast.error(error.response?.data || "Failed to update quantity");
-        // Reset input to original quantity on error
-        event.target.value = allocation.allocated_quantity;
+        // Reset input to effective quantity on error
+        const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+        event.target.value = effectiveQuantity;
     });
 };
 
@@ -1873,9 +1946,10 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
         return sum;
     }, 0) + currentQuantity;
     
-    // Check if total exceeds allocation quantity
-    if (totalForAllocation > allocation.allocated_quantity) {
-        row.quantity = allocation.allocated_quantity - totalForAllocation + currentQuantity;
+    // Check if total exceeds effective quantity (updated_quantity or allocated_quantity)
+    const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+    if (totalForAllocation > effectiveQuantity) {
+        row.quantity = effectiveQuantity - totalForAllocation + currentQuantity;
     }
     
     // Ensure quantity is not negative
@@ -1899,13 +1973,29 @@ const canAddMoreToAllocation = (allocation) => {
     // Calculate remaining quantity that can be allocated
     const remainingOverall = missingQuantity.value - totalBatchBackOrderQuantity.value;
     
-    return totalBackOrdered < allocation.allocated_quantity && remainingOverall > 0;
+    const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+    
+    return totalBackOrdered < effectiveQuantity && remainingOverall > 0;
 };
 
 // Computed properties for back order modal
 const missingQuantity = computed(() => {
     if (!selectedItem.value) return 0;
-    return selectedItem.value.quantity_to_release - (selectedItem.value.received_quantity || 0);
+    
+    // Calculate total expected quantity based on effective quantities of all allocations
+    let totalExpectedQuantity = 0;
+    let totalReceivedQuantity = 0;
+    
+    if (selectedItem.value.inventory_allocations) {
+        selectedItem.value.inventory_allocations.forEach(allocation => {
+            // Use updated_quantity if it's set (not null/undefined), otherwise use allocated_quantity
+            const effectiveQuantity = allocation.updated_quantity !== null && allocation.updated_quantity !== undefined ? allocation.updated_quantity : allocation.allocated_quantity;
+            totalExpectedQuantity += effectiveQuantity || 0;
+            totalReceivedQuantity += allocation.received_quantity || 0;
+        });
+    }
+    
+    return totalExpectedQuantity - totalReceivedQuantity;
 });
 
 const totalBatchBackOrderQuantity = computed(() => {
@@ -2213,4 +2303,65 @@ async function receivedQty(item, index) {
     // 'orders.receivedQuantity
 }
 
+// Auto-validate received quantities when component mounts or data changes
+const autoValidateReceivedQuantities = () => {
+    if (props.transfer && props.transfer.items) {
+        props.transfer.items.forEach(item => {
+            if (item.inventory_allocations) {
+                item.inventory_allocations.forEach(allocation => {
+                    const currentReceivedQuantity = allocation.received_quantity || 0;
+                    
+                    // PRIMARY VALIDATION: Check against effective quantity (updated_quantity or allocated_quantity)
+                    if (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined) {
+                        // If updated_quantity is set, received_quantity cannot exceed it
+                        if (currentReceivedQuantity > allocation.updated_quantity) {
+                            allocation.received_quantity = allocation.updated_quantity;
+                            toast.warning(`Received quantity cannot exceed updated quantity. Reset to ${allocation.updated_quantity}`);
+                            return; // Exit early - don't proceed with back order validation
+                        }
+                    } else {
+                        // If no updated_quantity, check against allocated_quantity
+                        if (currentReceivedQuantity > allocation.allocated_quantity) {
+                            allocation.received_quantity = allocation.allocated_quantity;
+                            toast.warning(`Received quantity cannot exceed allocated quantity. Reset to ${allocation.allocated_quantity}`);
+                            return; // Exit early - don't proceed with back order validation
+                        }
+                    }
+                    
+                    // SECONDARY VALIDATION: Check if there are existing back orders
+                    // Only proceed if primary validation passed
+                    if (allocation.differences && allocation.differences.length > 0) {
+                        const totalBackOrderQuantity = allocation.differences.reduce((sum, diff) => sum + (diff.quantity || 0), 0);
+                        
+                        if (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined) {
+                            // If updated_quantity is set, use it minus back orders
+                            const maxReceivedQuantity = allocation.updated_quantity - totalBackOrderQuantity;
+                            if (allocation.received_quantity > maxReceivedQuantity) {
+                                allocation.received_quantity = maxReceivedQuantity;
+                                toast.warning(`Received quantity cannot exceed updated quantity minus back orders. Reset to ${maxReceivedQuantity}`);
+                            }
+                        } else {
+                            // If no updated_quantity, use allocated_quantity minus back orders
+                            const maxReceivedQuantity = allocation.allocated_quantity - totalBackOrderQuantity;
+                            if (allocation.received_quantity > maxReceivedQuantity) {
+                                allocation.received_quantity = maxReceivedQuantity;
+                                toast.warning(`Received quantity cannot exceed allocated quantity minus back orders. Reset to ${maxReceivedQuantity}`);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+};
+
+// Watch for changes in transfer data and auto-validate
+watch(() => props.transfer, () => {
+    autoValidateReceivedQuantities();
+}, { immediate: true, deep: true });
+
+// Also validate when component mounts
+onMounted(() => {
+    autoValidateReceivedQuantities();
+});
 </script>
