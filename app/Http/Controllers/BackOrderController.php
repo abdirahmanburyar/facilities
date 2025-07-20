@@ -461,9 +461,9 @@ class BackOrderController extends Controller
             // }
 
             // Update inventory allocation if exists
-            // if ($item->inventoryAllocation) {
-            //     $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
-            // }
+            if ($item->inventoryAllocation) {
+                $item->inventoryAllocation->decrement('allocated_quantity', $request->quantity);
+            }
             
             // Commit the transaction
             DB::commit();
