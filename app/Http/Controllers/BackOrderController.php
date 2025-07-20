@@ -452,11 +452,20 @@ class BackOrderController extends Controller
             
             BackOrderHistory::create($backOrderHistoryData);
             
-            // Update the packing list difference
-            $item->decrement('quantity', $request->quantity);
-            // Update inventory allocation if exists
+            // Update the packing list difference - deduct the received quantity
+            $item->quantity -= $request->quantity;
+            if ($item->quantity <= 0) {
+                // If quantity becomes zero or negative, delete the difference record
+                $item->delete();
+            } else {
+                // Otherwise, save the updated quantity
+                $item->save();
+            }
+            
+            // Update inventory allocation received_quantity if exists
             if ($item->inventoryAllocation) {
-                $item->inventoryAllocation->increment('received_quantity', $request->quantity);
+                $item->inventoryAllocation->received_quantity += $request->quantity;
+                $item->inventoryAllocation->save();
             }
             
             // Commit the transaction
@@ -646,12 +655,18 @@ class BackOrderController extends Controller
                 \App\Models\ReceivedBackorderItem::create($receivedBackorderItemData);
 
                 // Handle the packing list difference record
-                // if ($remainingQuantity <= 0) {
-                //     $packingListDiff->delete();
-                // } else {
-                //     $packingListDiff->quantity = $remainingQuantity;
-                //     $packingListDiff->save();
-                // }
+                if ($remainingQuantity <= 0) {
+                    $packingListDiff->delete();
+                } else {
+                    $packingListDiff->quantity = $remainingQuantity;
+                    $packingListDiff->save();
+                }
+                
+                // Update inventory allocation received_quantity if exists
+                if ($packingListDiff && $packingListDiff->inventoryAllocation) {
+                    $packingListDiff->inventoryAllocation->received_quantity += $receivedQuantity;
+                    $packingListDiff->inventoryAllocation->save();
+                }
 
                 return response()->json([
                     'message' => "Successfully received {$receivedQuantity} items" . ($remainingQuantity > 0 ? ", {$remainingQuantity} items remaining" : ""),
