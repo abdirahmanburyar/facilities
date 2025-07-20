@@ -144,18 +144,17 @@
                                                     </td>
                                                     <td class="px-6 py-3 text-sm border-r border-black">
                                                         <div class="flex gap-2">
-                                                            <button
-                                                                v-if="row.status === 'Missing' || row.status === 'Damaged' || row.status === 'Lost' || row.status === 'Expired' || row.status === 'Low quality'"
-                                                                @click="handleAction('Receive', { ...item, status: row.status, quantity: row.quantity })"
-                                                                class="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700"
-                                                                :disabled="isLoading">
-                                                                Receive
-                                                            </button>
                                                             <button v-if="row.status === 'Missing'"
                                                                 @click="handleAction('Liquidate', { ...item, status: row.status, quantity: row.quantity })"
                                                                 class="px-3 py-1.5 text-sm font-medium text-white bg-yellow-500 rounded hover:bg-yellow-600"
                                                                 :disabled="isLoading">
                                                                 Liquidate
+                                                            </button>
+                                                            <button v-if="row.status === 'Missing'"
+                                                                @click="handleAction('Receive', { ...item, status: row.status, quantity: row.quantity })"
+                                                                class="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700"
+                                                                :disabled="isLoading">
+                                                                Receive
                                                             </button>
                                                             <button v-if="row.status === 'Damaged' || row.status === 'Expired' || row.status === 'Low quality'"
                                                                 @click="handleAction('Dispose', { ...item, status: row.status, quantity: row.quantity })"
