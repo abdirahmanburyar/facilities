@@ -578,14 +578,14 @@
                                             <div class="flex flex-col items-center gap-1">
                                                 <span class="font-medium">{{ allocation.allocated_quantity || 0 }}</span>
                                                 <input 
-                                                    :readonly="!['pending', 'reviewed'].includes(props.transfer.status)"
+                                                    :readonly="!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id"
                                                     type="number" 
                                                     v-model="allocation.updated_quantity"
                                                     :placeholder="allocation.allocated_quantity || 0"
                                                     min="1"
                                                     :class="[
                                                         'w-full text-center border border-gray-300 px-1 py-1 text-xs',
-                                                        !['pending', 'reviewed'].includes(props.transfer.status) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                        (!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
                                                     ]"
                                                     @input="handleQuantityInput($event, allocation)"
                                                 />
@@ -604,10 +604,10 @@
                                                 :max="allocation.allocated_quantity || 0"
                                                 @input="validateReceivedQuantity(allocation, allocIndex)"
                                                 min="0"
-                                                :readonly="props.transfer.status !== 'delivered'"
+                                                :readonly="props.transfer.status !== 'delivered' || props.transfer.to_facility_id !== $page.props.auth.user?.facility_id"
                                                 :class="[
                                                     'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-                                                    props.transfer.status !== 'delivered' ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                    (props.transfer.status !== 'delivered' || props.transfer.to_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
                                                 ]"
                                             />
                                             <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
@@ -1696,6 +1696,22 @@ const isExpiringItem = (expiryDate) => {
     const now = moment();
     const daysUntilExpiry = expiry.diff(now, "days");
     return daysUntilExpiry <= 30; // Consider items expiring within 30 days as expiring
+};
+
+// Get maximum received quantity for an allocation (considering back orders)
+const getMaxReceivedQuantity = (allocation) => {
+    if (!allocation) return 0;
+    
+    // Use update_quantity if it's set (not zero), otherwise use allocated_quantity
+    const effectiveQuantity = (allocation.update_quantity ?? 0) !== 0 ? allocation.update_quantity : allocation.allocated_quantity;
+    
+    // If there are differences (back orders), subtract them from the effective quantity
+    if (allocation.differences && allocation.differences.length > 0) {
+        const totalDifferences = allocation.differences.reduce((sum, diff) => sum + (diff.quantity || 0), 0);
+        return Math.max(0, effectiveQuantity - totalDifferences);
+    }
+    
+    return effectiveQuantity || 0;
 };
 
 const removeItem = (index) => {

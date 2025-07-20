@@ -671,6 +671,8 @@ class TransferController extends Controller
                 'dispatch.driver',
                 'dispatch.logistic_company',
                 'items.inventory_allocations.location',
+                'items.inventory_allocations.warehouse',
+                'items.inventory_allocations.differences',
                 'items.differences', 
                 'backorders', 
                 'toFacility', 
