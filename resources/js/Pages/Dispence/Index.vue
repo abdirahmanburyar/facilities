@@ -283,7 +283,6 @@ const reloadDispences = () => {
     if (date_to.value) query.date_to = date_to.value;
     if (items_filter.value) query.items_filter = items_filter.value;
     if (per_page.value) {
-        props.filters.page = 1;
         query.per_page = per_page.value;
     }
     if (props.filters.page) query.page = props.filters.page;
@@ -300,7 +299,13 @@ const getResults = (page = 1) => {
 };
 
 // Watchers
-watch([search, per_page, date_from, date_to, items_filter], () => {
+watch([
+  () => search.value, 
+  () => per_page.value, 
+  () => date_from.value, 
+  () => date_to.value, 
+  () => items_filter.value 
+], () => {
     reloadDispences();
 }, { deep: true });
 
