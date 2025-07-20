@@ -604,10 +604,10 @@
                                                 :max="getMaxReceivedQuantity(allocation)"
                                                 @input="validateReceivedQuantity(allocation, allocIndex)"
                                                 min="0"
-                                                :readonly="props.transfer.to_facility_id !== $page.props.auth.user?.facility_id"
+                                                :readonly="props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered'"
                                                 :class="[
                                                     'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-                                                    (props.transfer.to_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                    (props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered') ? 'bg-gray-100 cursor-not-allowed' : ''
                                                 ]"
                                             />
                                             <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
