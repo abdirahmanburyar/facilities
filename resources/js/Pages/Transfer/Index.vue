@@ -723,14 +723,13 @@ const props = defineProps({
     warehouses: Array,
 });
 
-// Transfer direction tabs (facilities version - enhanced to match warehouse)
+// Transfer direction tabs (facilities version - simplified)
 const transferDirectionTabs = ref([
-    { value: 'other', label: 'Other Transfers' },
     { value: 'in', label: 'Incoming' },
     { value: 'out', label: 'Outgoing' },
 ]);
 
-const currentDirectionTab = ref('other');
+const currentDirectionTab = ref('in');
 
 // Status tabs
 const statusTabs = ref([
