@@ -25,6 +25,10 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
                                 d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
                         </svg>
+                        <svg v-else-if="tab.value === 'other'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" 
+                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
                     </div>
                     
                     <span class="tracking-wide">{{ tab.label }}</span>
@@ -72,20 +76,80 @@
                         </Multiselect>
                     </div>
 
-                    <!-- Facility Selector -->
-                    <div>
-                        <Multiselect v-model="facility" :options="props.facilities" :searchable="true" :allow-empty="true"
-                            :show-labels="false" placeholder="All Facilities" class="">
-                        </Multiselect>
-                    </div>
+                    <!-- Dynamic Source/Destination filters based on transfer_type -->
+                    <!-- Warehouse to Warehouse -->
+                    <template v-if="transfer_type === 'Warehouse to Warehouse'">
+                        <div>
+                            <Multiselect v-model="from_warehouse" :options="props.warehouses" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="From Warehouse" class="">
+                            </Multiselect>
+                        </div>
+                        <div>
+                            <Multiselect v-model="to_warehouse" :options="props.warehouses" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="To Warehouse" class="">
+                            </Multiselect>
+                        </div>
+                    </template>
 
-                    <!-- Warehouse Selector -->
-                    <div>
-                        <Multiselect v-model="warehouse" :options="props.warehouses" :close-on-select="true"
-                            :clear-on-select="false" :preserve-search="true" :show-labels="false" placeholder="All Warehouses" class=""
-                            :preselect-first="false">
-                        </Multiselect>
-                    </div>
+                    <!-- Facility to Warehouse -->
+                    <template v-else-if="transfer_type === 'Facility to Warehouse'">
+                        <div>
+                            <Multiselect v-model="from_facility" :options="props.facilities" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="From Facility" class="">
+                            </Multiselect>
+                        </div>
+                        <div>
+                            <Multiselect v-model="to_warehouse" :options="props.warehouses" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="To Warehouse" class="">
+                            </Multiselect>
+                        </div>
+                    </template>
+
+                    <!-- Warehouse to Facility -->
+                    <template v-else-if="transfer_type === 'Warehouse to Facility'">
+                        <div>
+                            <Multiselect v-model="from_warehouse" :options="props.warehouses" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="From Warehouse" class="">
+                            </Multiselect>
+                        </div>
+                        <div>
+                            <Multiselect v-model="to_facility" :options="props.facilities" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="To Facility" class="">
+                            </Multiselect>
+                        </div>
+                    </template>
+
+                    <!-- Facility to Facility -->
+                    <template v-else-if="transfer_type === 'Facility to Facility'">
+                        <div>
+                            <Multiselect v-model="from_facility" :options="props.facilities" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="From Facility" class="">
+                            </Multiselect>
+                        </div>
+                        <div>
+                            <Multiselect v-model="to_facility" :options="props.facilities" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="To Facility" class="">
+                            </Multiselect>
+                        </div>
+                    </template>
+
+                    <!-- Default filters when no specific transfer_type is selected -->
+                    <template v-else>
+                        <!-- Facility Selector -->
+                        <div>
+                            <Multiselect v-model="facility" :options="props.facilities" :searchable="true" :allow-empty="true"
+                                :show-labels="false" placeholder="All Facilities" class="">
+                            </Multiselect>
+                        </div>
+
+                        <!-- Warehouse Selector -->
+                        <div>
+                            <Multiselect v-model="warehouse" :options="props.warehouses" :close-on-select="true"
+                                :clear-on-select="false" :preserve-search="true" :show-labels="false" placeholder="All Warehouses" class=""
+                                :preselect-first="false">
+                            </Multiselect>
+                        </div>
+                    </template>
                 </div>
 
                 <div class="flex items-center gap-2 w-full mt-2">
@@ -659,13 +723,14 @@ const props = defineProps({
     warehouses: Array,
 });
 
-// Transfer direction tabs (facilities version - simpler)
+// Transfer direction tabs (facilities version - enhanced to match warehouse)
 const transferDirectionTabs = ref([
+    { value: 'other', label: 'Other Transfers' },
     { value: 'in', label: 'Incoming' },
     { value: 'out', label: 'Outgoing' },
 ]);
 
-const currentDirectionTab = ref('in');
+const currentDirectionTab = ref('other');
 
 // Status tabs
 const statusTabs = ref([
@@ -693,13 +758,74 @@ const date_from = ref(props.filters.date_from || '');
 const date_to = ref(props.filters.date_to || '');
 const per_page = ref(props.filters.per_page || '25');
 
-// Transfer type options
-const facilityType = ref([
+// New specific source/destination filters (matching warehouse structure)
+const from_warehouse = ref(props.filters.from_warehouse || '');
+const to_warehouse = ref(props.filters.to_warehouse || '');
+const from_facility = ref(props.filters.from_facility || '');
+const to_facility = ref(props.filters.to_facility || '');
+
+// Base facility types
+const allFacilityTypes = [
     'Facility to Warehouse',
     'Warehouse to Facility',
     'Facility to Facility',
     'Warehouse to Warehouse'
-]);
+];
+
+// Direction-specific transfer types (facilities version)
+const getTransferTypesForDirection = (direction) => {
+    switch(direction) {
+        case 'in':
+            // In Transfers: transfers coming TO user's facility
+            return [
+                "Warehouse to Facility",
+                "Facility to Facility"
+            ];
+        case 'out':
+            // Out Transfers: transfers going FROM user's facility
+            return [
+                "Facility to Warehouse",
+                "Facility to Facility"
+            ];
+        case 'other':
+        default:
+            // Other Transfers: all types
+            return allFacilityTypes;
+    }
+};
+
+// Reactive transfer types based on current direction
+const facilityType = computed(() => getTransferTypesForDirection(currentDirectionTab.value));
+
+// Watch for direction tab changes to reset transfer_type filter
+watch(currentDirectionTab, (newDirection, oldDirection) => {
+    if (newDirection !== oldDirection) {
+        // Clear transfer_type when direction changes since available options change
+        transfer_type.value = null;
+        // Clear specific source/destination filters
+        from_warehouse.value = null;
+        to_warehouse.value = null;
+        from_facility.value = null;
+        to_facility.value = null;
+    }
+});
+
+// Watch for transfer_type changes to reset specific filters
+watch(transfer_type, (newType, oldType) => {
+    if (newType !== oldType) {
+        // Clear specific source/destination filters when transfer type changes
+        from_warehouse.value = null;
+        to_warehouse.value = null;
+        from_facility.value = null;
+        to_facility.value = null;
+        
+        // Clear general filters when using specific transfer types
+        if (newType) {
+            facility.value = null;
+            warehouse.value = null;
+        }
+    }
+});
 
 // Computed properties for statistics (facilities version - client-side calculation)
 const totalCount = computed(() => props.transfers.total || 0);
@@ -735,22 +861,43 @@ const calculatePercentage = (count, total) => {
 };
 
 // Watch for filter changes
-watch([search, transfer_type, facility, warehouse, date_from, date_to, per_page, currentTab, currentDirectionTab], () => {
+watch([
+    search, 
+    transfer_type, 
+    facility, 
+    warehouse, 
+    date_from, 
+    date_to, 
+    per_page, 
+    currentTab, 
+    currentDirectionTab,
+    from_warehouse,
+    to_warehouse,
+    from_facility,
+    to_facility
+], () => {
     getResults();
 }, { deep: true });
 
 const getResults = () => {
-    router.get(route('transfers.index'), {
-        search: search.value,
-        transfer_type: transfer_type.value,
-        facility: facility.value,
-        warehouse: warehouse.value,
-        date_from: date_from.value,
-        date_to: date_to.value,
-        per_page: per_page.value,
-        status: currentTab.value,
-        direction: currentDirectionTab.value,
-    }, {
+    const query = {};
+    if (search.value) query.search = search.value;
+    if (transfer_type.value) query.transfer_type = transfer_type.value;
+    if (facility.value) query.facility = facility.value;
+    if (warehouse.value) query.warehouse = warehouse.value;
+    if (date_from.value) query.date_from = date_from.value;
+    if (date_to.value) query.date_to = date_to.value;
+    if (per_page.value) query.per_page = per_page.value;
+    if (currentTab.value !== 'all') query.status = currentTab.value;
+    if (currentDirectionTab.value) query.direction = currentDirectionTab.value;
+    
+    // Add specific source/destination filters
+    if (from_warehouse.value) query.from_warehouse = from_warehouse.value;
+    if (to_warehouse.value) query.to_warehouse = to_warehouse.value;
+    if (from_facility.value) query.from_facility = from_facility.value;
+    if (to_facility.value) query.to_facility = to_facility.value;
+
+    router.get(route('transfers.index'), query, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
