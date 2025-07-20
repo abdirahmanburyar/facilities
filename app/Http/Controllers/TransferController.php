@@ -51,12 +51,12 @@ class TransferController extends Controller
                 
                 $allocation = InventoryAllocation::find($request->allocation_id);
                 
-                // Use updated_quantity if it's set (not null), otherwise use allocated_quantity
-                $effectiveQuantity = ($allocation->updated_quantity !== null) ? $allocation->updated_quantity : $allocation->allocated_quantity;
+                // Use updated_quantity if it's set (not null and greater than 0), otherwise use allocated_quantity
+                $effectiveQuantity = ($allocation->updated_quantity !== null && $allocation->updated_quantity > 0) ? $allocation->updated_quantity : $allocation->allocated_quantity;
                 
                 // Validate received quantity doesn't exceed effective quantity
                 if ($request->received_quantity > $effectiveQuantity) {
-                    return response()->json("Received quantity cannot exceed effective quantity (update_quantity if set, else allocated_quantity)", 400);
+                    return response()->json("Received quantity cannot exceed effective quantity (updated_quantity if set and greater than 0, else allocated_quantity)", 400);
                 }
                 
                 $allocation->received_quantity = $request->received_quantity;
@@ -260,8 +260,8 @@ class TransferController extends Controller
                     
                     foreach ($item->inventory_allocations as $allocation) {
                         // Calculate total back order quantity for this allocation
-                                        // Use update_quantity if it's set (not zero), otherwise use allocated_quantity
-                $effectiveQuantity = ($allocation->update_quantity ?? 0) !== 0 ? $allocation->update_quantity : $allocation->allocated_quantity;
+                        // Use update_quantity if it's set (not zero), otherwise use allocated_quantity
+                        $effectiveQuantity = ($allocation->update_quantity ?? 0) !== 0 ? $allocation->update_quantity : $allocation->allocated_quantity;
                 
                 if((int) $effectiveQuantity < (int) $allocation->backorders->sum('quantity')){
                     DB::rollback();
@@ -1682,8 +1682,8 @@ class TransferController extends Controller
                         // Use the actual received_quantity for this allocation
                         $receivedQuantity = $allocation->received_quantity ?? 0;
                         
-                        // Use updated_quantity if it's set (not null), otherwise use allocated_quantity
-                        $effectiveQuantity = ($allocation->updated_quantity !== null) ? $allocation->updated_quantity : $allocation->allocated_quantity;
+                        // Use updated_quantity if it's set (not null and greater than 0), otherwise use allocated_quantity
+                        $effectiveQuantity = ($allocation->updated_quantity !== null && $allocation->updated_quantity > 0) ? $allocation->updated_quantity : $allocation->allocated_quantity;
                         
                         // Validate that received quantity doesn't exceed effective quantity
                         if ($receivedQuantity > $effectiveQuantity) {
