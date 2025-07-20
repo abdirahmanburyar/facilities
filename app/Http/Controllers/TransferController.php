@@ -531,13 +531,13 @@ class TransferController extends Controller
                 'transfer_date' => 'required|date',
                 'transferID' => 'required',
                 'items' => 'required|array',
-                'items.*.product_id' => 'required|integer',
-                'items.*.quantity' => 'required|integer|min:1',
-                'items.*.details' => 'required|array',
-                'items.*.details.*.quantity_to_transfer' => 'required|integer|min:1',
-                'items.*.details.*.id' => 'required|integer',
-                'items.*.details.*.transfer_reason' => 'required|string',
-                'notes' => 'nullable|string',
+                // 'items.*.product_id' => 'required|integer',
+                // 'items.*.quantity' => 'required|integer|min:1',
+                // 'items.*.details' => 'required|array',
+                // 'items.*.details.*.quantity_to_transfer' => 'required|integer|min:1',
+                // 'items.*.details.*.id' => 'required|integer',
+                // 'items.*.details.*.transfer_reason' => 'required|string',
+                // 'notes' => 'nullable|string',
                 'transfer_type' => 'nullable|string'
             ]);
     
