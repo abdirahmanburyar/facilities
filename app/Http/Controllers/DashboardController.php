@@ -2,83 +2,103 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FacilityInventory;
-use App\Models\FacilityInventoryItem;
-use App\Models\FacilityInventoryMovement;
-use App\Models\Order;
-use App\Models\Transfer;
-use App\Models\Dispence;
-use App\Models\BackOrderHistory;
-use App\Models\Product;
-use App\Models\FacilityMonthlyReport;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Inertia\Inertia;
+use App\Models\Facility;
+use Illuminate\Support\Facades\DB;
+use App\Models\Product;
+use App\Models\Transfer;
+
+use App\Models\Order;
+use App\Models\InventoryReport;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Get distinct facility types and their counts (only main types)
+        $facilityTypes = Facility::select('facility_type', DB::raw('count(*) as count'))
+            ->whereIn('facility_type', ['Health Centre', 'Primary Health Unit', 'Regional Hospital', 'District Hospital'])
+            ->groupBy('facility_type')
+            ->orderBy('count', 'desc')
+            ->get()
+            ->map(function ($type) {
+                return [
+                    'label' => $this->getAbbreviatedName($type->facility_type),
+                    'fullName' => $type->facility_type,
+                    'value' => $type->count,
+                    'color' => $this->getFacilityTypeColor($type->facility_type),
+                ];
+            });
+        
+
+
+        // Product category counts - filtered by current user's facility
+        $productCategoryCounts = [
+            'Drugs' => Product::whereHas('category', function($q) { $q->where('name', 'Durgs'); })
+                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
+                    $q->where('facility_id', $facilityId); 
+                })->count(),
+            'Consumable' => Product::whereHas('category', function($q) { $q->where('name', 'Consumables'); })
+                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
+                    $q->where('facility_id', $facilityId); 
+                })->count(),
+            'Lab' => Product::whereHas('category', function($q) { $q->where('name', 'Lab'); })
+                ->whereHas('facilityInventories', function($q) use ($facilityId) { 
+                    $q->where('facility_id', $facilityId); 
+                })->count(),
+        ];
+
+        // Transfer received count - filtered by current user's facility
+        $transferReceivedCount = Transfer::where(function($query) use ($facilityId) {
+                $query->where('from_facility_id', $facilityId)
+                    ->orWhere('to_facility_id', $facilityId);
+            })
+            ->where('status', 'received')
+            ->count();
+
+
+
+        // Get current user's facility_id
         $user = auth()->user();
         $facilityId = $user->facility_id;
-        
-        // Get dashboard data
-        $inventoryStatus = $this->getInventoryStatus($facilityId);
-        $recentActivity = $this->getRecentActivity($facilityId);
-        $statistics = $this->getStatistics($facilityId);
-        $lowStockAlerts = $this->getLowStockAlerts($facilityId);
-        $monthlyReportStatus = $this->getMonthlyReportStatus($facilityId);
-        $inventoryMovements = $this->getInventoryMovementsSummary($facilityId);
-        
-        return Inertia::render('Dashboard', [
-            'inventoryStatus' => $inventoryStatus,
-            'recentActivity' => $recentActivity,
-            'statistics' => $statistics,
-            'lowStockAlerts' => $lowStockAlerts,
-            'monthlyReportStatus' => $monthlyReportStatus,
-            'inventoryMovements' => $inventoryMovements,
-        ]);
-    }
 
-    private function getInventoryStatus($facilityId)
-    {
-        $now = Carbon::now();
-        
-        // Get AMC data for last 3 months
-        $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
-        $endDate = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
-        
-        $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
-            ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('product_id');
+        // Order status statistics - filtered by current user's facility
+        $orderStats = [
+            'pending' => Order::where('facility_id', $facilityId)->where('status', 'pending')->count(),
+            'reviewed' => Order::where('facility_id', $facilityId)->where('status', 'reviewed')->count(),
+            'approved' => Order::where('facility_id', $facilityId)->where('status', 'approved')->count(),
+            'in_process' => Order::where('facility_id', $facilityId)->where('status', 'in_process')->count(),
+            'dispatched' => Order::where('facility_id', $facilityId)->where('status', 'dispatched')->count(),
+            'received' => Order::where('facility_id', $facilityId)->where('status', 'received')->count(),
+            'rejected' => Order::where('facility_id', $facilityId)->where('status', 'rejected')->count(),
+        ];
 
-        $inventories = FacilityInventory::where('facility_id', $facilityId)
-            ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
-                $join->on('facility_inventories.product_id', '=', 'amc_data.product_id');
-            })
-            ->addSelect('facility_inventories.*')
-            ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
-            ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level'))
-            ->with('items')
-            ->get();
 
+
+        // Delayed orders count - filtered by current user's facility
+        $ordersDelayedCount = Order::where('facility_id', $facilityId)
+            ->whereNotNull('order_date')
+            ->whereNotNull('expected_date')
+            ->whereRaw('order_date < expected_date')
+            ->count();
+
+        // Inventory statistics
         $statusCounts = [
             'in_stock' => 0,
             'low_stock' => 0,
             'out_of_stock' => 0,
-            'expired' => 0,
-            'soon_expiring' => 0
         ];
-
-        foreach ($inventories as $inventory) {
-            $amc = $inventory->amc ?: 0;
-            $reorderLevel = $inventory->reorder_level ?: ($amc * 6);
-
+        
+        // For facilities, we'll use facility inventory filtered by current user's facility
+        $facilityInventories = \App\Models\FacilityInventory::where('facility_id', $facilityId)->with('items')->get();
+        foreach ($facilityInventories as $inventory) {
+            $reorderLevel = $inventory->reorder_level ?? 0;
             foreach ($inventory->items ?? [] as $item) {
                 $qty = $item->quantity;
-
                 if ($qty == 0) {
                     $statusCounts['out_of_stock']++;
                 } elseif ($qty <= $reorderLevel) {
@@ -86,203 +106,93 @@ class DashboardController extends Controller
                 } else {
                     $statusCounts['in_stock']++;
                 }
-
-                if ($item->expiry_date) {
-                    if ($item->expiry_date < $now) {
-                        $statusCounts['expired']++;
-                    } elseif ($item->expiry_date <= $now->copy()->addMonths(6)) {
-                        $statusCounts['soon_expiring']++;
-                    }
-                }
             }
         }
 
-        return $statusCounts;
-    }
+        // Expired statistics
+        $now = Carbon::now();
+        $sixMonthsFromNow = $now->copy()->addMonths(6);
+        $oneYearFromNow = $now->copy()->addYear();
 
-    private function getRecentActivity($facilityId)
-    {
-        // Recent Orders
-        $recentOrders = Order::where('facility_id', $facilityId)
-            ->with(['items.product:id,name'])
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function($order) {
-                return [
-                    'id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'status' => $order->status,
-                    'created_at' => $order->created_at,
-                    'items_count' => $order->items->count(),
-                ];
-            });
-
-        // Recent Transfers
-        $recentTransfers = Transfer::where(function($query) use ($facilityId) {
-                $query->where('from_facility_id', $facilityId)
-                    ->orWhere('to_facility_id', $facilityId);
-            })
-            ->with(['items.product:id,name'])
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function($transfer) use ($facilityId) {
-                return [
-                    'id' => $transfer->id,
-                    'transferID' => $transfer->transferID,
-                    'status' => $transfer->status,
-                    'type' => $transfer->from_facility_id == $facilityId ? 'outgoing' : 'incoming',
-                    'created_at' => $transfer->created_at,
-                    'items_count' => $transfer->items->count(),
-                ];
-            });
-
-        // Recent Dispenses
-        $recentDispenses = Dispence::where('facility_id', $facilityId)
-            ->with(['items.product:id,name'])
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function($dispence) {
-                return [
-                    'id' => $dispence->id,
-                    'dispence_number' => $dispence->dispence_number,
-                    'patient_name' => $dispence->patient_name,
-                    'created_at' => $dispence->created_at,
-                    'items_count' => $dispence->items->count(),
-                ];
-            });
-
-        return [
-            'orders' => $recentOrders,
-            'transfers' => $recentTransfers,
-            'dispenses' => $recentDispenses,
-        ];
-    }
-
-    private function getStatistics($facilityId)
-    {
-        $currentMonth = Carbon::now()->format('Y-m');
-        
-        // Total products in facility
-        $totalProducts = FacilityInventory::where('facility_id', $facilityId)->count();
-        
-        // This month's movements
-        $thisMonthMovements = FacilityInventoryMovement::where('facility_id', $facilityId)
-            ->whereMonth('movement_date', Carbon::now()->month)
-            ->whereYear('movement_date', Carbon::now()->year)
-            ->get();
-            
-        $totalReceived = $thisMonthMovements->where('movement_type', 'facility_received')->sum('facility_received_quantity');
-        $totalIssued = $thisMonthMovements->where('movement_type', 'facility_issued')->sum('facility_issued_quantity');
-        
-        // Active orders count
-        $activeOrders = Order::where('facility_id', $facilityId)
-            ->whereNotIn('status', ['received', 'cancelled'])
+        $expiredCount = \App\Models\FacilityInventoryItem::join('facility_inventories', 'facility_inventory_items.facility_inventory_id', '=', 'facility_inventories.id')
+            ->where('facility_inventories.facility_id', $facilityId)
+            ->where('facility_inventory_items.quantity', '>', 0)
+            ->where('facility_inventory_items.expiry_date', '<', $now)
             ->count();
-            
-        // Active transfers count
-        $activeTransfers = Transfer::where(function($query) use ($facilityId) {
-                $query->where('from_facility_id', $facilityId)
-                    ->orWhere('to_facility_id', $facilityId);
-            })
-            ->whereNotIn('status', ['received', 'cancelled'])
+        $expiring6MonthsCount = \App\Models\FacilityInventoryItem::join('facility_inventories', 'facility_inventory_items.facility_inventory_id', '=', 'facility_inventories.id')
+            ->where('facility_inventories.facility_id', $facilityId)
+            ->where('facility_inventory_items.quantity', '>', 0)
+            ->where('facility_inventory_items.expiry_date', '>=', $now)
+            ->where('facility_inventory_items.expiry_date', '<=', $sixMonthsFromNow)
+            ->count();
+        $expiring1YearCount = \App\Models\FacilityInventoryItem::join('facility_inventories', 'facility_inventory_items.facility_inventory_id', '=', 'facility_inventories.id')
+            ->where('facility_inventories.facility_id', $facilityId)
+            ->where('facility_inventory_items.quantity', '>', 0)
+            ->where('facility_inventory_items.expiry_date', '>=', $now)
+            ->where('facility_inventory_items.expiry_date', '<=', $oneYearFromNow)
             ->count();
 
-        return [
-            'total_products' => $totalProducts,
-            'total_received_this_month' => $totalReceived,
-            'total_issued_this_month' => $totalIssued,
-            'active_orders' => $activeOrders,
-            'active_transfers' => $activeTransfers,
+        $expiredStats = [
+            'expired' => $expiredCount,
+            'expiring_within_6_months' => $expiring6MonthsCount,
+            'expiring_within_1_year' => $expiring1YearCount,
         ];
-    }
 
-    private function getLowStockAlerts($facilityId)
-    {
-        $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
-        $endDate = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
-        
-        $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
-            ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('product_id');
-
-        $lowStockItems = FacilityInventory::where('facility_id', $facilityId)
-            ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
-                $join->on('facility_inventories.product_id', '=', 'amc_data.product_id');
-            })
-            ->addSelect('facility_inventories.*')
-            ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
-            ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level'))
-            ->with(['product:id,name', 'items'])
-            ->get()
-            ->filter(function($inventory) {
-                $totalQuantity = $inventory->items->sum('quantity');
-                $reorderLevel = $inventory->reorder_level ?: ($inventory->amc * 6);
-                return $totalQuantity > 0 && $totalQuantity <= $reorderLevel;
-            })
-            ->take(10)
-            ->map(function($inventory) {
-                $totalQuantity = $inventory->items->sum('quantity');
-                return [
-                    'product_name' => $inventory->product->name,
-                    'current_stock' => $totalQuantity,
-                    'reorder_level' => $inventory->reorder_level,
-                    'amc' => round($inventory->amc, 2),
-                    'alert_level' => $totalQuantity <= ($inventory->reorder_level * 0.5) ? 'critical' : 'warning'
-                ];
-            });
-
-        return $lowStockItems;
-    }
-
-    private function getMonthlyReportStatus($facilityId)
-    {
-        $currentYear = Carbon::now()->year;
-        $currentMonth = Carbon::now()->month;
-        
-        $currentReport = FacilityMonthlyReport::where('facility_id', $facilityId)
-            ->where('report_period', Carbon::now()->format('Y-m'))
-            ->first();
-            
-        $lastMonthReport = FacilityMonthlyReport::where('facility_id', $facilityId)
-            ->where('report_period', Carbon::now()->subMonth()->format('Y-m'))
-            ->first();
-
-        return [
-            'current_month' => [
-                'period' => Carbon::now()->format('F Y'),
-                'status' => $currentReport ? $currentReport->status : 'not_generated',
-                'submitted_at' => $currentReport ? $currentReport->submitted_at : null,
+        $responseData = [
+            'dashboardData' => [
+                'summary' => $facilityTypes,
+                'order_stats' => [],
+                'tasks' => [],
+                'recommended_actions' => [],
+                'product_status' => []
             ],
-            'last_month' => [
-                'period' => Carbon::now()->subMonth()->format('F Y'),
-                'status' => $lastMonthReport ? $lastMonthReport->status : 'not_generated',
-                'submitted_at' => $lastMonthReport ? $lastMonthReport->submitted_at : null,
-            ],
+            'productCategoryCard' => $productCategoryCounts,
+            'transferReceivedCard' => $transferReceivedCount,
+            'orderStats' => $orderStats,
+            'ordersDelayedCount' => $ordersDelayedCount,
+            'inventoryStatusCounts' => collect($statusCounts)->map(fn($count, $status) => ['status' => $status, 'count' => $count])->values(),
+            'expiredStats' => $expiredStats,
         ];
+
+        return Inertia::render('Dashboard', $responseData);
     }
 
-    private function getInventoryMovementsSummary($facilityId)
+    /**
+     * Get human-readable type label
+     */
+    private function getTypeLabel($type)
     {
-        $last30Days = Carbon::now()->subDays(30);
-        
-        $movements = FacilityInventoryMovement::where('facility_id', $facilityId)
-            ->where('movement_date', '>=', $last30Days)
-            ->get()
-            ->groupBy(function($movement) {
-                return Carbon::parse($movement->movement_date)->format('Y-m-d');
-            })
-            ->map(function($dayMovements) {
-                return [
-                    'received' => $dayMovements->where('movement_type', 'facility_received')->sum('facility_received_quantity'),
-                    'issued' => $dayMovements->where('movement_type', 'facility_issued')->sum('facility_issued_quantity'),
-                ];
-            })
-            ->take(7); // Last 7 days for chart
+        $labels = [
+            'beginning_balance' => 'Beginning Balance',
+            'received_quantity' => 'Quantity Received',
+            'issued_quantity' => 'Quantity Issued',
+            'closing_balance' => 'Closing Balance'
+        ];
 
-        return $movements;
+        return $labels[$type] ?? 'Unknown';
+    }
+
+    private function getFacilityTypeColor($facilityType)
+    {
+        $colors = [
+            'Regional Hospital' => 'red',
+            'District Hospital' => 'orange',
+            'Health Centre' => 'blue',
+            'Primary Health Unit' => 'green'
+        ];
+
+        return $colors[$facilityType] ?? 'gray';
+    }
+
+    private function getAbbreviatedName($facilityType)
+    {
+        $abbreviations = [
+            'Regional Hospital' => 'RH',
+            'District Hospital' => 'DH',
+            'Health Centre' => 'HC',
+            'Primary Health Unit' => 'PHU'
+        ];
+
+        return $abbreviations[$facilityType] ?? $facilityType;
     }
 } 

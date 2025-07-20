@@ -571,11 +571,15 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(pendingCount, totalCount)}%`,
+                                        height:
+                                            props.statistics.pending
+                                                .percentage + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(pendingCount, totalCount) }}%
+                                        {{
+                                            props.statistics.pending.percentage
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -590,11 +594,16 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(reviewedCount, totalCount)}%`,
+                                        height:
+                                            props.statistics.reviewed
+                                                .percentage + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(reviewedCount, totalCount) }}%
+                                        {{
+                                            props.statistics.reviewed
+                                                .percentage
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -609,11 +618,16 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(approvedCount, totalCount)}%`,
+                                        height:
+                                            props.statistics.approved
+                                                .percentage + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(approvedCount, totalCount) }}%
+                                        {{
+                                            props.statistics.approved
+                                                .percentage
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -628,11 +642,16 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-600 to-slate-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(inProcessCount, totalCount)}%`,
+                                        height:
+                                            props.statistics.in_process
+                                                .percentage + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(inProcessCount, totalCount) }}%
+                                        {{
+                                            props.statistics.in_process
+                                                .percentage
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -647,11 +666,16 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-purple-600 to-purple-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(dispatchedCount, totalCount)}%`,
+                                        height:
+                                            (props.statistics.dispatched
+                                                ?.percentage || 0) + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(dispatchedCount, totalCount) }}%
+                                        {{
+                                            props.statistics.dispatched
+                                                ?.percentage || 0
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -666,11 +690,16 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-orange-600 to-orange-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(deliveredCount, totalCount)}%`,
+                                        height:
+                                            (props.statistics.delivered
+                                                ?.percentage || 0) + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(deliveredCount, totalCount) }}%
+                                        {{
+                                            props.statistics.delivered
+                                                ?.percentage || 0
+                                        }}%
                                     </div>
                                 </div>
                             </div>
@@ -685,15 +714,21 @@
                                 </div>
                                 <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-500"
                                     :style="{
-                                        height: `${calculatePercentage(receivedCount, totalCount)}%`,
+                                        height:
+                                            (props.statistics.received
+                                                ?.percentage || 0) + '%',
                                     }">
                                     <div
                                         class="absolute bottom-0 left-0 right-0 text-center py-1 text-black font-bold text-xs tracking-wide">
-                                        {{ calculatePercentage(receivedCount, totalCount) }}%
+                                        {{
+                                            props.statistics.received
+                                                ?.percentage || 0
+                                        }}%
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>

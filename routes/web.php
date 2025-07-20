@@ -40,8 +40,11 @@ Route::get('/', function () {
 
 // All routes that require 2FA
 Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class])->group(function () {
-    // Dashboard route
-    Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    // Dashboard routes
+    Route::controller(App\Http\Controllers\DashboardController::class)
+    ->group(function () {
+        Route::get('/dashboard', 'index')->name('dashboard');
+    });
 
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
