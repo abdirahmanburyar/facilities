@@ -1,6 +1,6 @@
 <template>
-    <AuthenticatedLayout>
-        <div id="printThis">
+    <AuthenticatedLayout title="Patient Dispensing" description="Manage patient medication dispensing records"
+    img="/assets/images/dispence.png">        <div id="printThis">
             <!-- Back button -->
             <div class="mb-6 flex justify-between items-center print:hidden">
                 <Link

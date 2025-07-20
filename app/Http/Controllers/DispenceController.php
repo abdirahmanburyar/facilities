@@ -84,11 +84,11 @@ class DispenceController extends Controller
                 'phone_number' => 'required|string|max:255',
                 'diagnosis' => 'required|string|max:255',
                 'items' => 'required|array',
-                'items.*.product_id' => 'required|exists:products,id',
-                'items.*.dose' => 'required|numeric',
-                'items.*.frequency' => 'required|numeric',
-                'items.*.duration' => 'required|numeric',
-                'items.*.quantity' => 'required|numeric|min:1',
+                'items.*.product_id' => 'nullable|exists:products,id',
+                'items.*.dose' => 'nullable|numeric',
+                'items.*.frequency' => 'nullable|numeric',
+                'items.*.duration' => 'nullable|numeric',
+                'items.*.quantity' => 'nullable|numeric|min:1',
             ]);
 
             $dispence = Dispence::create([
@@ -105,6 +105,11 @@ class DispenceController extends Controller
             $facilityInventoryMovementService = new FacilityInventoryMovementService();
 
             foreach($validated['items'] as $item){
+                // Skip if product_id is empty or null
+                if(empty($item['product_id'])) {
+                    continue;
+                }
+                
                 $remainingQuantity = $item['quantity'];
                 $inventories = FacilityInventoryItem::whereHas('inventory', function($query) {
                     $query->where('facility_id', auth()->user()->facility_id);

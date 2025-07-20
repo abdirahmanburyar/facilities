@@ -1,5 +1,7 @@
 <template>
-    <AuthenticatedLayout :title="'Create New Dispense'">
+    <AuthenticatedLayout title="Patient Dispensing" description="Manage patient medication dispensing records"
+        img="/assets/images/dispence.png">
+        
         <!-- Modern Header Section -->
         <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -7,13 +9,11 @@
                 <nav class="flex items-center space-x-2 text-sm text-gray-600 mb-8">
                     <Link :href="route('dispence.index')"
                         class="flex items-center hover:text-blue-600 transition-colors duration-200">
-                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z" />
-                    </svg>
-                    Dispenses
+                        <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Dispenses
                     </Link>
                     <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -30,7 +30,7 @@
                                     <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
                                 </div>
                                 <div>
@@ -58,79 +58,102 @@
 
                     <form @submit.prevent="submit" novalidate class="divide-y divide-gray-100">
                         <!-- Patient Information -->
-                        <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <!-- Patient Name -->
-                                <div class="space-y-1">
-                                    <label class="block text-sm font-medium text-gray-700">Patient Name</label>
-                                    <input type="text" v-model="form.patient_name"
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                        placeholder="Patient full name" required />
-                                    <InputError :message="errors.patient_name" class="mt-1 text-sm text-red-600" />
-                                </div>
+                        <div class="p-8">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    Patient Information
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <!-- Patient Name -->
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            Patient Name <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" v-model="form.patient_name"
+                                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                            placeholder="Enter patient full name" required />
+                                        <InputError :message="errors.patient_name" class="mt-1 text-sm text-red-600" />
+                                    </div>
 
-                                <!-- Age -->
-                                <div class="space-y-1">
-                                    <label class="block text-sm font-medium text-gray-700">Age</label>
-                                    <div class="flex rounded-md shadow-sm">
-                                        <input type="number" v-model="form.patient_age" min="0" max="120"
-                                            class="block w-full rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                            placeholder="Age" required />
-                                        <span
-                                            class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                                            Years
-                                        </span>
+                                    <!-- Age -->
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            Age <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="flex rounded-lg shadow-sm">
+                                            <input type="number" v-model="form.patient_age" min="0" max="120"
+                                                class="block w-full rounded-l-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                                placeholder="Age" required />
+                                            <span
+                                                class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                                Years
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Gender -->
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            Gender <span class="text-red-500">*</span>
+                                        </label>
+                                        <select v-model="form.patient_gender"
+                                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                            required>
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Phone Number -->
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            Phone Number <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="tel" v-model="form.phone_number"
+                                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                            placeholder="Enter phone number" required />
+                                        <InputError :message="errors.phone_number" class="mt-1 text-sm text-red-600" />
+                                    </div>
+
+                                    <!-- Prescription Date -->
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            Prescription Date <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="date" v-model="form.prescription_date" :max="today"
+                                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                            required />
                                     </div>
                                 </div>
 
-                                <!-- Gender -->
-                                <div class="space-y-1">
-                                    <label class="block text-sm font-medium text-gray-700">Gender</label>
-                                    <select v-model="form.patient_gender"
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                        required>
-                                        <option value="">Select Gender</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
+                                <!-- Diagnosis -->
+                                <div class="mt-6 space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Diagnosis</label>
+                                    <textarea v-model="form.diagnosis" rows="3"
+                                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                        placeholder="Enter patient diagnosis or medical condition"></textarea>
+                                    <InputError :message="errors.diagnosis" class="mt-1 text-sm text-red-600" />
                                 </div>
-
-                                <!-- Phone Number -->
-                                <div class="space-y-1">
-                                    <label class="block text-sm font-medium text-gray-700">Phone Number</label>
-                                    <input type="tel" v-model="form.phone_number"
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                        placeholder="Phone number" required />
-                                    <InputError :message="errors.phone_number" class="mt-1 text-sm text-red-600" />
-                                </div>
-
-                                <!-- Prescription Date -->
-                                <div class="space-y-1">
-                                    <label class="block text-sm font-medium text-gray-700">Prescription Date</label>
-                                    <input type="date" v-model="form.prescription_date" :max="today"
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                        required />
-                                </div>
-                            </div>
-
-                            <!-- Diagnosis -->
-                            <div class="mt-4 space-y-1">
-                                <label class="block text-sm font-medium text-gray-700">Diagnosis</label>
-                                <textarea v-model="form.diagnosis" rows="2"
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                    placeholder="Enter diagnosis"></textarea>
-                                <InputError :message="errors.diagnosis" class="mt-1 text-sm text-red-600" />
                             </div>
                         </div>
 
                         <!-- Prescription Items -->
-                        <div class="p-6 bg-gray-50">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-medium text-gray-900">Prescription Items</h3>
+                        <div class="p-8 bg-gray-50">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                    Prescription Items
+                                </h3>
                                 <button type="button" @click="addItem"
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                                     :disabled="isProcessing || haveIssue.length > 0">
-                                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
@@ -138,96 +161,124 @@
                                 </button>
                             </div>
 
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200 table-fixed">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th
-                                                class="w-full px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Product</th>
-                                            <th
-                                                class="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Dose</th>
-                                            <th class="w-16 px-2 py-3">
-                                                <span class="sr-only">Actions</span>
-                                            </th>
-                                        </tr>
-                                    </thead>
+                            <div class="">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                                                             <thead class="bg-gray-50">
+                                         <tr>
+                                             <th class="w-2/5 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                 Product
+                                             </th>
+                                             <th class="w-3/5 px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                 Dosage Information
+                                             </th>
+                                             <th class="w-16 px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                 Actions
+                                             </th>
+                                         </tr>
+                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <tr v-for="(item, index) in form.items" :key="index" class="hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <div class="w-full">
-                                                    <Multiselect v-model="item.product" :options="props.inventories"
-                                                        :searchable="true" :close-on-select="true" :allow-empty="true"
-                                                        placeholder="Select product" track-by="id" label="name"
-                                                        @select="checkInventory(index, $event)" class="text-sm w-full">
-                                                        <template v-slot:option="{ option }">
-                                                            <div class="flex justify-between items-center w-full">
-                                                                <span class="truncate">{{ option.name }}</span>
-                                                                <span
-                                                                    class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                                    Stock: {{ option.quantity }}
-                                                                </span>
-                                                            </div>
-                                                        </template>
-                                                    </Multiselect>
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <label for="">Dose</label>
-                                                <input type="number"
-                                                    class="block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                                    v-model="item.dose" placeholder="Dose" min="1"
-                                                    @input="calculateItemQuantity(index)" required />
-                                                <label for="">Frequency</label>
-                                                <input type="number"
-                                                    class="pl-8 block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                                    v-model="item.frequency" placeholder="Per day" min="1"
-                                                    @input="calculateItemQuantity(index)" required />
-                                                <label for="">Duration</label>
-                                                <input type="number"
-                                                    class="pl-8 block md:w-[150px] w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs"
-                                                    v-model="item.duration" placeholder="Days" min="1"
-                                                    @input="calculateItemQuantity(index)" required />
-                                                <div class="md:w-[150px] w-full">
-                                                    <label for="">Quantity</label>
-                                                    <input type="number"
-                                                        class="w-full rounded-md border-gray-200 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                                        v-model="item.quantity" readonly required
-                                                        @input="checkAvailability(index, item)" />
-                                                        <span v-if="haveIssue[index] != null" :class="[
-                                                            haveIssue[index] != null ? 'text-xs text-red-500' : ''
-                                                        ]">{{ haveIssue[index] }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-2 py-3 text-center">
-                                                <button type="button" @click="removeItem(index)"
-                                                    class="text-red-600 hover:text-red-900 p-1"
-                                                    :disabled="form.items.length <= 1">
-                                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </td>
+                                                                                     <tr v-for="(item, index) in form.items" :key="index" 
+                                             class="hover:bg-gray-50 transition-colors duration-200">
+                                             <td class="w-2/5 px-6 py-4">
+                                                 <div class="w-full">
+                                                     <Multiselect v-model="item.product" :options="props.inventories"
+                                                         :searchable="true" :close-on-select="true" :allow-empty="true"
+                                                         placeholder="Select product" track-by="id" label="name"
+                                                         @select="checkInventory(index, $event)" 
+                                                         class="text-sm w-full">
+                                                         <template v-slot:option="{ option }">
+                                                             <div class="flex justify-between items-center w-full">
+                                                                 <span class="truncate">{{ option.name }}</span>
+                                                                 <span
+                                                                     class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                     Stock: {{ option.quantity }}
+                                                                 </span>
+                                                             </div>
+                                                         </template>
+                                                     </Multiselect>
+                                                 </div>
+                                             </td>
+                                             <td class="w-3/5 px-6 py-4">
+                                                 <div class="flex items-center space-x-4">
+                                                     <div class="space-y-2 flex-1">
+                                                         <label class="block text-xs font-medium text-gray-700">Dose</label>
+                                                         <input type="number"
+                                                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-200"
+                                                             v-model="item.dose" placeholder="Dose" min="1"
+                                                             @input="calculateItemQuantity(index)" required />
+                                                     </div>
+                                                     <div class="space-y-2 flex-1">
+                                                         <label class="block text-xs font-medium text-gray-700">Frequency</label>
+                                                         <input type="number"
+                                                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-200"
+                                                             v-model="item.frequency" placeholder="Per day" min="1"
+                                                             @input="calculateItemQuantity(index)" required />
+                                                     </div>
+                                                     <div class="space-y-2 flex-1">
+                                                         <label class="block text-xs font-medium text-gray-700">Duration</label>
+                                                         <input type="number"
+                                                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-200"
+                                                             v-model="item.duration" placeholder="Days" min="1"
+                                                             @input="calculateItemQuantity(index)" required />
+                                                     </div>
+                                                     <div class="space-y-2 flex-1">
+                                                         <label class="block text-xs font-medium text-gray-700">Quantity</label>
+                                                         <input type="number"
+                                                             class="block w-full rounded-lg border-gray-200 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-200"
+                                                             v-model="item.quantity" readonly required
+                                                             @input="checkAvailability(index, item)" />
+                                                         <span v-if="haveIssue[index] != null" 
+                                                             class="text-xs text-red-500 block mt-1">
+                                                             {{ haveIssue[index] }}
+                                                         </span>
+                                                     </div>
+                                                 </div>
+                                             </td>
+                                                                                             <td class="w-16 px-6 py-4 text-center">
+                                                 <button type="button" @click="removeItem(index)"
+                                                     class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+                                                     :disabled="form.items.length <= 1">
+                                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                                         stroke="currentColor">
+                                                         <path stroke-linecap="round" stroke-linejoin="round"
+                                                             stroke-width="2"
+                                                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                     </svg>
+                                                 </button>
+                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+
+                            <!-- Summary Card -->
+                            <div class="mt-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-sm font-medium text-blue-900">Summary</span>
+                                    </div>
+                                    <div class="text-sm text-blue-700">
+                                        Total Items: {{ form.items.filter(item => item.product).length }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Form Actions -->
-                        <div
-                            class="bg-gray-50 px-6 py-4 border-t border-gray-200 rounded-b-lg flex justify-end space-x-3">
+                        <div class="bg-gray-50 px-8 py-6 border-t border-gray-200 rounded-b-lg flex justify-end space-x-4">
                             <Link :href="route('dispence.index')"
-                                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                class="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                                 :disabled="isProcessing">
-                            Cancel
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Cancel
                             </Link>
                             <button type="submit"
-                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                                 :disabled="isProcessing || haveIssue.length > 0">
                                 <svg v-if="isProcessing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
                                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -280,8 +331,11 @@ const errors = ref({});
 const isProcessing = ref(false);
 const form = ref({
     patient_name: '',
+    patient_age: '',
+    patient_gender: '',
     diagnosis: '',
     phone_number: '',
+    prescription_date: today,
     items: [{
         product_id: '',
         product: null,
@@ -317,7 +371,7 @@ const calculateItemQuantity = (index) => {
         item.quantity = calculatedQty;
 
         // Check if quantity exceeds available stock
-        if (item.dose && item.dose && item.duration) {
+        if (item.dose && item.frequency && item.duration) {
             checkAvailability(index, item)
         }
     }
@@ -380,7 +434,6 @@ async function checkAvailability(index, item) {
     })
         .then((response) => {
             if (response.data < item.quantity) {
-                console.log("kawayn");
                 haveIssue.value[index] = `Only ${response.data} quantities are available`;
             }
         })
@@ -407,8 +460,11 @@ const submit = async () => {
 function reloadDispences() {
     form.value = {
         patient_name: '',
+        patient_age: '',
+        patient_gender: '',
         phone_number: '',
         diagnosis: '',
+        prescription_date: today,
         items: [{
             product_id: '',
             product: null,
@@ -424,5 +480,4 @@ function reloadDispences() {
         only: ['inventories']
     })
 }
-
 </script>

@@ -126,77 +126,89 @@
 
         <!-- Main Content -->
         <div :class="['main-content', { 'main-content-expanded': !sidebarOpen }]">
-            <!-- Top Navigation -->
-            <div class="top-nav h-16 text-xs">
-                <div class="inventory-banner">
-                    <div class="flex justify-between items-center">
-                        <!-- <div class="flex flex-col"> -->
-                        <button @click="toggleSidebar" class="back-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                                <path v-if="sidebarOpen"
-                                    d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
-                                    fill="currentColor" />
-                                <path v-else d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor" />
-                            </svg>
-                        </button>
-                        <div class="inventory-text">
-                            <h1 class="text-xs">{{ title }}</h1>
-                            <h3 class="text-black text-sm">"{{ description }}"</h3>
-                        </div>
-                        <!-- </div> -->
-                        <div v-if="img">
-                            <img :src="img" alt="Inventory illustration" class="svg-image" height="20" />
-                        </div>
-                    </div>
-                    <div class="user-section">
-                        <div class="flex flex-row">
-                            <div class="user-info">
-                                <div class="user-avatar">
-                                    <span>A</span>
-                                </div>
-                                <div class="user-details">
-                                    <span class="user-role">Pharmaceutical Manager</span>
-                                    <span class="user-name">{{ $page.props.auth.user?.name }}</span>
-                                    <span class="user-name">{{ $page.props.warehouse?.name }}</span>
-                                </div>
-                            </div>
-                            <button class="logout-button" @click="logout">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                    <polyline points="16 17 21 12 16 7"></polyline>
-                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+            <!-- Main Content -->
+            <div :class="['main-content', { 'main-content-expanded': !sidebarOpen }]">
+                <!-- Top Navigation -->
+                <div class="top-nav h-16 text-xs">
+                    <div class="inventory-banner">
+                        <div class="flex justify-between items-center">
+                            <!-- <div class="flex flex-col"> -->
+                            <button @click="toggleSidebar" class="back-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                    <path v-if="sidebarOpen"
+                                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                                        fill="currentColor" />
+                                    <path v-else d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"
+                                        fill="currentColor" />
                                 </svg>
                             </button>
+                            <div class="inventory-text">
+                                <h1>{{ title }}</h1>
+                                <h3 class="text-black text-lg">
+                                    "{{ description }}"
+                                </h3>
+                            </div>
+                            <!-- </div> -->
+                            <div v-if="img">
+                                <img :src="img" alt="Inventory illustration" class="svg-image" height="30" />
+                            </div>
                         </div>
-                        <!-- <img src="/assets/images/head_web.gif" alt="Inventory illustration" class="svg-image" /> -->
+                        <div class="user-section">
+                            <div class="flex flex-row">
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <span>A</span>
+                                    </div>
+                                    <div class="user-details">
+                                        <span class="user-role">{{
+                                            $page.props.auth.user?.title
+                                            }} </span>
+                                        <span class="user-name">{{
+                                            $page.props.auth.user?.name
+                                            }}</span>
+                                        <span class="user-name">{{
+                                            $page.props.warehouse?.name
+                                            }}</span>
+                                    </div>
+                                </div>
+                                <button class="logout-button" @click="logout">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- <img src="/assets/images/head_web.gif" alt="Inventory illustration" class="svg-image" /> -->
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Page Content -->
-            <main class="flex flex-col">
-                <div class="flex-1">
-                    <slot />
-                </div>
-                <div class="fixed text-xs bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-                    <div class="container mx-auto py-2">
-                        <div class="flex justify-center items-center gap-4">
-                            <img src="/assets/images/vista.png" alt="Vista" class="w-[50px]" />
-                            <span class="flex items-center text-gray-400">|</span>
-                            <span class="flex items-center text-gray-600">Copyright 2025 Vista. All rights
-                                reserved.</span>
-                            <span class="flex items-center text-gray-400">|</span>
-                            <span class="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer">Terms of
-                                Use</span>
-                            <span class="flex items-center text-gray-400">|</span>
-                            <span
-                                class="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer">Privacy</span>
+                <!-- Page Content -->
+                <main class="flex flex-col">
+                    <div class="flex-1">
+                        <slot />
+                    </div>
+                    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 text-xs">
+                        <div class="container mx-auto text-xs py-2">
+                            <div class="flex justify-center text-xs items-center gap-4">
+                                <img src="/assets/images/vista.png" alt="Vista" class="w-[50px]" />
+                                <span class="flex items-center text-gray-400">|</span>
+                                <span class="flex items-center text-gray-600">Copyright 2025 Vista. All rights
+                                    reserved.</span>
+                                <span class="flex items-center text-gray-400">|</span>
+                                <span class="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer">Terms
+                                    of Use</span>
+                                <span class="flex items-center text-gray-400">|</span>
+                                <span
+                                    class="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer">Privacy</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     </div>
 </template>

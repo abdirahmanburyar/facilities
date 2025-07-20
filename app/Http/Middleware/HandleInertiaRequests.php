@@ -38,8 +38,8 @@ class HandleInertiaRequests extends Middleware
                 'roleIds' => $request->user() ? $request->user()->roles->pluck('id') : [],
                 'can' => $this->getUserPermissions($request),
             ],
-            // show facility for the current user
-            'facility' => $request->user() ? $request->user()->facility : null,            
+            // show warehouse for the current user
+            'warehouse' => $request->user() ? $request->user()->warehouse : null,            
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -68,7 +68,7 @@ class HandleInertiaRequests extends Middleware
         $flattenedPermissions = [];
         foreach ($permissions as $permission) {
             // Convert dot notation to underscore for Vue compatibility
-            $key = str_replace('.', '_', $permission);
+            $key = str_replace(['.', '-'], '_', $permission);
             $flattenedPermissions[$key] = true;
         }
 
