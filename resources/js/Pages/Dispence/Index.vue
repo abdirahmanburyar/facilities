@@ -3,7 +3,7 @@
         img="/assets/images/dispence.png">
         
         <!-- Header Section -->
-        <div class="flex flex-col space-y-6">
+        <div class="flex flex-col space-y-6 mb-[80px]">
             <!-- Action Buttons -->
             <div class="flex items-center justify-end">
                 <button @click="router.visit(route('dispence.create'))"
@@ -223,7 +223,7 @@
             </div>
 
             <!-- Pagination -->
-            <div class="flex justify-end mt-2 mb-[80px]">
+            <div class="flex justify-end mt-2 mb-[20px]">
                 <TailwindPagination :data="props.dispences" @pagination-change-page="getResults" />
             </div>
         </div>
