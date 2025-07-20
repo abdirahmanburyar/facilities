@@ -740,6 +740,7 @@ const statusTabs = ref([
     { value: 'approved', label: 'Approved' },
     { value: 'in_process', label: 'In Process' },
     { value: 'dispatched', label: 'Dispatched' },
+    { value: 'delivered', label: 'Delivered' },
     { value: 'received', label: 'Received' },
     { value: 'rejected', label: 'Rejected' },
 ]);
