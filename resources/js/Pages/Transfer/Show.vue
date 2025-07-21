@@ -986,7 +986,7 @@
                                                         : isType['is_delivering'] 
                                                             ? 'Please Wait....' 
                                                             : !canReceive 
-                                                                ? 'Not Eligible' 
+                                                                ? 'Waiting to be Delivered' 
                                                                 : "Mark as Delivered"
                                                 }}
                                             </span>
