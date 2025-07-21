@@ -2376,8 +2376,8 @@ class TransferController extends Controller
                 foreach ($images as $image) {
                     if ($image->isValid()) {
                         $filename = 'transfer_delivery_' . time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                        $path = $image->storeAs('public/transfer-delivery-images', $filename);
-                        $imagePaths[] = $path;
+                        $image->move(public_path('transfer-delivery-images'), $filename);
+                        $imagePaths[] = 'transfer-delivery-images/' . $filename;
                     }
                 }
             }

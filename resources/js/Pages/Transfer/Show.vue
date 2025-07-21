@@ -644,7 +644,7 @@
                 </div>
 
             <!-- dispatch information -->
-            <div v-if="props.transfer.status === 'dispatched' && props.transfer.dispatch?.length > 0"
+            <div v-if="props.transfer.dispatch?.length > 0"
                 class="mt-8 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-800">
@@ -718,6 +718,27 @@
                                             </svg>
                                             <span class="text-sm text-gray-600">Dispatched on {{
                                                 moment(dispatch.created_at).format('MMMM D, YYYY h:mm A') }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center">
+                                                <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <span class="text-sm text-gray-600">Delivery Images</span>
+                                            </div>
+                                            <button 
+                                                v-if="dispatch.image && dispatch.image !== 'null' && dispatch.image !== ''"
+                                                @click="viewDispatchImages(dispatch)"
+                                                class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                                title="View delivery images"
+                                            >
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                View
+                                            </button>
+                                            <span v-else class="text-xs text-gray-400">No images</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1499,19 +1520,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Notes (Optional)
-                                </label>
-                                <textarea 
-                                    v-model="deliveryForm.notes"
-                                    rows="4"
-                                    disabled
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
-                                    placeholder="Notes feature is currently disabled"
-                                ></textarea>
-                            </div>
                         </div>
                     </div>
 
@@ -1560,6 +1568,92 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </Modal>
+
+        <!-- Dispatch Images Modal -->
+        <Modal :show="showDispatchImagesModal" @close="closeDispatchImagesModal" maxWidth="4xl">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        Delivery Images
+                    </h2>
+                    <button @click="closeDispatchImagesModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div v-if="dispatchImages.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="(image, index) in dispatchImages" :key="index" class="relative group">
+                        <img 
+                            :src="getImageUrl(image)" 
+                            :alt="`Delivery image ${index + 1}`"
+                            class="w-full h-64 object-cover rounded-lg shadow-md cursor-pointer transition-transform duration-200 hover:scale-105"
+                            @click="openImageLightbox(index)"
+                        />
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No images available</h3>
+                    <p class="mt-1 text-sm text-gray-500">No delivery images have been uploaded for this transfer.</p>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Image Lightbox Modal -->
+        <Modal :show="showImageLightbox" @close="closeImageLightbox" maxWidth="6xl">
+            <div class="p-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        Image {{ currentImageIndex + 1 }} of {{ dispatchImages.length }}
+                    </h3>
+                    <button @click="closeImageLightbox" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="relative">
+                    <img 
+                        v-if="dispatchImages[currentImageIndex]"
+                        :src="getImageUrl(dispatchImages[currentImageIndex])" 
+                        :alt="`Delivery image ${currentImageIndex + 1}`"
+                        class="w-full h-auto max-h-[70vh] object-contain mx-auto"
+                    />
+                    
+                    <!-- Navigation buttons -->
+                    <button 
+                        v-if="currentImageIndex > 0"
+                        @click="previousImage"
+                        class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all duration-200"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    
+                    <button 
+                        v-if="currentImageIndex < dispatchImages.length - 1"
+                        @click="nextImage"
+                        class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all duration-200"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </Modal>
 
@@ -1643,6 +1737,12 @@ const deliveryForm = ref({
     acknowledgeDiscrepancy: false
 });
 
+// dispatch images modal state
+const showDispatchImagesModal = ref(false);
+const showImageLightbox = ref(false);
+const currentImageIndex = ref(0);
+const dispatchImages = ref([]);
+
 // Computed properties for delivery form validation
 const hasDiscrepancy = computed(() => {
     if (!props.transfer.dispatch?.length) return false;
@@ -1665,6 +1765,8 @@ const isDeliveryFormValid = computed(() => {
     
     return true;
 });
+
+
 
 // Computed properties for driver options
 const driverOptions = computed(() => {
@@ -2539,6 +2641,97 @@ const submitDeliveryForm = async () => {
         }
         
         toast.error(errorMessage);
+    }
+};
+
+// Dispatch images modal methods
+const openDispatchImagesModal = () => {
+    showDispatchImagesModal.value = true;
+    loadDispatchImages();
+};
+
+const closeDispatchImagesModal = () => {
+    showDispatchImagesModal.value = false;
+    dispatchImages.value = [];
+};
+
+const viewDispatchImages = (dispatch) => {
+    dispatchImages.value = [];
+    
+    if (dispatch.image) {
+        try {
+            const images = JSON.parse(dispatch.image);
+            if (Array.isArray(images)) {
+                dispatchImages.value.push(...images);
+            } else if (typeof images === 'string') {
+                // If it's a single image path as string
+                dispatchImages.value.push(images);
+            }
+        } catch (e) {
+            // If parsing fails, treat it as a single image path
+            if (typeof dispatch.image === 'string') {
+                dispatchImages.value.push(dispatch.image);
+            }
+            console.error('Error parsing dispatch images:', e);
+        }
+    }
+    
+    showDispatchImagesModal.value = true;
+};
+
+const loadDispatchImages = () => {
+    dispatchImages.value = [];
+    
+    if (props.transfer.dispatch?.length) {
+        props.transfer.dispatch.forEach(dispatch => {
+            if (dispatch.image) {
+                try {
+                    const images = JSON.parse(dispatch.image);
+                    if (Array.isArray(images)) {
+                        dispatchImages.value.push(...images);
+                    } else if (typeof images === 'string') {
+                        // If it's a single image path as string
+                        dispatchImages.value.push(images);
+                    }
+                } catch (e) {
+                    // If parsing fails, treat it as a single image path
+                    if (typeof dispatch.image === 'string') {
+                        dispatchImages.value.push(dispatch.image);
+                    }
+                    console.error('Error parsing dispatch images:', e);
+                }
+            }
+        });
+    }
+};
+
+const getImageUrl = (imagePath) => {
+    // Convert storage path to public URL
+    if (!imagePath) return '';
+    return '/' + imagePath;
+};
+
+const openImageLightbox = (index) => {
+    if (dispatchImages.value[index]) {
+        currentImageIndex.value = index;
+        showImageLightbox.value = true;
+    }
+};
+
+const closeImageLightbox = () => {
+    showImageLightbox.value = false;
+    currentImageIndex.value = 0;
+};
+
+const previousImage = () => {
+    if (currentImageIndex.value > 0) {
+        currentImageIndex.value--;
+    }
+};
+
+const nextImage = () => {
+    if (currentImageIndex.value < dispatchImages.value.length - 1) {
+        currentImageIndex.value++;
     }
 };
 
