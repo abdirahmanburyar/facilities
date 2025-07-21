@@ -91,6 +91,10 @@ class Product extends Model
         return $this->hasMany(EligibleItem::class);
     }
 
+    public function eligibleForFacilityType($facilityType) {
+        return $this->eligible()->where('facility_type', $facilityType)->exists();
+    }
+
     public function inventory(){
         return $this->hasMany(FacilityInventory::class);
     }

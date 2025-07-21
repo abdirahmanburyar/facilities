@@ -35,5 +35,12 @@ class Facility extends Model
     {
         return $this->belongsTo(User::class, 'handled_by');
     }
+
+    public function eligibleProducts()
+    {
+        return $this->belongsToMany(Product::class, 'eligible_items', 'facility_type', 'product_id', 'facility_type', 'id')
+            ->where('products.is_active', true)
+            ->orderBy('products.name');
+    }
     
 }

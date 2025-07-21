@@ -1,5 +1,7 @@
-<template>
-    <AuthenticatedLayout title="Reports">
+    <template>
+    <Head title="Reports" />
+    <AuthenticatedLayout title="Reports Dashboard" description="Comprehensive warehouse analytics and insights"
+        img="/assets/images/report.png">
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">
@@ -57,43 +59,7 @@
                         </div>
                     </div>
 
-                    <!-- Inventory Movements Report -->
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                        <div class="p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h3 class="text-lg font-semibold text-gray-900">Inventory Movements</h3>
-                                    <p class="text-sm text-gray-600">Stock Inflow & Outflow Tracking</p>
-                                </div>
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm mb-4">
-                                Track all inventory movements including quantity received and issued, transfers, and dispensing activities with detailed audit trail.
-                            </p>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center text-sm text-gray-500">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                    </svg>
-                                    <span>Real-time</span>
-                                </div>
-                                <button
-                                    @click="goToInventoryMovements"
-                                    class="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
-                                >
-                                    View Movements
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+
                     
                     <!-- Transfers Report -->
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
@@ -161,12 +127,12 @@
                                     </svg>
                                     <span>Historical Data</span>
                                 </div>
-                                <Link
-                                    :href="route('reports.orders')"
+                                <button
+                                    @click="goToOrders"
                                     class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors"
                                 >
                                     View Report
-                                </Link>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -262,18 +228,31 @@
 <script setup>
 import { router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Link } from '@inertiajs/vue3'
 
 const goToMonthlyInventory = () => {
-    router.get('/reports/monthly-inventory')
+    try {
+        router.get('/monthly-reports')
+    } catch (error) {
+        console.error('Error navigating to monthly inventory:', error)
+    }
 }
 
-const goToInventoryMovements = () => {
-    router.get('/reports/inventory-movements')
-}
+
 
 const goToTransfers = () => {
-    router.get('/reports/transfers')
+    try {
+        router.get('/reports/transfers')
+    } catch (error) {
+        console.error('Error navigating to transfers:', error)
+    }
+}
+
+const goToOrders = () => {
+    try {
+        router.get('/reports/orders')
+    } catch (error) {
+        console.error('Error navigating to orders:', error)
+    }
 }
 </script>
 

@@ -39,7 +39,8 @@ class HandleInertiaRequests extends Middleware
                 'can' => $this->getUserPermissions($request),
             ],
             // show warehouse for the current user
-            'warehouse' => $request->user() ? $request->user()->warehouse : null,            
+            'warehouse' => $request->user() ? $request->user()->warehouse : null,     
+            'facility' => $request->user() ? $request->user()->facility : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

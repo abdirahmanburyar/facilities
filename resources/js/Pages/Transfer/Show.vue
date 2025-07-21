@@ -2,7 +2,7 @@
     <AuthenticatedLayout title="Transfer Details" description="Transfer Details" img="/assets/images/transfer.png">
         <div class="container mx-auto">
             <!-- Transfer Header -->
-            <div class="mb-6 px-6 py-6 bg-white rounded-lg shadow-sm">
+            <div class="mb-6 bg-white rounded-lg shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-2xl font-bold text-gray-800">
                         Transfer Details
@@ -557,7 +557,7 @@
                                         <!-- Location -->
                                         <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
                                             {{
-                                                allocation.warehouse?.name ||
+                                                allocation.location ||
                                                 "N/A"
                                             }}
                                         </td>
@@ -710,7 +710,7 @@
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                             </svg>
-                                            <span class="text-sm text-gray-600">{{ dispatch.no_of_cartoons }} Cartons</span>
+                                            <span class="text-sm text-gray-600">{{ dispatch.received_cartons ?? 0 }}/{{ dispatch.no_of_cartoons }} Cartons</span>
                                         </div>
                                         <div class="flex items-center">
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -944,79 +944,39 @@
                                 <!-- Delivered Status -->
                                 <div class="relative">
                                     <div class="flex flex-col">
-                                        <button @click="
-                                            changeStatus(
-                                                props.transfer.id,
-                                                'delivered',
-                                                'is_deliver'
-                                            )
-                                            " :disabled="isType['is_deliver'] ||
-                                            props.transfer.status !==
-                                            'dispatched' ||
-                                            !canReceive
-                                            " :class="[
-                                            props.transfer.status ===
-                                                'dispatched'
-                                                ? 'bg-yellow-500 hover:bg-yellow-600'
-                                                : statusOrder.indexOf(
-                                                    props.transfer.status
-                                                ) >
-                                                    statusOrder.indexOf(
-                                                        'dispatched'
-                                                    )
-                                                    ? 'bg-green-500'
-                                                    : 'bg-gray-300 cursor-not-allowed',
-                                        ]"
+                                        <button @click="openDeliveryForm()"
+                                            :disabled="isType['is_delivering'] || props.transfer?.status != 'dispatched'"
+                                            :class="[
+                                                props.transfer.status == 'dispatched'
+                                                    ? 'bg-yellow-300'
+                                                    : statusOrder.indexOf(props.transfer.status) >
+                                                        statusOrder.indexOf('dispatched')
+                                                        ? 'bg-green-500 cursor-not-allowed'
+                                                        : 'bg-gray-300 cursor-not-allowed',
+                                            ]"
                                             class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                                            <svg v-if="
-                                                isType['is_deliver'] &&
-                                                props.transfer.status ===
-                                                'dispatched'
-                                            " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg"
-                                                fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                    stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                                </path>
-                                            </svg>
-                                            <template v-else>
-                                                <img src="/assets/images/delivery.png" class="w-5 h-5 mr-2"
-                                                    alt="Delivered" />
-                                                <span class="text-sm font-bold text-white">
-                                                    {{
-                                                        statusOrder.indexOf(
-                                                            props.transfer.status
-                                                        ) >
-                                                            statusOrder.indexOf(
-                                                                "dispatched"
-                                                            )
-                                                            ? "Delivered"
-                                                            : isType["is_deliver"]
-                                                                ? "Please Wait..."
-                                                                : props.transfer
-                                                                    .status ===
-                                                                    "dispatched" &&
-                                                                    !canReceive
-                                                                    ? "Waiting to be delivered"
-                                                                    : "Deliver"
-                                                    }}
-                                                </span>
-                                            </template>
+                                            <img src="/assets/images/delivery.png" class="w-5 h-5 mr-2" alt="delivered" />
+                                            <span class="text-sm font-bold text-white">
+                                                {{
+                                                    statusOrder.indexOf(
+                                                        props.transfer.status
+                                                    ) > statusOrder.indexOf("delivered")
+                                                        ? "Delivered"
+                                                : isType['is_delivering'] ? 'Please Wait....' : "Mark as Delivered"
+                                                        }}
+                                            </span>
                                         </button>
                                         <span v-show="props.transfer?.delivered_at" class="text-sm text-gray-600">
                                             On {{ moment(props.transfer?.delivered_at).format("DD/MM/YYYY HH:mm") }}
                                         </span>
                                         <span v-show="props.transfer?.delivered_by" class="text-sm text-gray-600">
-                                            By
-                                            {{ props.transfer?.delivered_by?.name }}
+                                            By {{ props.transfer?.delivered_by?.name }}
                                         </span>
                                     </div>
 
                                     <!-- Pulse Indicator if currently at this status -->
-                                    <div v-if="
-                                        props.transfer.status === 'dispatched'
-                                    " class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
+                                    <div v-if="props.transfer.status === 'dispatched'"
+                                        class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
                                     </div>
                                 </div>
 
@@ -1428,8 +1388,180 @@
             </div>
         </Modal>
 
+        <!-- Delivery Form Modal -->
+        <Modal :show="showDeliveryModal" @close="closeDeliveryForm" maxWidth="4xl">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        Mark Transfer as Delivered
+                    </h2>
+                    <button @click="closeDeliveryForm" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
+                <!-- Dispatch Information Summary -->
+                <div v-if="props.transfer.dispatch?.length > 0" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 class="text-lg font-medium text-blue-900 mb-3">Dispatch Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="dispatch in props.transfer.dispatch" :key="dispatch.id" class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-blue-700">Driver:</span>
+                                <span class="text-sm text-blue-800">{{ dispatch.driver?.name || 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-blue-700">Phone:</span>
+                                <span class="text-sm text-blue-800">{{ dispatch.driver_number || 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-blue-700">Plate Number:</span>
+                                <span class="text-sm text-blue-800">{{ dispatch.plate_number || 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-blue-700">Dispatched Cartons:</span>
+                                <span class="text-sm text-blue-800">{{ dispatch.no_of_cartoons || 0 }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-blue-700">Dispatch Date:</span>
+                                <span class="text-sm text-blue-800">{{ dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString() : 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Delivery Form -->
+                <form @submit.prevent="submitDeliveryForm" class="space-y-6">
+                    <!-- Received Cartons Section -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Received Cartons</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="dispatch in props.transfer.dispatch" :key="dispatch.id" class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Received Cartons for {{ dispatch.driver?.name || 'Driver' }}
+                                </label>
+                                <input 
+                                    type="number" 
+                                    v-model="deliveryForm.received_cartons[dispatch.id]"
+                                    :min="0"
+                                    :max="dispatch.no_of_cartoons"
+                                    @input="validateReceivedCartons(dispatch.id, dispatch.no_of_cartoons)"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    :placeholder="`Max: ${dispatch.no_of_cartoons}`"
+                                />
+                                <p class="text-xs text-gray-500">
+                                    Dispatched: {{ dispatch.no_of_cartoons }} | 
+                                    Received: {{ deliveryForm.received_cartons[dispatch.id] || 0 }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload -->
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-medium text-gray-900">Upload Images</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Received Items Photos {{ hasDiscrepancy ? '(Required)' : '(Optional)' }}
+                                </label>
+                                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div class="space-y-1 text-center">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                        <div class="flex text-sm text-gray-600">
+                                            <label for="received-images-transfer" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                                <span>Upload images</span>
+                                                <input 
+                                                    id="received-images-transfer" 
+                                                    type="file" 
+                                                    multiple 
+                                                    accept="image/*"
+                                                    @change="handleImageUpload"
+                                                    class="sr-only"
+                                                />
+                                            </label>
+                                            <p class="pl-1">or drag and drop</p>
+                                        </div>
+                                        <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                                    </div>
+                                </div>
+                                <div v-if="deliveryForm.images.length > 0" class="mt-2">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div v-for="(image, index) in deliveryForm.images" :key="index" class="relative">
+                                            <img :src="image.preview" class="h-20 w-full object-cover rounded" />
+                                            <button @click="removeImage(index)" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                                                ×
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Notes (Optional)
+                                </label>
+                                <textarea 
+                                    v-model="deliveryForm.notes"
+                                    rows="4"
+                                    disabled
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
+                                    placeholder="Notes feature is currently disabled"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Validation Messages -->
+                    <div v-if="!isDeliveryFormValid" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Please fix the following issues:</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <li v-if="!Object.values(deliveryForm.received_cartons).some(qty => qty > 0)">
+                                            At least some cartons must be received
+                                        </li>
+                                        <li v-if="hasDiscrepancy && deliveryForm.images.length === 0 && !deliveryForm.acknowledgeDiscrepancy">
+                                            Either upload images or acknowledge the discrepancy
+                                        </li>
+                                        <li v-if="!Object.values(deliveryForm.received_cartons).some(qty => qty > 0)">
+                                            At least some cartons must be received
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <button 
+                            type="button"
+                            @click="closeDeliveryForm"
+                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            :disabled="isSubmittingDelivery || !isDeliveryFormValid"
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {{ isSubmittingDelivery ? 'Submitting...' : 'Mark as Delivered' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </Modal>
 
     </AuthenticatedLayout>
 </template>
@@ -1499,6 +1631,40 @@ const dispatchForm = ref({
 });
 
 const dispatchErrors = ref({});
+
+// delivery modal state
+const showDeliveryModal = ref(false);
+const isSubmittingDelivery = ref(false);
+
+const deliveryForm = ref({
+    received_cartons: {},
+    images: [],
+    notes: '',
+    acknowledgeDiscrepancy: false
+});
+
+// Computed properties for delivery form validation
+const hasDiscrepancy = computed(() => {
+    if (!props.transfer.dispatch?.length) return false;
+    
+    return props.transfer.dispatch.some(dispatch => {
+        const received = deliveryForm.value.received_cartons[dispatch.id] || 0;
+        return received < dispatch.no_of_cartoons;
+    });
+});
+
+const isDeliveryFormValid = computed(() => {
+    // At least some cartons must be received
+    const hasReceivedCartons = Object.values(deliveryForm.value.received_cartons).some(qty => qty > 0);
+    if (!hasReceivedCartons) return false;
+    
+    // If there's a discrepancy, either upload images or acknowledge
+    if (hasDiscrepancy.value && deliveryForm.value.images.length === 0 && !deliveryForm.value.acknowledgeDiscrepancy) {
+        return false;
+    }
+    
+    return true;
+});
 
 // Computed properties for driver options
 const driverOptions = computed(() => {
@@ -2265,6 +2431,116 @@ async function createDispatch() {
         }
     }
 }
+
+// Delivery modal methods
+const openDeliveryForm = () => {
+    showDeliveryModal.value = true;
+    // Initialize received cartons form
+    deliveryForm.value.received_cartons = {};
+    if (props.transfer.dispatch?.length > 0) {
+        props.transfer.dispatch.forEach(dispatch => {
+            deliveryForm.value.received_cartons[dispatch.id] = 0;
+        });
+    }
+    deliveryForm.value.images = [];
+    deliveryForm.value.notes = '';
+    deliveryForm.value.acknowledgeDiscrepancy = false;
+};
+
+const closeDeliveryForm = () => {
+    showDeliveryModal.value = false;
+    deliveryForm.value.received_cartons = {};
+    deliveryForm.value.images = [];
+    deliveryForm.value.notes = '';
+    deliveryForm.value.acknowledgeDiscrepancy = false;
+};
+
+const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            deliveryForm.value.images.push({
+                file: file,
+                preview: e.target.result
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+};
+
+const removeImage = (index) => {
+    deliveryForm.value.images.splice(index, 1);
+};
+
+const validateReceivedCartons = (dispatchId, maxCartons) => {
+    const currentValue = deliveryForm.value.received_cartons[dispatchId] || 0;
+    if (currentValue > maxCartons) {
+        deliveryForm.value.received_cartons[dispatchId] = maxCartons;
+        toast.warning(`Received cartons cannot exceed ${maxCartons}. Reset to ${maxCartons}.`);
+    }
+};
+
+const submitDeliveryForm = async () => {
+    if (!isDeliveryFormValid.value) {
+        toast.error('Please fix the validation errors before submitting.');
+        return;
+    }
+
+    isSubmittingDelivery.value = true;
+
+    try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('transfer_id', props.transfer.id);
+        formData.append('notes', deliveryForm.value.notes);
+        formData.append('acknowledge_discrepancy', deliveryForm.value.acknowledgeDiscrepancy);
+        
+        // Add received cartons data
+        Object.entries(deliveryForm.value.received_cartons).forEach(([dispatchId, quantity]) => {
+            formData.append(`received_cartons[${dispatchId}]`, quantity);
+        });
+        
+        // Add images
+        deliveryForm.value.images.forEach((image, index) => {
+            formData.append(`images[${index}]`, image.file);
+        });
+
+        const response = await axios.post(route("transfers.mark-delivered"), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        isSubmittingDelivery.value = false;
+        closeDeliveryForm();
+
+        Swal.fire({
+            title: "Success!",
+            text: "Transfer has been marked as delivered successfully.",
+            icon: "success",
+            confirmButtonText: "OK",
+        }).then(() => {
+            router.get(route("transfers.show", props.transfer?.id));
+        });
+
+    } catch (error) {
+        isSubmittingDelivery.value = false;
+        console.error('Delivery submission error:', error);
+        
+        let errorMessage = "Failed to mark transfer as delivered";
+        if (error.response?.data) {
+            errorMessage = error.response.data;
+        }
+        
+        toast.error(errorMessage);
+    }
+};
 
 const isSavingQty = ref([]);
 async function receivedQty(item, index) {

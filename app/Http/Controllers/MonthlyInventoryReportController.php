@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FacilityMonthlyInventoryReport;
+use App\Models\FacilityMonthlyReport;
+use App\Models\FacilityMonthlyReportItem;
 use App\Models\Product;
 use App\Models\Facility;
 use App\Jobs\GenerateMonthlyInventoryReportJob;
@@ -21,17 +22,8 @@ class MonthlyInventoryReportController extends Controller
     {
         $facilityId = auth()->user()->facility_id;
         
-        $query = FacilityMonthlyInventoryReport::with(['product:id,name,strength,dosage_form,unit', 'facility:id,name'])
-            ->where('facility_id', $facilityId);
-
-        // Apply filters
-        if ($request->filled('year')) {
-            $query->where('report_year', $request->year);
-        }
-        
-        if ($request->filled('month')) {
-            $query->where('report_month', $request->month);
-        }
+        $query = FacilityMonthlyReport::where('facility_id', $facilityId)
+            ->with(['items.product.category:id,name','items.product.dosage:id,name','facility.handledBy','approvedBy:id,name','submittedBy:id,name','reviewedBy:id,name','rejectedBy:id,name']);
         
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -39,21 +31,30 @@ class MonthlyInventoryReportController extends Controller
         
         if ($request->filled('product_id')) {
             if (is_array($request->product_id)) {
-                $query->whereIn('product_id', $request->product_id);
+                $query->whereIn('items.product_id', $request->product_id);
             } else {
-                $query->where('product_id', $request->product_id);
+                $query->where('items.product_id', $request->product_id);
             }
         }
 
-        $perPage = $request->get('per_page', 15);
-        $reports = $query->orderBy('report_year', 'desc')
-                        ->orderBy('report_month', 'desc')
-                        ->orderBy('product_id')
-                        ->paginate($perPage)
-                        ->withQueryString();
+        // Only fetch reports if both year and month are provided
+        if ($request->filled('month_year')) {
+            $reports = $query->orderBy('created_at', 'desc')
+                            ->first();
+        } else {
+            // Return empty collection if year or month is not provided
+            $reports = collect();
+        }
 
-        // Get filter options
-        $products = Product::select('id', 'name', 'strength', 'dosage_form')->get();
+        // Get the current facility to determine its type
+        $facility = auth()->user()->facility;
+        
+        // Get eligible products for this facility type for the filter dropdown
+        $products = collect();
+        if ($facility) {
+            $products = $facility->eligibleProducts()->select('products.id', 'products.name')->get();
+        }
+        
         $years = range(date('Y'), date('Y') - 5);
         $months = [
             1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
@@ -63,10 +64,11 @@ class MonthlyInventoryReportController extends Controller
 
         return Inertia::render('MonthlyInventoryReport/Index', [
             'reports' => $reports,
-            'filters' => $request->only(['year', 'month', 'status', 'product_id', 'per_page']),
+            'filters' => $request->only(['month_year', 'status', 'product_id']),
             'products' => $products,
             'years' => $years,
             'months' => $months,
+            'facilityType' => $facility ? $facility->facility_type : null,
         ]);
     }
 
@@ -79,20 +81,35 @@ class MonthlyInventoryReportController extends Controller
         $year = $request->get('year', date('Y'));
         $month = $request->get('month', date('n'));
         
-        // Get all products for the facility
-        $products = Product::select('id', 'name', 'strength', 'dosage_form', 'unit')->get();
+        // Get the current facility to determine its type
+        $facility = auth()->user()->facility;
+        if (!$facility) {
+            return redirect()->back()->with('error', 'Facility not found for current user.');
+        }
         
-        // Get existing reports for this period
-        $existingReports = FacilityMonthlyInventoryReport::where('facility_id', $facilityId)
-            ->where('report_year', $year)
-            ->where('report_month', $month)
-            ->with('product:id,name,strength,dosage_form,unit')
+        // Format the report period
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
+        
+        // Get or create the monthly report for this period
+        $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+            'facility_id' => $facilityId,
+            'report_period' => $reportPeriod,
+        ], [
+            'status' => 'draft',
+        ]);
+        
+        // Get eligible products for this facility type
+        $eligibleProducts = $facility->eligibleProducts()->select('products.id', 'products.name')->get();
+        
+        // Get existing report items for this period
+        $existingItems = FacilityMonthlyReportItem::where('parent_id', $monthlyReport->id)
+            ->with('product:id,name','product.dosage')
             ->get()
             ->keyBy('product_id');
 
         $reportData = [];
-        foreach ($products as $product) {
-            $existing = $existingReports->get($product->id);
+        foreach ($eligibleProducts as $product) {
+            $existing = $existingItems->get($product->id);
             $reportData[] = [
                 'product_id' => $product->id,
                 'product' => $product,
@@ -103,8 +120,6 @@ class MonthlyInventoryReportController extends Controller
                 'negative_adjustments' => $existing ? $existing->negative_adjustments : 0,
                 'closing_balance' => $existing ? $existing->closing_balance : 0,
                 'stockout_days' => $existing ? $existing->stockout_days : 0,
-                'comments' => $existing ? $existing->comments : '',
-                'status' => $existing ? $existing->status : 'draft',
                 'id' => $existing ? $existing->id : null,
             ];
         }
@@ -114,7 +129,10 @@ class MonthlyInventoryReportController extends Controller
             'year' => $year,
             'month' => $month,
             'monthName' => $this->getMonthName($month),
-            'facility' => auth()->user()->facility,
+            'facility' => $facility,
+            'reportId' => $monthlyReport->id,
+            'eligibleProductsCount' => $eligibleProducts->count(),
+            'facilityType' => $facility->facility_type,
         ]);
     }
 
@@ -134,12 +152,20 @@ class MonthlyInventoryReportController extends Controller
             'reports.*.positive_adjustments' => 'nullable|numeric|min:0',
             'reports.*.negative_adjustments' => 'nullable|numeric|min:0',
             'reports.*.stockout_days' => 'nullable|integer|min:0|max:31',
-            'reports.*.comments' => 'nullable|string|max:1000',
         ]);
 
         $facilityId = auth()->user()->facility_id;
         $year = $request->year;
         $month = $request->month;
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
+        
+        // Get or create the monthly report for this period
+        $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+            'facility_id' => $facilityId,
+            'report_period' => $reportPeriod,
+        ], [
+            'status' => 'draft',
+        ]);
         
         $savedCount = 0;
         $errors = [];
@@ -154,10 +180,8 @@ class MonthlyInventoryReportController extends Controller
                     - ($reportData['negative_adjustments'] ?? 0);
 
                 $data = [
-                    'facility_id' => $facilityId,
+                    'parent_id' => $monthlyReport->id,
                     'product_id' => $reportData['product_id'],
-                    'report_year' => $year,
-                    'report_month' => $month,
                     'opening_balance' => $reportData['opening_balance'],
                     'stock_received' => $reportData['stock_received'],
                     'stock_issued' => $reportData['stock_issued'],
@@ -165,15 +189,11 @@ class MonthlyInventoryReportController extends Controller
                     'negative_adjustments' => $reportData['negative_adjustments'] ?? 0,
                     'closing_balance' => $closingBalance,
                     'stockout_days' => $reportData['stockout_days'] ?? 0,
-                    'comments' => $reportData['comments'] ?? null,
-                    'status' => 'draft',
                 ];
 
-                FacilityMonthlyInventoryReport::updateOrCreate([
-                    'facility_id' => $facilityId,
+                FacilityMonthlyReportItem::updateOrCreate([
+                    'parent_id' => $monthlyReport->id,
                     'product_id' => $reportData['product_id'],
-                    'report_year' => $year,
-                    'report_month' => $month,
                 ], $data);
 
                 $savedCount++;
@@ -203,18 +223,24 @@ class MonthlyInventoryReportController extends Controller
         ]);
 
         $facilityId = auth()->user()->facility_id;
+        $reportPeriod = sprintf('%04d-%02d', $request->year, $request->month);
         
-        $updated = FacilityMonthlyInventoryReport::where('facility_id', $facilityId)
-            ->where('report_year', $request->year)
-            ->where('report_month', $request->month)
+        $monthlyReport = FacilityMonthlyReport::where('facility_id', $facilityId)
+            ->where('report_period', $reportPeriod)
             ->where('status', 'draft')
-            ->update([
-                'status' => 'submitted',
-                'submitted_at' => now(),
-                'submitted_by' => auth()->id(),
-            ]);
+            ->first();
 
-        return redirect()->back()->with('success', "Successfully submitted {$updated} reports for approval.");
+        if (!$monthlyReport) {
+            return redirect()->back()->with('error', 'No draft report found for this period.');
+        }
+
+        $monthlyReport->update([
+            'status' => 'submitted',
+            'submitted_at' => now(),
+            'submitted_by' => auth()->id(),
+        ]);
+
+        return redirect()->back()->with('success', "Successfully submitted report for approval.");
     }
 
     /**
@@ -225,16 +251,22 @@ class MonthlyInventoryReportController extends Controller
         $facilityId = auth()->user()->facility_id;
         $year = $request->get('year', date('Y'));
         $month = $request->get('month', date('n'));
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
         
-        $reports = FacilityMonthlyInventoryReport::with(['product:id,name,strength,dosage_form,unit', 'facility:id,name'])
-            ->where('facility_id', $facilityId)
-            ->where('report_year', $year)
-            ->where('report_month', $month)
+        $reports = FacilityMonthlyReportItem::with(['product:id,name','product.category:id,name', 'product.dosage:id,name', 'report.facility:id,name'])
+            ->whereHas('report', function ($q) use ($facilityId, $reportPeriod) {
+                $q->where('facility_id', $facilityId)
+                  ->where('report_period', $reportPeriod);
+            })
             ->orderBy('product_id')
             ->get();
 
+        if ($reports->isEmpty()) {
+            return redirect()->back()->with('error', 'No data found for the selected period.');
+        }
+
         $monthName = $this->getMonthName($month);
-        $facilityName = auth()->user()->facility->name;
+        $facilityName = auth()->user()->facility->name ?? 'Unknown Facility';
         
         $filename = "Monthly_Inventory_Report_{$facilityName}_{$monthName}_{$year}.csv";
         
@@ -255,33 +287,29 @@ class MonthlyInventoryReportController extends Controller
             // Add CSV headers
             fputcsv($file, [
                 'Item Name',
-                'Strength/Dose',
-                'Dosage Form', 
-                'Unit of Measurement',
+                'Category',
+                'Dosage Form',
                 'Opening Balance',
                 'Stock Received',
                 'Stock Issued',
                 'Positive Adjustments',
                 'Negative Adjustments',
                 'Closing Balance',
-                'Stockout Days',
-                'Comments'
+                'Stockout Days'
             ]);
 
             foreach ($reports as $report) {
                 fputcsv($file, [
-                    $report->product->name,
-                    $report->product->strength ?? '',
-                    $report->product->dosage_form ?? '',
-                    $report->product->unit ?? '',
-                    $report->opening_balance,
-                    $report->stock_received,
-                    $report->stock_issued,
-                    $report->positive_adjustments,
-                    $report->negative_adjustments,
-                    $report->closing_balance,
-                    $report->stockout_days,
-                    $report->comments ?? '',
+                    $report->product->name ?? 'Unknown Product',
+                    $report->product->category->name ?? 'N/A',
+                    $report->product->dosage->name ?? 'N/A',
+                    $report->opening_balance ?? 0,
+                    $report->stock_received ?? 0,
+                    $report->stock_issued ?? 0,
+                    $report->positive_adjustments ?? 0,
+                    $report->negative_adjustments ?? 0,
+                    $report->closing_balance ?? 0,
+                    $report->stockout_days ?? 0,
                 ]);
             }
 
@@ -299,21 +327,38 @@ class MonthlyInventoryReportController extends Controller
         $facilityId = auth()->user()->facility_id;
         $year = $request->get('year', date('Y'));
         $month = $request->get('month', date('n'));
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
         
-        $query = FacilityMonthlyInventoryReport::where('facility_id', $facilityId)
-            ->where('report_year', $year)
-            ->where('report_month', $month);
+        $monthlyReport = FacilityMonthlyReport::where('facility_id', $facilityId)
+            ->where('report_period', $reportPeriod)
+            ->first();
+
+        if (!$monthlyReport) {
+            return response()->json([
+                'total_products' => 0,
+                'total_opening_balance' => 0,
+                'total_received' => 0,
+                'total_issued' => 0,
+                'total_closing_balance' => 0,
+                'total_stockout_days' => 0,
+                'draft_reports' => 0,
+                'submitted_reports' => 0,
+                'approved_reports' => 0,
+            ]);
+        }
+
+        $items = $monthlyReport->items();
 
         $summary = [
-            'total_products' => $query->count(),
-            'total_opening_balance' => $query->sum('opening_balance'),
-            'total_received' => $query->sum('stock_received'),
-            'total_issued' => $query->sum('stock_issued'),
-            'total_closing_balance' => $query->sum('closing_balance'),
-            'total_stockout_days' => $query->sum('stockout_days'),
-            'draft_reports' => $query->clone()->where('status', 'draft')->count(),
-            'submitted_reports' => $query->clone()->where('status', 'submitted')->count(),
-            'approved_reports' => $query->clone()->where('status', 'approved')->count(),
+            'total_products' => $items->count(),
+            'total_opening_balance' => $items->sum('opening_balance') ?? 0,
+            'total_received' => $items->sum('stock_received') ?? 0,
+            'total_issued' => $items->sum('stock_issued') ?? 0,
+            'total_closing_balance' => $items->sum('closing_balance') ?? 0,
+            'total_stockout_days' => $items->sum('stockout_days') ?? 0,
+            'draft_reports' => $monthlyReport->status === 'draft' ? 1 : 0,
+            'submitted_reports' => $monthlyReport->status === 'submitted' ? 1 : 0,
+            'approved_reports' => $monthlyReport->status === 'approved' ? 1 : 0,
         ];
 
         return response()->json($summary);
@@ -324,13 +369,111 @@ class MonthlyInventoryReportController extends Controller
      */
     public function generateReport(Request $request)
     {
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:2030',
+            'month' => 'nullable|integer|min:1|max:12',
+        ]);
+
         $facilityId = auth()->user()->facility_id;
         $year = $request->get('year', date('Y'));
         $month = $request->get('month', date('n'));
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
 
-        GenerateMonthlyInventoryReportJob::dispatch($facilityId, $year, $month);
+        try {
+            // Check if facility exists
+            if (!$facilityId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facility not found for current user.'
+                ], 400);
+            }
 
-        return redirect()->back()->with('success', 'Report generation triggered successfully.');
+            // Get the current facility to determine its type
+            $facility = auth()->user()->facility;
+            if (!$facility) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facility not found for current user.'
+                ], 400);
+            }
+
+            // Create or get the monthly report
+            $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+                'facility_id' => $facilityId,
+                'report_period' => $reportPeriod,
+            ], [
+                'status' => 'draft',
+            ]);
+
+            // Get eligible products for this facility type
+            $eligibleProducts = $facility->eligibleProducts()->select('products.id', 'products.name')->get();
+            
+            if ($eligibleProducts->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "No eligible products found for facility type: {$facility->facility_type}"
+                ], 400);
+            }
+            
+            $createdCount = 0;
+            $updatedCount = 0;
+            
+            foreach ($eligibleProducts as $product) {
+                $item = FacilityMonthlyReportItem::firstOrCreate([
+                    'parent_id' => $monthlyReport->id,
+                    'product_id' => $product->id,
+                ], [
+                    'opening_balance' => 0,
+                    'stock_received' => 0,
+                    'stock_issued' => 0,
+                    'positive_adjustments' => 0,
+                    'negative_adjustments' => 0,
+                    'closing_balance' => 0,
+                    'stockout_days' => 0,
+                ]);
+                
+                if ($item->wasRecentlyCreated) {
+                    $createdCount++;
+                } else {
+                    $updatedCount++;
+                }
+            }
+
+            $message = "Report generation completed successfully.";
+            if ($createdCount > 0) {
+                $message .= " {$createdCount} new items created.";
+            }
+            if ($updatedCount > 0) {
+                $message .= " {$updatedCount} existing items updated.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'created_count' => $createdCount,
+                    'updated_count' => $updatedCount,
+                    'total_products' => $eligibleProducts->count(),
+                    'report_period' => $reportPeriod,
+                    'facility_id' => $facilityId,
+                    'facility_type' => $facility->facility_type
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Monthly report generation failed: ' . $e->getMessage(), [
+                'facility_id' => $facilityId,
+                'year' => $year,
+                'month' => $month,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate report: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

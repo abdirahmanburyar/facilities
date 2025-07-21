@@ -905,7 +905,8 @@ class ReportController extends Controller
 
     /**
      * Get facility inventory summary for movements
-     */
+    */
+    
     public function inventoryMovementsSummary(Request $request)
     {
         $query = FacilityInventoryMovement::where('facility_id', auth()->user()->facility_id);

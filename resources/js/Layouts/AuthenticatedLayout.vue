@@ -167,7 +167,7 @@
                                             $page.props.auth.user?.name
                                             }}</span>
                                         <span class="user-name">{{
-                                            $page.props.warehouse?.name
+                                            $page.props.facility?.name
                                             }}</span>
                                     </div>
                                 </div>

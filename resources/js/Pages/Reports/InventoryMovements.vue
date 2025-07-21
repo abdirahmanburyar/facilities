@@ -5,9 +5,20 @@
             <div class="mb-[80px]">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="text-gray-900">
-                        <!-- Header with Export Button -->
+                        <!-- Header with Back Button and Export Button -->
                         <div class="flex justify-between items-center mb-4 px-4 py-3">
-                            <h2 class="text-lg font-bold text-gray-900">Inventory Movements</h2>
+                            <div class="flex items-center space-x-4">
+                                <Link 
+                                    :href="route('reports.index')"
+                                    class="inline-flex items-center px-3 py-1 bg-gray-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 focus:bg-gray-600 active:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                >
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                    </svg>
+                                    Go Back
+                                </Link>
+                                <h2 class="text-lg font-bold text-gray-900">Inventory Movements</h2>
+                            </div>
                             <button 
                                 @click="exportData" 
                                 :disabled="isExporting"
@@ -122,39 +133,26 @@
                                     @click="clearFilters"
                                     class="inline-flex items-center px-3 py-1 bg-gray-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 focus:bg-gray-600 active:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                 >
-                                    Clear
-                                </button>
-                                <button 
-                                    @click="applyFilters"
-                                    class="inline-flex items-center px-3 py-1 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                >
-                                    Apply
+                                    Clear Filters
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Summary Cards -->
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 mx-4">
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-                                <div class="text-green-600 text-xs font-medium">Total Received</div>
-                                <div class="text-green-900 text-lg font-bold">{{ formatNumber(summary.total_received || 0) }}</div>
-                            </div>
-                            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <div class="text-red-600 text-xs font-medium">Total Issued</div>
-                                <div class="text-red-900 text-lg font-bold">{{ formatNumber(summary.total_issued || 0) }}</div>
-                            </div>
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div class="text-blue-600 text-xs font-medium">Received Count</div>
-                                <div class="text-blue-900 text-lg font-bold">{{ formatNumber(summary.received_count || 0) }}</div>
-                            </div>
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                                <div class="text-purple-600 text-xs font-medium">Issued Count</div>
-                                <div class="text-purple-900 text-lg font-bold">{{ formatNumber(summary.issued_count || 0) }}</div>
+
+
+                        <!-- Loading Indicator -->
+                        <div v-if="isLoading" class="flex justify-center items-center py-8 mx-4">
+                            <div class="flex items-center space-x-2">
+                                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="text-sm text-gray-600">Loading movements...</span>
                             </div>
                         </div>
 
                         <!-- Table -->
-                        <div class="overflow-x-auto mx-4">
+                        <div v-else class="overflow-x-auto mx-4">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -234,7 +232,7 @@
     </AuthenticatedLayout>
 </template>
 
-<script>
+<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
@@ -242,161 +240,169 @@ import Multiselect from 'vue-multiselect'
 import 'vue-multiselect/dist/vue-multiselect.css'
 import '@/Components/multiselect.css'
 import { TailwindPagination } from "laravel-vue-pagination"
+import { ref, computed, watch, onMounted } from 'vue'
 
-export default {
-    components: {
-        AuthenticatedLayout,
-        Head,
-        Link,
-        Multiselect,
-        TailwindPagination
-    },
-    props: {
-        movements: Object,
-        products: Array
-    },
-    data() {
-        return {
-            summary: {},
-            filters: {
-                product_id: [],
-                movement_type: [],
-                source_type: [],
-                start_date: '',
-                end_date: '',
-                per_page: 25
-            },
-            movementTypeOptions: [
-                { label: 'Received Quantity', value: 'facility_received' },
-                { label: 'Issued Quantity', value: 'facility_issued' }
-            ],
-            sourceTypeOptions: [
-                { label: 'Transfer', value: 'transfer' },
-                { label: 'Order', value: 'order' },
-                { label: 'Dispense', value: 'dispense' }
-            ],
-            isExporting: false
+const props = defineProps({
+    movements: Object,
+    products: Array
+})
+
+const isExporting = ref(false)
+const isLoading = ref(false)
+
+const filters = ref({
+    product_id: [],
+    movement_type: [],
+    source_type: [],
+    start_date: '',
+    end_date: '',
+    per_page: 25
+})
+
+const movementTypeOptions = [
+    { label: 'Received Quantity', value: 'facility_received' },
+    { label: 'Issued Quantity', value: 'facility_issued' }
+]
+
+const sourceTypeOptions = [
+    { label: 'Transfer', value: 'transfer' },
+    { label: 'Order', value: 'order' },
+    { label: 'Dispense', value: 'dispense' }
+]
+
+const hasActiveFilters = computed(() => {
+    return filters.value.product_id.length > 0 ||
+           filters.value.movement_type.length > 0 ||
+           filters.value.source_type.length > 0 ||
+           filters.value.start_date ||
+           filters.value.end_date
+})
+
+// Watch for filter changes and automatically apply them with debounce
+let filterTimeout
+watch(filters, (newFilters) => {
+    clearTimeout(filterTimeout)
+    isLoading.value = true
+    filterTimeout = setTimeout(() => {
+        const filterData = {
+            product_id: newFilters.product_id.map(p => p.id || p),
+            movement_type: newFilters.movement_type.map(m => m.value || m),
+            source_type: newFilters.source_type.map(s => s.value || s),
+            start_date: newFilters.start_date,
+            end_date: newFilters.end_date,
+            per_page: newFilters.per_page
         }
-    },
-    computed: {
-        hasActiveFilters() {
-            return this.filters.product_id.length > 0 ||
-                   this.filters.movement_type.length > 0 ||
-                   this.filters.source_type.length > 0 ||
-                   this.filters.start_date ||
-                   this.filters.end_date;
-        }
-    },
-    mounted() {
-        this.loadSummary()
-    },
-    methods: {
-        applyFilters() {
-            const filterData = {
-                product_id: this.filters.product_id.map(p => p.id || p),
-                movement_type: this.filters.movement_type.map(m => m.value || m),
-                source_type: this.filters.source_type.map(s => s.value || s),
-                start_date: this.filters.start_date,
-                end_date: this.filters.end_date,
-                per_page: this.filters.per_page
+        
+        router.get(route('reports.inventory-movements'), filterData, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isLoading.value = false
             }
-            
-            router.get(route('reports.inventory-movements'), filterData, {
-                preserveState: true,
-                preserveScroll: true
-            })
-        },
-        clearFilters() {
-            this.filters = {
-                product_id: [],
-                movement_type: [],
-                source_type: [],
-                start_date: '',
-                end_date: '',
-                per_page: 25
-            }
-            this.applyFilters()
-        },
-        async exportData() {
-            this.isExporting = true
-            try {
-                const filterData = {
-                    product_id: this.filters.product_id.map(p => p.id || p),
-                    movement_type: this.filters.movement_type.map(m => m.value || m),
-                    source_type: this.filters.source_type.map(s => s.value || s),
-                    start_date: this.filters.start_date,
-                    end_date: this.filters.end_date
-                }
-                
-                const params = new URLSearchParams()
-                Object.keys(filterData).forEach(key => {
-                    if (Array.isArray(filterData[key])) {
-                        filterData[key].forEach(value => {
-                            if (value) params.append(`${key}[]`, value)
-                        })
-                    } else if (filterData[key]) {
-                        params.append(key, filterData[key])
-                    }
-                })
-                
-                window.open(`${route('reports.inventory-movements.export')}?${params}`, '_blank')
-            } catch (error) {
-                console.error('Export failed:', error)
-            } finally {
-                this.isExporting = false
-            }
-        },
-        async loadSummary() {
-            try {
-                const response = await fetch(route('reports.inventory-movements.summary'))
-                this.summary = await response.json()
-            } catch (error) {
-                console.error('Failed to load summary:', error)
-            }
-        },
-        formatNumber(number) {
-            return new Intl.NumberFormat().format(number)
-        },
-        formatDate(date) {
-            return new Date(date).toLocaleDateString()
-        },
-        formatDateTime(datetime) {
-            return new Date(datetime).toLocaleString()
-        },
-        formatMovementType(type) {
-            if (type === 'facility_received') return 'Received Quantity'
-            if (type === 'facility_issued') return 'Issued Quantity'
-            return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
-        },
-        movementTypeClass(type) {
-            return type === 'facility_received' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-        },
-        sourceTypeClass(type) {
-            const classes = {
-                transfer: 'bg-blue-100 text-blue-800',
-                order: 'bg-purple-100 text-purple-800',
-                dispense: 'bg-orange-100 text-orange-800'
-            }
-            return classes[type] || 'bg-gray-100 text-gray-800'
-        },
-        goToPage(page) {
-            const filterData = {
-                product_id: this.filters.product_id.map(p => p.id || p),
-                movement_type: this.filters.movement_type.map(m => m.value || m),
-                source_type: this.filters.source_type.map(s => s.value || s),
-                start_date: this.filters.start_date,
-                end_date: this.filters.end_date,
-                per_page: this.filters.per_page,
-                page: page
-            }
-            
-            router.get(route('reports.inventory-movements'), filterData, {
-                preserveState: true,
-                preserveScroll: true
-            })
-        }
+        })
+    }, 300) // 300ms debounce
+}, { deep: true })
+
+const clearFilters = () => {
+    filters.value = {
+        product_id: [],
+        movement_type: [],
+        source_type: [],
+        start_date: '',
+        end_date: '',
+        per_page: 25
     }
 }
+
+const exportData = async () => {
+    isExporting.value = true
+    try {
+        const filterData = {
+            product_id: filters.value.product_id.map(p => p.id || p),
+            movement_type: filters.value.movement_type.map(m => m.value || m),
+            source_type: filters.value.source_type.map(s => s.value || s),
+            start_date: filters.value.start_date,
+            end_date: filters.value.end_date
+        }
+        
+        const params = new URLSearchParams()
+        Object.keys(filterData).forEach(key => {
+            if (Array.isArray(filterData[key])) {
+                filterData[key].forEach(value => {
+                    if (value) params.append(`${key}[]`, value)
+                })
+            } else if (filterData[key]) {
+                params.append(key, filterData[key])
+            }
+        })
+        
+        window.open(`${route('reports.inventory-movements.export')}?${params}`, '_blank')
+    } catch (error) {
+        console.error('Export failed:', error)
+    } finally {
+        isExporting.value = false
+    }
+}
+
+
+
+const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number)
+}
+
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString()
+}
+
+const formatDateTime = (datetime) => {
+    return new Date(datetime).toLocaleString()
+}
+
+const formatMovementType = (type) => {
+    if (type === 'facility_received') return 'Received Quantity'
+    if (type === 'facility_issued') return 'Issued Quantity'
+    return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+const movementTypeClass = (type) => {
+    return type === 'facility_received' 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-red-100 text-red-800'
+}
+
+const sourceTypeClass = (type) => {
+    const classes = {
+        transfer: 'bg-blue-100 text-blue-800',
+        order: 'bg-purple-100 text-purple-800',
+        dispense: 'bg-orange-100 text-orange-800'
+    }
+    return classes[type] || 'bg-gray-100 text-gray-800'
+}
+
+const goToPage = (page) => {
+    isLoading.value = true
+    const filterData = {
+        product_id: filters.value.product_id.map(p => p.id || p),
+        movement_type: filters.value.movement_type.map(m => m.value || m),
+        source_type: filters.value.source_type.map(s => s.value || s),
+        start_date: filters.value.start_date,
+        end_date: filters.value.end_date,
+        per_page: filters.value.per_page,
+        page: page
+    }
+    
+    router.get(route('reports.inventory-movements'), filterData, {
+        preserveState: true,
+        preserveScroll: true,
+        onFinish: () => {
+            isLoading.value = false
+        }
+    })
+}
+
+onMounted(() => {
+    // Component mounted successfully
+    console.log('InventoryMovements component mounted')
+})
+
 </script>

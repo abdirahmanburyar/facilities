@@ -269,6 +269,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
         Route::post('/dispatch-info', [TransferController::class, 'dispatchInfo'])->name('transfers.dispatch-info');
 
+        // mark transfer as delivered
+        Route::post('/mark-delivered', [TransferController::class, 'markDelivered'])->name('transfers.mark-delivered');
+
     });
     // Report Routes
     Route::controller(ReportController::class)
@@ -322,6 +325,20 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/orders', 'orders')->name('orders');
             Route::get('/orders/summary', 'ordersSummary')->name('orders.summary');
             Route::get('/orders/export', 'exportOrders')->name('orders.export');
+        });
+
+    // Monthly Inventory Report Routes
+    Route::controller(MonthlyInventoryReportController::class)
+        ->prefix('monthly-reports')
+        ->name('reports.monthly-reports.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/store', 'store')->name('store');
+            Route::post('/submit', 'submit')->name('submit');
+            Route::get('/export', 'export')->name('export');
+            Route::get('/summary', 'summary')->name('summary');
+            Route::post('/generate', 'generateReport')->name('generate');
         });
 
     // Reason Management Routes
