@@ -966,9 +966,9 @@
                                 <div class="relative">
                                     <div class="flex flex-col">
                                         <button @click="openDeliveryForm()"
-                                            :disabled="isType['is_delivering'] || props.transfer?.status != 'dispatched'"
+                                            :disabled="isType['is_delivering'] || props.transfer?.status != 'dispatched' || !canReceive"
                                             :class="[
-                                                props.transfer.status == 'dispatched'
+                                                props.transfer.status == 'dispatched' && canReceive
                                                     ? 'bg-yellow-300'
                                                     : statusOrder.indexOf(props.transfer.status) >
                                                         statusOrder.indexOf('dispatched')
@@ -983,8 +983,12 @@
                                                         props.transfer.status
                                                     ) > statusOrder.indexOf("delivered")
                                                         ? "Delivered"
-                                                : isType['is_delivering'] ? 'Please Wait....' : "Mark as Delivered"
-                                                        }}
+                                                        : isType['is_delivering'] 
+                                                            ? 'Please Wait....' 
+                                                            : !canReceive 
+                                                                ? 'Not Eligible' 
+                                                                : "Mark as Delivered"
+                                                }}
                                             </span>
                                         </button>
                                         <span v-show="props.transfer?.delivered_at" class="text-sm text-gray-600">
