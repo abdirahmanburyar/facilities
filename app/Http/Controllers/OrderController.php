@@ -157,6 +157,7 @@ class OrderController extends Controller
                 'items' => 'required|array',
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.quantity' => 'required|numeric',
+                'items.*.amc' => 'required|numeric',
             ],[
                 'items.*.product_id.required' => 'Item is required',
             ]);
@@ -188,6 +189,7 @@ class OrderController extends Controller
                         'quantity_to_release' => 0, // Initialize to 0, will be updated as inventory is allocated
                         'no_of_days' => $item['no_of_days'],
                         'days' => $item['no_of_days'],
+                        'amc' => $item['amc'],
                         'status' => 'pending',
                     ]);
 
@@ -1095,6 +1097,7 @@ class OrderController extends Controller
     public function checkInventory(Request $request)
     {
         try {    
+            logger()->info('Checking Inventory', ['request' => $request->all()]);
             $request->validate([
                 'product_id' => 'required|exists:products,id'
             ]);
@@ -1140,7 +1143,7 @@ class OrderController extends Controller
     
             // Get last 4 months for AMC calculation (exclude current month)
             $months = [];
-            for ($i = 1; $i <= 4; $i++) {
+            for ($i = 1; $i <= 3; $i++) {
                 $months[] = Carbon::now()->subMonths($i)->format('Y-m');
             }
 
@@ -1154,6 +1157,8 @@ class OrderController extends Controller
     
             // Average Monthly Consumption (AMC) = total / 4 months
             $amc = $totalConsumption / 3;
+
+            logger()->info('Total Consumption', ['amc' => $amc]);
     
             // Determine days since last received order update, fallback to quarter start if none
             $lastReceivedOrder = Order::where('facility_id', $facility->id)
@@ -1204,19 +1209,7 @@ class OrderController extends Controller
                     $q->where('expiry_date', '>=', Carbon::now()->addMonths(1)->toDateString());
                 })->withSum('items', 'quantity')
                 ->first();
-    
-            // if ($requiredQuantity > $totalInventory && (int) $totalInventory->items_sum_quantity ?? 0) {
-            //     return response()->json([
-            //         'name' => $product->name,
-            //         'quantity' => $requiredQuantity,
-            //         'soh' => $soh,
-            //         'amc' => $amc,
-            //         'days_since_quarter_start' => $daysRemaining,
-            //         'no_of_days' => $daysRemaining,
-            //         'insufficient_inventory' => false
-            //     ], 200);
-            // }
-    
+       
     
             return response()->json([
                 'name' => $product->name,
