@@ -447,8 +447,7 @@
                                         <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
                                     </div>
                                     <button
-                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
-                                        :disabled="!props.order.status == 'received' || !props.order.status == 'delivered'"
+                                        v-if="props.order.status === 'delivered' && item.received_quantity < item.quantity_to_release"
                                         @click="openBackOrderModal(item)"
                                         class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
                                         Back Order
@@ -520,11 +519,15 @@
                                         <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
                                     </div>
                                     <button
-                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
+                                        v-if="props.order.status === 'delivered' && item.received_quantity < item.quantity_to_release"
                                         @click="openBackOrderModal(item)"
                                         class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
                                         Back Order
                                     </button>
+                                    <div v-if="props.order.status !== 'delivered' && item.received_quantity < item.quantity_to_release" 
+                                         class="mt-2 px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs w-full text-center">
+                                        Back Order available after delivery
+                                    </div>
                                     <label for="days">No. of Days</label>
                                     <input type="number" placeholder="0" v-model="item.days" readonly
                                         class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
