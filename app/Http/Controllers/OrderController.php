@@ -406,8 +406,10 @@ class OrderController extends Controller
                         'allocations_count' => $item->inventory_allocations->count()
                     ]);
                     
-                    // Only flag items that have allocated quantity but no received quantity and no documentation
-                    // This indicates lost inventory that needs to be accounted for
+                    // Check if there's a mismatch between received quantity and final quantity
+                    $quantityMismatch = $totalFinalQuantity - (float)$item->received_quantity;
+                    
+                    // Case 1: Allocated inventory not received at all
                     if ($totalFinalQuantity > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
                         logger()->warning('Invalid item: Allocated inventory not received', [
                             'item_id' => $item->id,
@@ -420,6 +422,22 @@ class OrderController extends Controller
                             'quantity_to_release' => $item->quantity_to_release,
                             'received_quantity' => $item->received_quantity,
                             'issue' => 'Allocated inventory not received - needs packing list difference or back order'
+                        ];
+                    }
+                    // Case 2: Quantity mismatch exists but no differences are saved to database
+                    elseif ($quantityMismatch > 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                        logger()->warning('Invalid item: Quantity mismatch without documented differences', [
+                            'item_id' => $item->id,
+                            'product_name' => $item->product->name,
+                            'total_final_quantity' => $totalFinalQuantity,
+                            'received_quantity' => $item->received_quantity,
+                            'quantity_mismatch' => $quantityMismatch
+                        ]);
+                        $invalidItems[] = [
+                            'product_name' => $item->product->name ?? 'Unknown Product',
+                            'quantity_to_release' => $item->quantity_to_release,
+                            'received_quantity' => $item->received_quantity,
+                            'issue' => "Quantity mismatch detected: ${quantityMismatch} units need to be accounted for. Please fill out backorder records for the missing items."
                         ];
                     }
                 }

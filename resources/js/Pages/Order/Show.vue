@@ -1443,37 +1443,16 @@ const openBackOrderModal = (item) => {
         });
     }
 
-    // If no existing differences, pre-populate based on inventory allocations
+    // If no existing differences, show message that user must manually fill out backorder records
     if (
         (!item.differences || item.differences.length === 0) &&
         item.inventory_allocations &&
         item.inventory_allocations.length > 0
     ) {
         const missingQty = item.quantity_to_release - (item.received_quantity || 0);
-        let remainingToAllocate = missingQty;
-        item.inventory_allocations.forEach((allocation) => {
-            if (remainingToAllocate > 0) {
-                const allocationRatio = allocation.allocated_quantity / item.quantity_to_release;
-                let batchMissingQty = Math.min(
-                    Math.round(missingQty * allocationRatio),
-                    allocation.allocated_quantity,
-                    remainingToAllocate
-                );
-                if (batchMissingQty > 0) {
-                    const differences = getBatchBackOrders(allocation.id);
-                    differences.push({
-                        inventory_allocation_id: allocation.id,
-                        quantity: batchMissingQty,
-                        status: "Missing",
-                        notes: "",
-                        batch_number: allocation.batch_number,
-                        barcode: allocation.barcode,
-                        isExisting: false,
-                    });
-                    remainingToAllocate -= batchMissingQty;
-                }
-            }
-        });
+        if (missingQty > 0) {
+            toast.info(`Please manually fill out backorder records for ${missingQty} missing units. Click "Add Item" for each allocation to create backorder entries.`);
+        }
     }
     showBackOrderModal.value = true;
 };
@@ -1640,6 +1619,18 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
 const message = ref('');
 const saveBackOrders = async () => {
     message.value = "";
+    
+    // Check if any backorder records have been created
+    if (totalBatchBackOrderQuantity.value === 0) {
+        Swal.fire({
+            title: "No Backorder Records",
+            text: "Please create backorder records for the missing items before saving. Click 'Add Item' for each allocation to create the necessary backorder entries.",
+            icon: "warning",
+            confirmButtonText: "OK",
+        });
+        return;
+    }
+    
     if (totalBatchBackOrderQuantity.value !== missingQuantity.value) {
         Swal.fire({
             title: "Cannot Save",
@@ -1894,7 +1885,7 @@ const performStatusChange = async (orderId, newStatus, type) => {
                 router.get(route("orders.show", props.order.id), {}, {
                     preserveScroll: true,
                     preserveState: true,
-                    only: ['orders']
+                    only: ['order']
                 });
             });
         })
