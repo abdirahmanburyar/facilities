@@ -430,21 +430,23 @@ function getResults(page = 1) {
                                 <th class="px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Item</th>
                                 <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Category</th>
                                 <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">UoM</th>
-                                <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="3">Item Details</th>
+                                <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="4">Item Details</th>
                                 <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Total QTY on Hand</th>
                                 <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Reorder Level</th>
+                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Status</th>
                                 <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Actions</th>
                             </tr>
                             <tr style="background-color: #F4F7FB;">
                                 <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">QTY</th>
                                 <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Batch Number</th>
                                 <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Expiry Date</th>
+                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template v-if="props.inventories.data.length === 0">
                                 <tr>
-                                    <td colspan="10" class="text-center py-8 text-gray-500 bg-gray-50">
+                                    <td colspan="11" class="text-center py-8 text-gray-500 bg-gray-50">
                                         <div class="flex flex-col items-center justify-center gap-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 118 0v2m-4 4a4 4 0 01-4-4H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2a4 4 0 01-4 4z" /></svg>
                                             <span>No inventory data found.</span>
@@ -460,8 +462,47 @@ function getResults(page = 1) {
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.quantity }}</td>
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.batch_number }}</td>
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ formatDate(item.expiry_date) }}</td>
+                                    <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center">
+                                        <div class="flex items-center justify-center">
+                                            <div v-if="isOutOfStock(item)" class="mr-1">
+                                                <img src="/assets/images/out_stock.png" title="Out of Stock" class="w-5 h-5" alt="Out of Stock" />
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.items.reduce((sum, item) => sum + item.quantity, 0) }}</td>
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.reorder_level }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">
+                                        <div class="flex items-center space-x-2">
+                                            <div v-if="isLowStock(inventory)" class="flex items-center">
+                                                <img
+                                                    src="/assets/images/low_stock.png"
+                                                    title="Low Stock"
+                                                    class="w-6 h-6"
+                                                    alt="Low Stock"
+                                                />
+                                            </div>
+
+                                            <div v-if="isOutOfStock(inventory)" class="flex items-center">
+                                                <img
+                                                    src="/assets/images/out_stock.png"
+                                                    title="Out of Stock"
+                                                    class="w-6 h-6"
+                                                    alt="Out of Stock"
+                                                />
+                                            </div>
+                                            <div
+                                                v-if="!isLowStock(inventory) && !isOutOfStock(inventory)"
+                                                class="flex items-center"
+                                            >
+                                                <img
+                                                    src="/assets/images/in_stock.png"
+                                                    title="In Stock"
+                                                    class="w-6 h-6"
+                                                    alt="In Stock"
+                                                />
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-4 whitespace-nowrap text-xs font-medium align-top">
                                         <div class="flex items-center space-x-3">
                                             <div v-if="isLowStock(inventory)">

@@ -23,33 +23,6 @@
                     </div>
                 </div>
 
-                <!-- Asset Location Filters -->
-                <div v-if="selectedSource" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Location Filters</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Asset Location</label>
-                            <Multiselect v-model="selectedAssetLocation" :options="assetLocationOptions" placeholder="All Asset Locations"
-                                label="label" track-by="value" :show-labels="false" :close-on-select="true"
-                                :clear-on-select="false" :preserve-search="true" />
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Sub Location</label>
-                            <Multiselect v-model="selectedSubLocation" :options="subLocationOptions" placeholder="All Sub Locations"
-                                label="label" track-by="value" :show-labels="false" :close-on-select="true"
-                                :clear-on-select="false" :preserve-search="true" :disabled="!selectedAssetLocation" />
-                        </div>
-
-                        <div class="flex items-end">
-                            <button @click="clearLocationFilters"
-                                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm">
-                                Clear Location Filters
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Back Order Content -->
                 <div v-if="selectedSource" class="space-y-8">
                     <!-- Back Order Information Card -->
@@ -496,76 +469,12 @@ const backOrderInfo = ref(null);
 const parentAttachments = ref([]);
 const sourceOptions = ref([]);
 
-// Asset Location filter variables
-const selectedAssetLocation = ref(null);
-const selectedSubLocation = ref(null);
-const subLocationOptions = ref([]);
-
-// Asset Location options as array of strings
-const assetLocationOptions = ref([
-    { label: 'Warehouse A', value: 'warehouse_a' },
-    { label: 'Warehouse B', value: 'warehouse_b' },
-    { label: 'Storage Room 1', value: 'storage_room_1' },
-    { label: 'Storage Room 2', value: 'storage_room_2' },
-    { label: 'Loading Dock', value: 'loading_dock' },
-    { label: 'Office Area', value: 'office_area' },
-    { label: 'Maintenance Bay', value: 'maintenance_bay' },
-    { label: 'Equipment Room', value: 'equipment_room' }
-]);
-
-// Sub Location mapping based on Asset Location
-const subLocationMapping = {
-    'warehouse_a': [
-        { label: 'Section A1', value: 'section_a1' },
-        { label: 'Section A2', value: 'section_a2' },
-        { label: 'Section A3', value: 'section_a3' }
-    ],
-    'warehouse_b': [
-        { label: 'Section B1', value: 'section_b1' },
-        { label: 'Section B2', value: 'section_b2' },
-        { label: 'Section B3', value: 'section_b3' }
-    ],
-    'storage_room_1': [
-        { label: 'Shelf 1', value: 'shelf_1' },
-        { label: 'Shelf 2', value: 'shelf_2' },
-        { label: 'Shelf 3', value: 'shelf_3' }
-    ],
-    'storage_room_2': [
-        { label: 'Shelf 1', value: 'shelf_1' },
-        { label: 'Shelf 2', value: 'shelf_2' },
-        { label: 'Shelf 3', value: 'shelf_3' }
-    ],
-    'loading_dock': [
-        { label: 'Dock 1', value: 'dock_1' },
-        { label: 'Dock 2', value: 'dock_2' },
-        { label: 'Dock 3', value: 'dock_3' }
-    ],
-    'office_area': [
-        { label: 'Reception', value: 'reception' },
-        { label: 'Meeting Room', value: 'meeting_room' },
-        { label: 'Break Room', value: 'break_room' }
-    ],
-    'maintenance_bay': [
-        { label: 'Bay 1', value: 'bay_1' },
-        { label: 'Bay 2', value: 'bay_2' },
-        { label: 'Tool Storage', value: 'tool_storage' }
-    ],
-    'equipment_room': [
-        { label: 'Server Room', value: 'server_room' },
-        { label: 'Electrical Panel', value: 'electrical_panel' },
-        { label: 'HVAC Room', value: 'hvac_room' }
-    ]
-};
-
 const toast = useToast();
 
 const groupedItems = computed(() => {
     const result = [];
-    // Use filtered items if location filters are applied, otherwise use all items
-    const itemsToProcess = filteredItems.value.length > 0 ? filteredItems.value : items.value;
-    
     // Group items by product, source, and date
-    itemsToProcess.forEach(item => {
+    items.value.forEach(item => {
         const existingGroup = result.find(g =>
             g.product.productID === item.product.productID &&
             g.source_id === item.source_id &&
@@ -1053,56 +962,6 @@ async function deleteParentAttachment(filePath) {
         toast.error(error.response?.data?.message || 'Failed to delete attachment');
     }
 }
-
-// Watch for Asset Location change to update sub-locations
-watch(
-    () => selectedAssetLocation.value,
-    (newAssetLocation) => {
-        selectedSubLocation.value = null;
-        
-        if (newAssetLocation && newAssetLocation.value) {
-            // Update sub-location options based on selected asset location
-            subLocationOptions.value = subLocationMapping[newAssetLocation.value] || [];
-        } else {
-            subLocationOptions.value = [];
-        }
-    },
-    { immediate: true }
-);
-
-// Clear location filters function
-const clearLocationFilters = () => {
-    selectedAssetLocation.value = null;
-    selectedSubLocation.value = null;
-    subLocationOptions.value = [];
-};
-
-// Filter items based on selected asset location and sub location
-const filteredItems = computed(() => {
-    if (!items.value || items.value.length === 0) return [];
-    
-    let filtered = items.value;
-    
-    // Filter by asset location if selected
-    if (selectedAssetLocation.value && selectedAssetLocation.value.value) {
-        // This is a placeholder - you would need to implement the actual filtering logic
-        // based on how your items data structure includes location information
-        filtered = filtered.filter(item => {
-            // Example: if items have an asset_location property
-            return item.asset_location === selectedAssetLocation.value.value;
-        });
-    }
-    
-    // Filter by sub location if selected
-    if (selectedSubLocation.value && selectedSubLocation.value.value) {
-        filtered = filtered.filter(item => {
-            // Example: if items have a sub_location property
-            return item.sub_location === selectedSubLocation.value.value;
-        });
-    }
-    
-    return filtered;
-});
 
 </script>
 

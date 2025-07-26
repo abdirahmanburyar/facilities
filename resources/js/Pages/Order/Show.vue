@@ -447,7 +447,8 @@
                                         <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
                                     </div>
                                     <button
-                                        v-if="props.order.status === 'delivered' && item.received_quantity < item.quantity_to_release"
+                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
+                                        :disabled="!props.order.status == 'received' || !props.order.status == 'delivered'"
                                         @click="openBackOrderModal(item)"
                                         class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
                                         Back Order
@@ -519,15 +520,11 @@
                                         <span class="text-xs text-green-600" v-if="getRemainingQuantity(item) === 0">✓ Fully received</span>
                                     </div>
                                     <button
-                                        v-if="props.order.status === 'delivered' && item.received_quantity < item.quantity_to_release"
+                                        v-if="props.order.status === 'dispatched' || item.received_quantity < item.quantity_to_release"
                                         @click="openBackOrderModal(item)"
                                         class="mt-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs w-full">
                                         Back Order
                                     </button>
-                                    <div v-if="props.order.status !== 'delivered' && item.received_quantity < item.quantity_to_release" 
-                                         class="mt-2 px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs w-full text-center">
-                                        Back Order available after delivery
-                                    </div>
                                     <label for="days">No. of Days</label>
                                     <input type="number" placeholder="0" v-model="item.days" readonly
                                         class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
@@ -1446,16 +1443,37 @@ const openBackOrderModal = (item) => {
         });
     }
 
-    // If no existing differences, show message that user must manually fill out backorder records
+    // If no existing differences, pre-populate based on inventory allocations
     if (
         (!item.differences || item.differences.length === 0) &&
         item.inventory_allocations &&
         item.inventory_allocations.length > 0
     ) {
         const missingQty = item.quantity_to_release - (item.received_quantity || 0);
-        if (missingQty > 0) {
-            toast.info(`Please manually fill out backorder records for ${missingQty} missing units. Click "Add Item" for each allocation to create backorder entries.`);
-        }
+        let remainingToAllocate = missingQty;
+        item.inventory_allocations.forEach((allocation) => {
+            if (remainingToAllocate > 0) {
+                const allocationRatio = allocation.allocated_quantity / item.quantity_to_release;
+                let batchMissingQty = Math.min(
+                    Math.round(missingQty * allocationRatio),
+                    allocation.allocated_quantity,
+                    remainingToAllocate
+                );
+                if (batchMissingQty > 0) {
+                    const differences = getBatchBackOrders(allocation.id);
+                    differences.push({
+                        inventory_allocation_id: allocation.id,
+                        quantity: batchMissingQty,
+                        status: "Missing",
+                        notes: "",
+                        batch_number: allocation.batch_number,
+                        barcode: allocation.barcode,
+                        isExisting: false,
+                    });
+                    remainingToAllocate -= batchMissingQty;
+                }
+            }
+        });
     }
     showBackOrderModal.value = true;
 };
@@ -1622,18 +1640,6 @@ const validateBatchBackOrderQuantity = (row, allocation) => {
 const message = ref('');
 const saveBackOrders = async () => {
     message.value = "";
-    
-    // Check if any backorder records have been created
-    if (totalBatchBackOrderQuantity.value === 0) {
-        Swal.fire({
-            title: "No Backorder Records",
-            text: "Please create backorder records for the missing items before saving. Click 'Add Item' for each allocation to create the necessary backorder entries.",
-            icon: "warning",
-            confirmButtonText: "OK",
-        });
-        return;
-    }
-    
     if (totalBatchBackOrderQuantity.value !== missingQuantity.value) {
         Swal.fire({
             title: "Cannot Save",
