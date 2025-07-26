@@ -23,13 +23,9 @@ use Carbon\Carbon;
 class FacilityUploadInventory implements 
     ToModel, 
     WithHeadingRow, 
-    WithChunkReading, 
-    WithBatchInserts, 
     SkipsEmptyRows, 
-    WithEvents,
-    ShouldQueue
+    WithEvents
 {
-    use Queueable, InteractsWithQueue;
 
     public $importId;
     protected $productCache = [];
@@ -201,15 +197,7 @@ class FacilityUploadInventory implements
         }
     }
 
-    public function chunkSize(): int
-    {
-        return 100; // Increased chunk size for better performance
-    }
 
-    public function batchSize(): int
-    {
-        return 50; // Reduced batch size to avoid memory issues
-    }
 
     public function registerEvents(): array
     {

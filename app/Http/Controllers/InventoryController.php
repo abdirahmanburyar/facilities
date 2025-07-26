@@ -232,7 +232,7 @@ class InventoryController extends Controller
             Cache::put($importId, 0);
     
             // Queue the import job
-            Excel::queueImport(new UploadInventory($importId), $file)->onQueue('imports');
+            Excel::queueImport(new FacilityUploadInventory($importId), $file)->onQueue('imports');
 
             // broadcast(new UpdateProductUpload($importId, 0));
 
