@@ -9,10 +9,12 @@ use Carbon\Carbon;
 use App\Models\BackOrderHistory;
 use App\Models\FacilityInventory;
 use App\Models\Liquidate;
+use App\Models\LiquidateItem;
 use App\Models\FacilityInventoryItem;
 use Illuminate\Http\Request;
 
 use App\Models\Disposal;
+use App\Models\DisposalItem;
 use Illuminate\Support\Facades\DB;
 use App\Services\FacilityInventoryMovementService;
 use App\Http\Resources\BackOrderHistoryResource;
@@ -204,19 +206,34 @@ class BackOrderController extends Controller
                 }
             }
 
-            $liquidate = Liquidate::create([
-                'liquidated_by' => auth()->id(),
-                'order_item_id' => $item->inventoryAllocation->order_item_id ?? null,
-                'transfer_item_id' => $item->inventoryAllocation->transfer_item_id ?? null,
-                'liquidated_at' => Carbon::now(),
+            // Check if liquidation already exists for this back order
+            $liquidate = Liquidate::where('back_order_id', $item->back_order_id)->first();
+            
+            if (!$liquidate) {
+                // Create main liquidation record
+                $liquidate = Liquidate::create([
+                    'back_order_id' => $item->back_order_id,
+                    'liquidated_by' => auth()->id(),
+                    'liquidated_at' => Carbon::now(),
+                    'status' => 'pending',
+                    'note' => $note,
+                    'attachments' => !empty($attachments) ? json_encode($attachments) : null,
+                ]);
+            }
+            
+            // Create liquidation item for this specific product
+            LiquidateItem::create([
+                'liquidate_id' => $liquidate->id,
+                'product_id' => $item->product_id,
                 'quantity' => $request->quantity,
-                'status' => 'pending', // Default status is pending
-                'type' => $request->status, // Set type to the status from request
-                'note' => $note,
+                'unit_cost' => $item->inventoryAllocation->unit_cost ?? 0,
+                'total_cost' => ($item->inventoryAllocation->unit_cost ?? 0) * $request->quantity,
                 'barcode' => $item->inventoryAllocation->barcode ?? 'N/A',
                 'expire_date' => $item->inventoryAllocation->expiry_date ?? 'N/A',
                 'batch_number' => $item->inventoryAllocation->batch_number ?? 'N/A',
                 'uom' => $item->inventoryAllocation->uom ?? 'N/A',
+                'note' => $note,
+                'type' => $request->status,
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
             ]);
 
@@ -307,20 +324,34 @@ class BackOrderController extends Controller
                 }
             }
 
-            $dispose = Disposal::create([
-                'back_order_id' => $item->back_order_id,
-                'disposal_by' => auth()->id(),
-                'disposed_at' => Carbon::now(),
-                'order_item_id' => $item->inventoryAllocation->order_item_id ?? null,
-                'transfer_item_id' => $item->inventoryAllocation->transfer_item_id ?? null,
+            // Check if disposal already exists for this back order
+            $disposal = Disposal::where('back_order_id', $item->back_order_id)->first();
+            
+            if (!$disposal) {
+                // Create main disposal record
+                $disposal = Disposal::create([
+                    'back_order_id' => $item->back_order_id,
+                    'disposed_by' => auth()->id(),
+                    'disposed_at' => Carbon::now(),
+                    'status' => 'pending',
+                    'note' => $note,
+                    'attachments' => !empty($attachments) ? json_encode($attachments) : null,
+                ]);
+            }
+            
+            // Create disposal item for this specific product
+            DisposalItem::create([
+                'disposal_id' => $disposal->id,
+                'product_id' => $item->product_id,
                 'quantity' => $request->quantity,
-                'status' => 'pending', // Default status is pending
-                'type' => $request->status, // Set type to the status from request
-                'note' => $note,
+                'unit_cost' => $item->inventoryAllocation->unit_cost ?? 0,
+                'total_cost' => ($item->inventoryAllocation->unit_cost ?? 0) * $request->quantity,
                 'barcode' => $item->inventoryAllocation->barcode ?? 'N/A',
                 'expire_date' => $item->inventoryAllocation->expiry_date ?? 'N/A',
                 'batch_number' => $item->inventoryAllocation->batch_number ?? 'N/A',
                 'uom' => $item->inventoryAllocation->uom ?? 'N/A',
+                'note' => $note,
+                'type' => $request->status,
                 'attachments' => !empty($attachments) ? json_encode($attachments) : null,
             ]);
 
