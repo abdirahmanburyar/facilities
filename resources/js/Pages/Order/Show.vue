@@ -2065,6 +2065,11 @@ async function receivedQty(item, index) {
         .then((response) => {
             isSavingQty.value[index] = false;
             toast.success('Received quantity updated successfully');
+            router.get(route("orders.show", props.order.id), {}, {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['orders']
+            });
         })
         .catch((error) => {
             isSavingQty.value[index] = false;
