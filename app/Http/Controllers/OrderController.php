@@ -397,14 +397,14 @@ class OrderController extends Controller
                             'issue' => 'Allocated inventory lost in transit - needs packing list difference or back order'
                         ];
                     }
-                    // Case 3: quantity_to_release > 0, received_quantity >= 0, but no packing list differences
-                    // This could indicate missing documentation for received items
-                    elseif ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity >= 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                    // Case 3: quantity_to_release > 0, received_quantity = 0, but no packing list differences
+                    // This indicates allocated inventory that wasn't received and needs documentation
+                    elseif ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
                         $invalidItems[] = [
                             'product_name' => $item->product->name ?? 'Unknown Product',
                             'quantity_to_release' => $item->quantity_to_release,
                             'received_quantity' => $item->received_quantity,
-                            'issue' => 'Missing packing list difference documentation'
+                            'issue' => 'Allocated inventory not received - needs packing list difference or back order'
                         ];
                     }
                 }
