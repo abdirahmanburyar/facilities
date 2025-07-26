@@ -43,6 +43,7 @@ class InventoryController extends Controller
             ->groupBy('product_id');
 
         $query = FacilityInventory::query()
+            ->where('facility_id', auth()->user()->facility_id)
             ->with([
                 'product:id,name,category_id,dosage_id',
                 'product.category:id,name',
