@@ -374,14 +374,19 @@ class OrderController extends Controller
                 ]);
                 
                 foreach ($order->items as $item) {
+                    // Calculate the actual quantity that will be processed for this item
+                    $totalAllocatedQuantity = 0;
+                    $totalFinalQuantity = 0;
                     $hasPackingListDifferences = false;
-                    $totalPackingListQuantity = 0;
                     
-                    // Check if there are any packing list differences for this item
                     foreach ($item->inventory_allocations as $allocation) {
+                        $totalAllocatedQuantity += $allocation->allocated_quantity;
+                        $totalBackOrdered = $allocation->differences->sum('quantity');
+                        $finalQuantity = $allocation->allocated_quantity - $totalBackOrdered;
+                        $totalFinalQuantity += $finalQuantity;
+                        
                         if ($allocation->differences->count() > 0) {
                             $hasPackingListDifferences = true;
-                            $totalPackingListQuantity += $allocation->differences->sum('quantity');
                         }
                     }
                     
@@ -394,6 +399,8 @@ class OrderController extends Controller
                         'product_name' => $item->product->name ?? 'Unknown',
                         'quantity_to_release' => $item->quantity_to_release,
                         'received_quantity' => $item->received_quantity,
+                        'total_allocated_quantity' => $totalAllocatedQuantity,
+                        'total_final_quantity' => $totalFinalQuantity,
                         'has_packing_list_differences' => $hasPackingListDifferences,
                         'has_backorders' => $hasBackOrders,
                         'allocations_count' => $item->inventory_allocations->count()
@@ -401,11 +408,11 @@ class OrderController extends Controller
                     
                     // Only flag items that have allocated quantity but no received quantity and no documentation
                     // This indicates lost inventory that needs to be accounted for
-                    if ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                    if ($totalFinalQuantity > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
                         logger()->warning('Invalid item: Allocated inventory not received', [
                             'item_id' => $item->id,
                             'product_name' => $item->product->name,
-                            'quantity_to_release' => $item->quantity_to_release,
+                            'total_final_quantity' => $totalFinalQuantity,
                             'received_quantity' => $item->received_quantity
                         ]);
                         $invalidItems[] = [
