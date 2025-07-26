@@ -205,7 +205,6 @@ class BackOrderController extends Controller
             }
 
             $liquidate = Liquidate::create([
-                'product_id' => $item->product_id,
                 'liquidated_by' => auth()->id(),
                 'order_item_id' => $item->inventoryAllocation->order_item_id ?? null,
                 'transfer_item_id' => $item->inventoryAllocation->transfer_item_id ?? null,
@@ -309,7 +308,6 @@ class BackOrderController extends Controller
             }
 
             $dispose = Disposal::create([
-                'product_id' => $item->product_id,
                 'back_order_id' => $item->back_order_id,
                 'disposal_by' => auth()->id(),
                 'disposed_at' => Carbon::now(),
