@@ -1770,8 +1770,6 @@ const isDeliveryFormValid = computed(() => {
     return true;
 });
 
-
-
 // Computed properties for driver options
 const driverOptions = computed(() => {
     return props.drivers.map(driver => ({
@@ -1977,12 +1975,6 @@ function addBatchBackOrderRow(allocationId) {
     });
 
 }
-
-
-
-
-
-
 
 // Methods
 const isExpiringItem = (expiryDate) => {
