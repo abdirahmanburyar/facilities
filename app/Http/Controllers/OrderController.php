@@ -365,6 +365,14 @@ class OrderController extends Controller
             if($request->status == 'received') {
                 $invalidItems = [];
                 
+                // Debug: Log order details
+                logger()->info('Validating order for received status', [
+                    'order_id' => $order->id,
+                    'order_status' => $order->status,
+                    'items_count' => $order->items->count(),
+                    'has_backorders' => $order->backorders()->exists()
+                ]);
+                
                 foreach ($order->items as $item) {
                     $hasPackingListDifferences = false;
                     $totalPackingListQuantity = 0;
@@ -380,28 +388,26 @@ class OrderController extends Controller
                     // Check if there are any back orders for this order
                     $hasBackOrders = $order->backorders()->exists();
                     
-                    // Case 1: Both quantities are zero and no back orders
-                    if ((float)$item->quantity_to_release == 0 && (float)$item->received_quantity == 0 && !$hasBackOrders) {
-                        $invalidItems[] = [
-                            'product_name' => $item->product->name ?? 'Unknown Product',
-                            'quantity_to_release' => $item->quantity_to_release,
-                            'received_quantity' => $item->received_quantity,
-                            'issue' => 'Zero quantities with no back orders recorded'
-                        ];
-                    }
-                    // Case 2: quantity_to_release > 0 but no packing list differences and no back orders
+                    // Debug: Log item details
+                    logger()->info('Validating item', [
+                        'item_id' => $item->id,
+                        'product_name' => $item->product->name ?? 'Unknown',
+                        'quantity_to_release' => $item->quantity_to_release,
+                        'received_quantity' => $item->received_quantity,
+                        'has_packing_list_differences' => $hasPackingListDifferences,
+                        'has_backorders' => $hasBackOrders,
+                        'allocations_count' => $item->inventory_allocations->count()
+                    ]);
+                    
+                    // Only flag items that have allocated quantity but no received quantity and no documentation
                     // This indicates lost inventory that needs to be accounted for
-                    elseif ((float)$item->quantity_to_release > 0 && !$hasPackingListDifferences && !$hasBackOrders) {
-                        $invalidItems[] = [
-                            'product_name' => $item->product->name ?? 'Unknown Product',
+                    if ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                        logger()->warning('Invalid item: Allocated inventory not received', [
+                            'item_id' => $item->id,
+                            'product_name' => $item->product->name,
                             'quantity_to_release' => $item->quantity_to_release,
-                            'received_quantity' => $item->received_quantity,
-                            'issue' => 'Allocated inventory lost in transit - needs packing list difference or back order'
-                        ];
-                    }
-                    // Case 3: quantity_to_release > 0, received_quantity = 0, but no packing list differences
-                    // This indicates allocated inventory that wasn't received and needs documentation
-                    elseif ((float)$item->quantity_to_release > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
+                            'received_quantity' => $item->received_quantity
+                        ]);
                         $invalidItems[] = [
                             'product_name' => $item->product->name ?? 'Unknown Product',
                             'quantity_to_release' => $item->quantity_to_release,
@@ -412,10 +418,16 @@ class OrderController extends Controller
                 }
                 
                 if (!empty($invalidItems)) {
+                    logger()->error('Validation failed for received status', [
+                        'invalid_items' => $invalidItems,
+                        'order_id' => $order->id
+                    ]);
                     DB::rollBack();
                     $errorMessage = "⚠️ Some items have not been properly recorded or processed. Please review the Order Items before marking as received.\n\n";                    
                     return response()->json($errorMessage, 500);
                 }
+                
+                logger()->info('Validation passed for received status', ['order_id' => $order->id]);
             }
             
             $debugInfo = []; // For debugging purposes
