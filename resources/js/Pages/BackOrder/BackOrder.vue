@@ -610,9 +610,31 @@ const handleSourceChange = async (source) => {
 };
 
 const submitLiquidation = async () => {
+    console.log(selectedItem.value);
+    
+    // Validate required fields
+    if (!selectedItem.value || !selectedItem.value.status) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Status field is required',
+            showConfirmButton: true
+        });
+        return;
+    }
+    
+    if (!liquidateForm.value.note || liquidateForm.value.note.trim() === '') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Note field is required',
+            showConfirmButton: true
+        });
+        return;
+    }
+    
     isSubmitting.value = true;
     const formData = new FormData();
-    console.log(selectedItem.value);
     formData.append('id', selectedItem.value.id);
     formData.append('product_id', selectedItem.value.product.id);
     formData.append('source_id', selectedItem.value.source_id);
@@ -620,7 +642,6 @@ const submitLiquidation = async () => {
     formData.append('quantity', liquidateForm.value.quantity);
     formData.append('original_quantity', selectedItem.value.quantity);
     formData.append('status', selectedItem.value.status);
-    formData.append('type', selectedItem.value.status);
     formData.append('note', liquidateForm.value.note);
     
     // Get back_order_id from backOrderInfo or from the item itself
@@ -703,6 +724,28 @@ const handleAction = async (action, item) => {
 
 const submitDisposal = async () => {
     console.log(selectedItem.value);
+    
+    // Validate required fields
+    if (!selectedItem.value || !selectedItem.value.status) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Status field is required',
+            showConfirmButton: true
+        });
+        return;
+    }
+    
+    if (!disposeForm.value.note || disposeForm.value.note.trim() === '') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            text: 'Note field is required',
+            showConfirmButton: true
+        });
+        return;
+    }
+    
     isSubmitting.value = true;
     const formData = new FormData();
     formData.append('id', selectedItem.value.id);
@@ -710,7 +753,7 @@ const submitDisposal = async () => {
     formData.append('source_id', selectedItem.value.source_id);
     formData.append('source_type', selectedItem.value.source_type);
     formData.append('note', disposeForm.value.note);
-    formData.append('type', selectedItem.value.status);
+    formData.append('status', selectedItem.value.status); // Changed from 'type' to 'status'
     formData.append('quantity', selectedItem.value.quantity);
 
     // Get back_order_id from backOrderInfo or from the item itself
