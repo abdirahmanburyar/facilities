@@ -231,15 +231,15 @@ class InventoryController extends Controller
             // Initialize cache progress to 0
             Cache::put($importId, 0);
     
-            // Queue the import job
-            Excel::queueImport(new FacilityUploadInventory($importId), $file)->onQueue('imports');
+            // Import the file directly
+            Excel::import(new FacilityUploadInventory($importId), $file);
 
             // broadcast(new UpdateProductUpload($importId, 0));
 
     
             return response()->json([
                 'success' => true,
-                'message' => 'Import has been queued successfully',
+                'message' => 'Import completed successfully',
                 'import_id' => $importId
             ]);
     
