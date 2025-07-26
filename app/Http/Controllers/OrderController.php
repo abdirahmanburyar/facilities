@@ -158,6 +158,7 @@ class OrderController extends Controller
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.quantity' => 'required|numeric',
                 'items.*.amc' => 'required|numeric',
+                'items.*.soh' => 'required|numeric',
             ],[
                 'items.*.product_id.required' => 'Item is required',
             ]);
@@ -190,6 +191,7 @@ class OrderController extends Controller
                         'no_of_days' => $item['no_of_days'],
                         'days' => $item['no_of_days'],
                         'amc' => $item['amc'],
+                        'soh' => $item['soh'],
                         'status' => 'pending',
                     ]);
 

@@ -16,6 +16,7 @@ class OrderItem extends Model
         'warehouse_id',
         'quantity_on_order',
         'amc',
+        'soh',
         'quantity_to_release',
         'received_quantity',
         'no_of_days',
