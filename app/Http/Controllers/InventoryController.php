@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use App\Events\InventoryEvent;
 use Illuminate\Support\Facades\Event;
 use App\Events\InventoryUpdated;
-use App\Imports\UploadInventory;
+use App\Imports\FacilityUploadInventory;
 use Illuminate\Support\Facades\Cache;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
