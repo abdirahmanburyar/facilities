@@ -38,6 +38,7 @@ class InventoryController extends Controller
         $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
         // Step 2: Convert string date and filter by last 3 months
         $amcSubquery = FacilityInventoryMovement::facilityIssued()
+            ->where('facility_id', auth()->user()->facility_id)
             ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
             ->whereBetween('movement_date', [$startDate, $endDate])
             ->groupBy('product_id');
@@ -56,12 +57,17 @@ class InventoryController extends Controller
             ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
             ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level'));
 
-        if ($search = $request->search) {   
-            $query->whereHas('items', function($q) use ($search) {
-                $q->where('barcode', 'like', "%{$search}%")
-                    ->orWhere('batch_number', 'like', "%{$search}%");
-            })
-                ->orWhereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%"));
+        if ($request->filled('search')) {   
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('items', function($itemQuery) use ($search) {
+                    $itemQuery->where('barcode', 'like', "%{$search}%")
+                        ->orWhere('batch_number', 'like', "%{$search}%");
+                })
+                ->orWhereHas('product', function($productQuery) use ($search) {
+                    $productQuery->where('name', 'like', "%{$search}%");
+                });
+            });
         }
 
         if ($request->filled('product_id')) {
@@ -148,7 +154,7 @@ class InventoryController extends Controller
         
         $inventory = FacilityInventory::updateOrCreate(
             ['id' => $request->id],
-            $validated
+            array_merge($validated, ['facility_id' => auth()->user()->facility_id])
         );
 
         event(new InventoryUpdated(auth()->user()->facility_id));
