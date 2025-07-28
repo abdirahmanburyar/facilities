@@ -238,15 +238,12 @@ class InventoryController extends Controller
             // Initialize cache progress to 0
             Cache::put($importId, 0);
     
-            // Import the file directly
+            // Import the file using Maatwebsite Excel with queue support
             Excel::import(new FacilityUploadInventory($importId), $file);
 
-            // broadcast(new UpdateProductUpload($importId, 0));
-
-    
             return response()->json([
                 'success' => true,
-                'message' => 'Import completed successfully',
+                'message' => 'Import queued successfully',
                 'import_id' => $importId
             ]);
     
