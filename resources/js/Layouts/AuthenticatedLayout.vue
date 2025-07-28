@@ -28,7 +28,7 @@
                             />
                             <img
                                 v-else
-                                src="/assets/images/dashboard-w.png"
+                                src="/assets/images/Dashboard-w.png"
                                 class="dashboard-icon"
                                 style="height: 15px"
                             />
@@ -78,7 +78,7 @@
                             />
                             <img
                                 v-else
-                                src="/assets/images/inventory-w.png"
+                                src="/assets/images/Inventory-w.png"
                                 class="inventory-icon"
                                 style="height: 15px"
                             />
