@@ -47,16 +47,30 @@
                 </div>
                 </Link>
 
-                <Link :href="route('inventories.index')" class="menu-item" v-if="$page.props.auth.can.inventory_view"
-                    :class="{ active: route().current('inventories.*') }" @click="setCurrentPage('inventories')">
-                <div class="menu-content">
-                    <div class="menu-icon">
-                        <img v-if="route().current('inventories.*')" src="/assets/images/inventory-b.png"
-                            class="inventory-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/inventory-w.png" class="inventory-icon" style="height: 24px" />
+                <Link
+                    v-if="$page.props.auth.can.inventory_view"
+                    :href="route('inventories.index')"
+                    class="menu-item"
+                    :class="{ active: route().current('inventories.*') }"
+                    @click="setCurrentPage('inventories')"
+                >
+                    <div class="menu-content">
+                        <div class="menu-icon">
+                            <img
+                                v-if="route().current('inventories.*')"
+                                src="/assets/images/inventory-b.png"
+                                class="inventory-icon"
+                                style="height: 15px"
+                            />
+                            <img
+                                v-else
+                                src="/assets/images/inventory-w.png"
+                                class="inventory-icon"
+                                style="height: 15px"
+                            />
+                        </div>
+                        <span class="menu-text">Inventory</span>
                     </div>
-                    <span class="menu-text">Inventory</span>
-                </div>
                 </Link>
 
                 <Link :href="route('dispence.index')" class="menu-item" v-if="$page.props.auth.can.dispence_view"
