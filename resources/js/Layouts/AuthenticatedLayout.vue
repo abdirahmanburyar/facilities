@@ -11,16 +11,30 @@
 
             </div>
             <div class="sidebar-menu">
-                <Link :href="route('dashboard')" class="menu-item" :class="{ active: route().current('dashboard') }"
-                    style="margin-top: 75px;" @click="setCurrentPage('dashboard')">
-                <div class="menu-content">
-                    <div class="menu-icon">
-                        <img v-if="route().current('dashboard')" src="/assets/images/dashboard-b.png"
-                            class="dashboard-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/dashboard-w.png" class="dashboard-icon" style="height: 24px" />
+                <Link
+                    :href="route('dashboard')"
+                    class="menu-item"
+                    :class="{ active: route().current('dashboard') }"
+                    style="margin-top: 30px"
+                    @click="setCurrentPage('dashboard')"
+                >
+                    <div class="menu-content">
+                        <div class="menu-icon">
+                            <img
+                                v-if="route().current('dashboard')"
+                                src="/assets/images/dashboard-b.png"
+                                class="dashboard-icon"
+                                style="height: 15px"
+                            />
+                            <img
+                                v-else
+                                src="/assets/images/dashboard-w.png"
+                                class="dashboard-icon"
+                                style="height: 15px"
+                            />
+                        </div>
+                        <span class="menu-text text-xs">Dashboard</span>
                     </div>
-                    <span class="menu-text">Dashboard</span>
-                </div>
                 </Link>
 
                 <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }"
