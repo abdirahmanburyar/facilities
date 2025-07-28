@@ -157,7 +157,7 @@ class InventoryController extends Controller
             array_merge($validated, ['facility_id' => auth()->user()->facility_id])
         );
 
-        event(new InventoryUpdated(auth()->user()->facility_id));
+        // event(new InventoryUpdated(auth()->user()->facility_id));
         
         return response()->json( $request->id ? 'Inventory updated successfully' : 'Inventory created successfully', 200);
         } catch (\Throwable $th) {
@@ -185,7 +185,7 @@ class InventoryController extends Controller
     {        
         try {
             $inventory->delete();
-            event(new InventoryEvent());
+            // event(new InventoryEvent());
             Log::info('Successfully dispatched InventoryEvent for deleted inventory ID: ' . $inventory->id);
             return response()->json([
                 'success' => true,
