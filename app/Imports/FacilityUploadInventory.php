@@ -32,10 +32,12 @@ class FacilityUploadInventory implements
     use Queueable, InteractsWithQueue;
 
     public $importId;
+    public $facilityId;
 
-    public function __construct(string $importId)
+    public function __construct(string $importId, string $facilityId)
     {
         $this->importId = $importId;
+        $this->facilityId = auth()->user()->facility_id;
     }
 
     public function model(array $row)
@@ -98,9 +100,10 @@ class FacilityUploadInventory implements
 
     protected function getInventory($productId)
     {
-        $inventory = FacilityInventory::where('product_id', $productId)->first();
+        $inventory = FacilityInventory::where('product_id', $productId)->where('facility_id', $this->facilityId)->first();
         if (!$inventory) {
             $inventory = FacilityInventory::create([
+                'facility_id' => $this->facilityId,
                 'product_id' => $productId,
                 'quantity' => 0,
             ]);
