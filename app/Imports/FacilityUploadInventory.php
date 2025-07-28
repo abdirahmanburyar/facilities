@@ -58,7 +58,6 @@ class FacilityUploadInventory implements
             $product = $this->getProduct($row['item']);
             if (!$product) {
                 Log::warning('Product not found during import', ['item' => $row['item']]);
-                DB::rollBack();
                 return null;
             }
 
