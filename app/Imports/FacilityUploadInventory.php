@@ -98,7 +98,16 @@ class FacilityUploadInventory implements
 
             try {
                 // Create FacilityInventoryItem
-                $inventoryItem = FacilityInventoryItem::create($inventoryItemData);
+                $inventoryItem = FacilityInventoryItem::where('product_id', $product->id)
+                    ->where('facility_inventory_id', $inventory->id)
+                    ->where('batch_number', $row['batch_no'])
+                    ->first();
+                if (!$inventoryItem) {
+                    $inventoryItem = FacilityInventoryItem::create($inventoryItemData);
+                }else{
+                    $inventoryItem->decrement('quantity', $inventoryItemData['quantity']);
+                    $inventoryItem->save();
+                }
 
                 Log::info('FacilityInventoryItem created successfully', [
                     'inventory_item_id' => $inventoryItem->id,
