@@ -1186,6 +1186,8 @@ class OrderController extends Controller
                 $months[] = Carbon::now()->subMonths($i)->format('Y-m');
             }
 
+            logger()->info('Months', ['months' => $months]);
+
             $totalConsumption = DB::table('monthly_consumption_items as mci')
                 ->join('monthly_consumption_reports as mcr', 'mci.parent_id', '=', 'mcr.id')
                 ->where('mcr.facility_id', $facility->id)
@@ -1196,8 +1198,6 @@ class OrderController extends Controller
     
             // Average Monthly Consumption (AMC) = total / 4 months
             $amc = $totalConsumption / 3;
-
-            logger()->info('Total Consumption', ['amc' => $amc]);
     
             // Determine days since last received order update, fallback to quarter start if none
             $lastReceivedOrder = Order::where('facility_id', $facility->id)
@@ -1216,13 +1216,14 @@ class OrderController extends Controller
                 // Fallback: use quarter start date
                 $now = Carbon::now();
                 $quarter = $now->quarter;
+                logger()->info('Quarter', ['quarter' => $quarter]);
                 $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
                 $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
                 $daysSince = $quarterStart->diffInDays($now->startOfDay());
             }
     
             // Days remaining in 120-day cycle
-            $daysRemaining = 120 - $daysSince;
+            $daysRemaining = 90 - $daysSince;
     
             // // Quantity on Order (QOO) default to 0
             $qoo = 0;
