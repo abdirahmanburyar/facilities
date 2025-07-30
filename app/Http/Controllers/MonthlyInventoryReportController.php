@@ -398,11 +398,30 @@ class MonthlyInventoryReportController extends Controller
             $endDate = Carbon::create($year, $month, 1)->endOfMonth();
             $previousMonth = $startDate->copy()->subMonth();
 
-            // Create or get the monthly report
-            $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+            // Check if report already exists
+            $existingReport = FacilityMonthlyReport::where([
                 'facility_id' => $facilityId,
                 'report_period' => $reportPeriod,
-            ], [
+            ])->first();
+
+            if ($existingReport) {
+                $monthName = $this->getMonthName($month);
+                return response()->json([
+                    'success' => false,
+                    'message' => "Monthly inventory report for {$monthName} {$year} already exists. You cannot regenerate an existing report.",
+                    'existing_report' => [
+                        'id' => $existingReport->id,
+                        'status' => $existingReport->status,
+                        'period' => $reportPeriod,
+                        'created_at' => $existingReport->created_at->format('Y-m-d H:i:s')
+                    ]
+                ], 400);
+            }
+
+            // Create the monthly report
+            $monthlyReport = FacilityMonthlyReport::create([
+                'facility_id' => $facilityId,
+                'report_period' => $reportPeriod,
                 'status' => 'draft',
             ]);
 
@@ -575,11 +594,30 @@ class MonthlyInventoryReportController extends Controller
                 ], 400);
             }
 
-            // Create or get the monthly report
-            $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+            // Check if report already exists
+            $existingReport = FacilityMonthlyReport::where([
                 'facility_id' => $facilityId,
                 'report_period' => $reportPeriod,
-            ], [
+            ])->first();
+
+            if ($existingReport) {
+                $monthName = $this->getMonthName($month);
+                return response()->json([
+                    'success' => false,
+                    'message' => "Monthly inventory report for {$monthName} {$year} already exists. You cannot regenerate an existing report.",
+                    'existing_report' => [
+                        'id' => $existingReport->id,
+                        'status' => $existingReport->status,
+                        'period' => $reportPeriod,
+                        'created_at' => $existingReport->created_at->format('Y-m-d H:i:s')
+                    ]
+                ], 400);
+            }
+
+            // Create the monthly report
+            $monthlyReport = FacilityMonthlyReport::create([
+                'facility_id' => $facilityId,
+                'report_period' => $reportPeriod,
                 'status' => 'draft',
             ]);
 

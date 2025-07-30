@@ -772,10 +772,21 @@ async function generateReportsFromMovements() {
         
     } catch (error) {
         console.error('Generate reports from movements error:', error);
+        
+        let errorMessage = error.response?.data?.message || 'Failed to generate reports from movements. Please try again.';
+        let errorTitle = 'Generation Failed';
+        let errorIcon = 'error';
+        
+        // Check if it's an existing report error
+        if (error.response?.data?.message && error.response.data.message.includes('already exists')) {
+            errorTitle = 'Report Already Exists';
+            errorIcon = 'warning';
+        }
+        
         Swal.fire({
-            title: 'Generation Failed',
-            text: error.response?.data?.message || 'Failed to generate reports from movements. Please try again.',
-            icon: 'error',
+            title: errorTitle,
+            text: errorMessage,
+            icon: errorIcon,
             confirmButtonText: 'OK'
         });
     } finally {
