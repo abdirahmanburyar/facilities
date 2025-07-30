@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::controller(App\Http\Controllers\DashboardController::class)
     ->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
+        Route::post('/dashboard/facility/tracert-items', 'facilityTracertItems')->name('dashboard.facility.tracert-items');
     });
 
     // Profile Routes
