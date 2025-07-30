@@ -12,6 +12,17 @@ class FacilityMonthlyReportItem extends Model
 
     protected $table = 'facility_monthly_report_items';
 
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        // Automatically recalculate closing balance when relevant fields are updated
+        static::saving(function (FacilityMonthlyReportItem $item) {
+            $item->closing_balance = $item->calculateClosingBalance();
+        });
+    }
+
     protected $fillable = [
         'parent_id',
         'product_id',
@@ -133,4 +144,6 @@ class FacilityMonthlyReportItem extends Model
     {
         return $query->where('product_id', $productId);
     }
+
+
 }

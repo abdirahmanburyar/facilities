@@ -141,9 +141,9 @@
                     @click="setCurrentPage('reports')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('reports.*')" src="/assets/images/report-b.png" class="report-icon"
+                        <img v-if="route().current('reports.*')" src="/assets/images/reports-b.png" class="report-icon"
                             style="height: 24px" />
-                        <img v-else src="/assets/images/report-w.png" class="report-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/reports-w.png" class="report-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Reports</span>
                 </div>

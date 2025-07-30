@@ -1,745 +1,745 @@
 <template>
     <AuthenticatedLayout title="Transfer Details" description="Transfer Details" img="/assets/images/transfer.png">
         <div class="container mx-auto">
-            <!-- Transfer Header -->
-            <div class="mb-6 bg-white rounded-lg shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h1 class="text-2xl font-bold text-gray-800">
-                        Transfer Details
-                    </h1>
-                    <div class="flex items-center space-x-4">
-                        <span :class="[
-                            statusClasses[props.transfer.status] ||
-                            statusClasses.default,
-                        ]" class="flex items-center text-xs font-bold px-4 py-2">
-                            <!-- Status Icon -->
-                            <span class="mr-3">
-                                <!-- Pending Icon -->
-                                <img v-if="props.transfer.status === 'pending'" src="/assets/images/pending.png"
-                                    class="w-4 h-4" alt="Pending" />
+        </div>
+        <!-- Transfer Header -->
+        <div class="mb-6 bg-white rounded-lg shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    Transfer Details
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <span :class="[
+                        statusClasses[props.transfer.status] ||
+                        statusClasses.default,
+                    ]" class="flex items-center text-xs font-bold px-4 py-2">
+                        <!-- Status Icon -->
+                        <span class="mr-3">
+                            <!-- Pending Icon -->
+                            <img v-if="props.transfer.status === 'pending'" src="/assets/images/pending.png"
+                                class="w-4 h-4" alt="Pending" />
 
-                                <!-- reviewed Icon -->
-                                <img v-else-if="
-                                    props.transfer.status === 'reviewed'
-                                " src="/assets/images/reviewed.png" class="w-4 h-4" alt="Reviewed" />
+                            <!-- reviewed Icon -->
+                            <img v-else-if="
+                                props.transfer.status === 'reviewed'
+                            " src="/assets/images/reviewed.png" class="w-4 h-4" alt="Reviewed" />
 
-                                <!-- Approved Icon -->
-                                <img v-else-if="
-                                    props.transfer.status === 'approved'
-                                " src="/assets/images/approved.png" class="w-4 h-4" alt="Approved" />
+                            <!-- Approved Icon -->
+                            <img v-else-if="
+                                props.transfer.status === 'approved'
+                            " src="/assets/images/approved.png" class="w-4 h-4" alt="Approved" />
 
-                                <!-- In Process Icon -->
-                                <img v-else-if="
-                                    props.transfer.status === 'in_process'
-                                " src="/assets/images/inprocess.png" class="w-4 h-4" alt="In Process" />
+                            <!-- In Process Icon -->
+                            <img v-else-if="
+                                props.transfer.status === 'in_process'
+                            " src="/assets/images/inprocess.png" class="w-4 h-4" alt="In Process" />
 
-                                <!-- Dispatched Icon -->
-                                <img v-else-if="
-                                    props.transfer.status === 'dispatched'
-                                " src="/assets/images/dispatch.png" class="w-4 h-4" alt="Dispatched" />
+                            <!-- Dispatched Icon -->
+                            <img v-else-if="
+                                props.transfer.status === 'dispatched'
+                            " src="/assets/images/dispatch.png" class="w-4 h-4" alt="Dispatched" />
 
-                                <!-- Received Icon -->
-                                <img v-else-if="
-                                    props.transfer.status === 'received'
-                                " src="/assets/images/received.png" class="w-4 h-4" alt="Received" />
+                            <!-- Received Icon -->
+                            <img v-else-if="
+                                props.transfer.status === 'received'
+                            " src="/assets/images/received.png" class="w-4 h-4" alt="Received" />
 
-                                <!-- Rejected Icon -->
-                                <svg v-else-if="
-                                    props.transfer.status === 'rejected'
-                                " class="w-4 h-4 text-red-700" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </span>
-                            {{ props.transfer.status.toUpperCase() }}
+                            <!-- Rejected Icon -->
+                            <svg v-else-if="
+                                props.transfer.status === 'rejected'
+                            " class="w-4 h-4 text-red-700" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        {{ props.transfer.status.toUpperCase() }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Transfer ID and Date -->
+            <div class="mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-sm text-gray-500">Transfer ID:</span>
+                        <span class="ml-2 font-semibold">#{{ props.transfer.transferID }}</span>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-500">Transfer Date:</span>
+                        <span class="ml-2 font-semibold">{{
+                            moment(props.transfer.transfer_date).format(
+                                "DD/MM/YYYY"
+                            )
+                        }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- From and To Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- From Section -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        From
+                    </h3>
+                    <div v-if="props.transfer.from_warehouse">
+                        <p class="font-semibold text-gray-800">
+                            {{ props.transfer.from_warehouse.name }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.from_warehouse.address }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.from_warehouse.district }},
+                            {{ props.transfer.from_warehouse.region }}
+                        </p>
+                        <div class="mt-2 text-sm">
+                            <p class="text-gray-600">
+                                Manager:
+                                <span class="font-medium">{{
+                                    props.transfer.from_warehouse
+                                        .manager_name
+                                }}</span>
+                            </p>
+                            <p class="text-gray-600">
+                                Phone:
+                                <span class="font-medium">{{
+                                    props.transfer.from_warehouse
+                                        .manager_phone
+                                }}</span>
+                            </p>
+                        </div>
+                        <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            Warehouse
+                        </span>
+                    </div>
+                    <div v-else-if="props.transfer.from_facility">
+                        <p class="font-semibold text-gray-800">
+                            {{ props.transfer.from_facility.name }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.from_facility.address }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.from_facility.district }},
+                            {{ props.transfer.from_facility.region }}
+                        </p>
+                        <div class="mt-2 text-sm">
+                            <p class="text-gray-600">
+                                Type:
+                                <span class="font-medium">{{
+                                    props.transfer.from_facility
+                                        .facility_type
+                                }}</span>
+                            </p>
+                            <p class="text-gray-600">
+                                Phone:
+                                <span class="font-medium">{{
+                                    props.transfer.from_facility.phone
+                                    }}</span>
+                            </p>
+                        </div>
+                        <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            Facility
                         </span>
                     </div>
                 </div>
 
-                <!-- Transfer ID and Date -->
-                <div class="mb-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <span class="text-sm text-gray-500">Transfer ID:</span>
-                            <span class="ml-2 font-semibold">#{{ props.transfer.transferID }}</span>
+                <!-- To Section -->
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-green-800 mb-3 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        To
+                    </h3>
+                    <div v-if="props.transfer.to_warehouse">
+                        <p class="font-semibold text-gray-800">
+                            {{ props.transfer.to_warehouse.name }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.to_warehouse.address }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.to_warehouse.district }},
+                            {{ props.transfer.to_warehouse.region }}
+                        </p>
+                        <div class="mt-2 text-sm">
+                            <p class="text-gray-600">
+                                Manager:
+                                <span class="font-medium">{{
+                                    props.transfer.to_warehouse.manager_name
+                                    }}</span>
+                            </p>
+                            <p class="text-gray-600">
+                                Phone:
+                                <span class="font-medium">{{
+                                    props.transfer.to_warehouse
+                                        .manager_phone
+                                }}</span>
+                            </p>
                         </div>
-                        <div>
-                            <span class="text-sm text-gray-500">Transfer Date:</span>
-                            <span class="ml-2 font-semibold">{{
-                                moment(props.transfer.transfer_date).format(
-                                    "DD/MM/YYYY"
-                                )
-                            }}</span>
+                        <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            Warehouse
+                        </span>
+                    </div>
+                    <div v-else-if="props.transfer.to_facility">
+                        <p class="font-semibold text-gray-800">
+                            {{ props.transfer.to_facility.name }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.to_facility.address }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            {{ props.transfer.to_facility.district }},
+                            {{ props.transfer.to_facility.region }}
+                        </p>
+                        <div class="mt-2 text-sm">
+                            <p class="text-gray-600">
+                                Type:
+                                <span class="font-medium">{{
+                                    props.transfer.to_facility.facility_type
+                                    }}</span>
+                            </p>
+                            <p class="text-gray-600">
+                                Phone:
+                                <span class="font-medium">{{
+                                    props.transfer.to_facility.phone
+                                    }}</span>
+                            </p>
                         </div>
+                        <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            Facility
+                        </span>
                     </div>
                 </div>
+            </div>
 
-                <!-- From and To Section -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- From Section -->
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h3 class="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            From
-                        </h3>
-                        <div v-if="props.transfer.from_warehouse">
-                            <p class="font-semibold text-gray-800">
-                                {{ props.transfer.from_warehouse.name }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.from_warehouse.address }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.from_warehouse.district }},
-                                {{ props.transfer.from_warehouse.region }}
-                            </p>
-                            <div class="mt-2 text-sm">
-                                <p class="text-gray-600">
-                                    Manager:
-                                    <span class="font-medium">{{
-                                        props.transfer.from_warehouse
-                                            .manager_name
-                                    }}</span>
-                                </p>
-                                <p class="text-gray-600">
-                                    Phone:
-                                    <span class="font-medium">{{
-                                        props.transfer.from_warehouse
-                                            .manager_phone
-                                    }}</span>
-                                </p>
-                            </div>
-                            <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                Warehouse
-                            </span>
-                        </div>
-                        <div v-else-if="props.transfer.from_facility">
-                            <p class="font-semibold text-gray-800">
-                                {{ props.transfer.from_facility.name }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.from_facility.address }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.from_facility.district }},
-                                {{ props.transfer.from_facility.region }}
-                            </p>
-                            <div class="mt-2 text-sm">
-                                <p class="text-gray-600">
-                                    Type:
-                                    <span class="font-medium">{{
-                                        props.transfer.from_facility
-                                            .facility_type
-                                    }}</span>
-                                </p>
-                                <p class="text-gray-600">
-                                    Phone:
-                                    <span class="font-medium">{{
-                                        props.transfer.from_facility.phone
-                                        }}</span>
-                                </p>
-                            </div>
-                            <span class="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                Facility
-                            </span>
-                        </div>
+            <!-- Status Stage Timeline -->
+            <div v-if="props.transfer.status == 'rejected'">
+                <div class="flex flex-col items-center">
+                    <div
+                        class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10 bg-white border-red-500">
+                        <img src="/assets/images/rejected.png" class="w-7 h-7" alt="Rejected" />
                     </div>
-
-                    <!-- To Section -->
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h3 class="text-lg font-semibold text-green-800 mb-3 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            To
-                        </h3>
-                        <div v-if="props.transfer.to_warehouse">
-                            <p class="font-semibold text-gray-800">
-                                {{ props.transfer.to_warehouse.name }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.to_warehouse.address }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.to_warehouse.district }},
-                                {{ props.transfer.to_warehouse.region }}
-                            </p>
-                            <div class="mt-2 text-sm">
-                                <p class="text-gray-600">
-                                    Manager:
-                                    <span class="font-medium">{{
-                                        props.transfer.to_warehouse.manager_name
-                                        }}</span>
-                                </p>
-                                <p class="text-gray-600">
-                                    Phone:
-                                    <span class="font-medium">{{
-                                        props.transfer.to_warehouse
-                                            .manager_phone
-                                    }}</span>
-                                </p>
-                            </div>
-                            <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                Warehouse
-                            </span>
-                        </div>
-                        <div v-else-if="props.transfer.to_facility">
-                            <p class="font-semibold text-gray-800">
-                                {{ props.transfer.to_facility.name }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.to_facility.address }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ props.transfer.to_facility.district }},
-                                {{ props.transfer.to_facility.region }}
-                            </p>
-                            <div class="mt-2 text-sm">
-                                <p class="text-gray-600">
-                                    Type:
-                                    <span class="font-medium">{{
-                                        props.transfer.to_facility.facility_type
-                                        }}</span>
-                                </p>
-                                <p class="text-gray-600">
-                                    Phone:
-                                    <span class="font-medium">{{
-                                        props.transfer.to_facility.phone
-                                        }}</span>
-                                </p>
-                            </div>
-                            <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                Facility
-                            </span>
-                        </div>
-                    </div>
+                    <h1 class="mt-3 text-2xl text-red-600 font-bold ">Rejected</h1>
                 </div>
+            </div>
+            <div v-else class="col-span-2 mb-6">
+                <div class="relative">
+                    <!-- Timeline Track Background -->
+                    <div class="absolute top-7 left-0 right-0 h-2 bg-gray-200 z-0"></div>
 
-                <!-- Status Stage Timeline -->
-                <div v-if="props.transfer.status == 'rejected'">
-                    <div class="flex flex-col items-center">
-                        <div
-                            class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10 bg-white border-red-500">
-                            <img src="/assets/images/rejected.png" class="w-7 h-7" alt="Rejected" />
-                        </div>
-                        <h1 class="mt-3 text-2xl text-red-600 font-bold ">Rejected</h1>
-                    </div>
-                </div>
-                <div v-else class="col-span-2 mb-6">
-                    <div class="relative">
-                        <!-- Timeline Track Background -->
-                        <div class="absolute top-7 left-0 right-0 h-2 bg-gray-200 z-0"></div>
+                    <!-- Timeline Progress -->
+                    <div class="absolute top-7 left-0 h-2 bg-green-500 z-0 transition-all duration-500 ease-in-out"
+                        :style="{
+                            width: `${(statusOrder.indexOf(props.transfer.status) /
+                                (statusOrder.length - 1)) *
+                                100
+                                }%`,
+                        }"></div>
 
-                        <!-- Timeline Progress -->
-                        <div class="absolute top-7 left-0 h-2 bg-green-500 z-0 transition-all duration-500 ease-in-out"
-                            :style="{
-                                width: `${(statusOrder.indexOf(props.transfer.status) /
-                                    (statusOrder.length - 1)) *
-                                    100
-                                    }%`,
-                            }"></div>
-
-                        <!-- Timeline Steps -->
-                        <div class="relative flex justify-between">
-                            <!-- Pending -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('pending')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/pending.png" class="w-7 h-7" alt="Pending" :class="statusOrder.indexOf(
+                    <!-- Timeline Steps -->
+                    <div class="relative flex justify-between">
+                        <!-- Pending -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
                                     ) >= statusOrder.indexOf('pending')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/pending.png" class="w-7 h-7" alt="Pending" :class="statusOrder.indexOf(
                                     props.transfer.status
                                 ) >= statusOrder.indexOf('pending')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Pending</span>
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('pending')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Pending</span>
+                        </div>
 
-                            <!-- Reviewed -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('reviewed')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/review.png" class="w-7 h-7" alt="Reviewed" :class="statusOrder.indexOf(
+                        <!-- Reviewed -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
                                     ) >= statusOrder.indexOf('reviewed')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/review.png" class="w-7 h-7" alt="Reviewed" :class="statusOrder.indexOf(
                                     props.transfer.status
                                 ) >= statusOrder.indexOf('reviewed')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Reviewed</span>
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('reviewed')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Reviewed</span>
+                        </div>
 
-                            <!-- Approved -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('approved')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/approved.png" class="w-7 h-7" alt="Approved" :class="statusOrder.indexOf(
+                        <!-- Approved -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
                                     ) >= statusOrder.indexOf('approved')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/approved.png" class="w-7 h-7" alt="Approved" :class="statusOrder.indexOf(
                                     props.transfer.status
                                 ) >= statusOrder.indexOf('approved')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Approved</span>
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('approved')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Approved</span>
+                        </div>
 
-                            <!-- In Process -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('in_process')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/inprocess.png" class="w-7 h-7" alt="In Process" :class="statusOrder.indexOf(
+                        <!-- In Process -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
-                                    ) >=
-                                            statusOrder.indexOf('in_process')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                    ) >= statusOrder.indexOf('in_process')
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/inprocess.png" class="w-7 h-7" alt="In Process" :class="statusOrder.indexOf(
                                     props.transfer.status
-                                ) >= statusOrder.indexOf('in_process')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">In Process</span>
+                                ) >=
+                                        statusOrder.indexOf('in_process')
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('in_process')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">In Process</span>
+                        </div>
 
-                            <!-- Dispatch -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('dispatched')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/dispatch.png" class="w-7 h-7" alt="Dispatch" :class="statusOrder.indexOf(
+                        <!-- Dispatch -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
-                                    ) >=
-                                            statusOrder.indexOf('dispatched')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                    ) >= statusOrder.indexOf('dispatched')
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/dispatch.png" class="w-7 h-7" alt="Dispatch" :class="statusOrder.indexOf(
                                     props.transfer.status
-                                ) >= statusOrder.indexOf('dispatched')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Dispatched</span>
+                                ) >=
+                                        statusOrder.indexOf('dispatched')
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('dispatched')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Dispatched</span>
+                        </div>
 
-                            <!-- Delivered -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('delivered')
-                                            ? 'bg-white border-orange-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/delivery.png" class="w-7 h-7" alt="Dispatch" :class="statusOrder.indexOf(
+                        <!-- Delivered -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
-                                    ) >=
-                                            statusOrder.indexOf('delivered')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                    ) >= statusOrder.indexOf('delivered')
+                                        ? 'bg-white border-orange-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/delivery.png" class="w-7 h-7" alt="Dispatch" :class="statusOrder.indexOf(
                                     props.transfer.status
-                                ) >= statusOrder.indexOf('delivered')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Delivered</span>
+                                ) >=
+                                        statusOrder.indexOf('delivered')
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('delivered')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Delivered</span>
+                        </div>
 
-                            <!-- Received -->
-                            <div class="flex flex-col items-center">
-                                <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
-                                    :class="[
-                                        statusOrder.indexOf(
-                                            props.transfer.status
-                                        ) >= statusOrder.indexOf('received')
-                                            ? 'bg-white border-green-500'
-                                            : 'bg-white border-gray-200',
-                                    ]">
-                                    <img src="/assets/images/received.png" class="w-7 h-7" alt="Received" :class="statusOrder.indexOf(
+                        <!-- Received -->
+                        <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full border-4 flex items-center justify-center z-10"
+                                :class="[
+                                    statusOrder.indexOf(
                                         props.transfer.status
                                     ) >= statusOrder.indexOf('received')
-                                            ? ''
-                                            : 'opacity-40'
-                                        " />
-                                </div>
-                                <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                        ? 'bg-white border-green-500'
+                                        : 'bg-white border-gray-200',
+                                ]">
+                                <img src="/assets/images/received.png" class="w-7 h-7" alt="Received" :class="statusOrder.indexOf(
                                     props.transfer.status
                                 ) >= statusOrder.indexOf('received')
-                                        ? 'text-green-600'
-                                        : 'text-gray-500'
-                                    ">Received</span>
+                                        ? ''
+                                        : 'opacity-40'
+                                    " />
                             </div>
+                            <span class="mt-3 text-xs font-bold" :class="statusOrder.indexOf(
+                                props.transfer.status
+                            ) >= statusOrder.indexOf('received')
+                                    ? 'text-green-600'
+                                    : 'text-gray-500'
+                                ">Received</span>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Transfer Items Table -->
-                <div class="mb-8">
-                    <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-gray-900">Transfer Items</h3>
-                            <p class="text-gray-600 text-sm">Detailed breakdown of items being transferred</p>
-                        </div>
+            <!-- Transfer Items Table -->
+            <div class="mb-8">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
                     </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900">Transfer Items</h3>
+                        <p class="text-gray-600 text-sm">Detailed breakdown of items being transferred</p>
+                    </div>
+                </div>
 
-                    <div class="bg-white overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm text-left table-sm">
-                                <thead>
-                                    <tr style="background-color: #F4F7FB;">
-                                        <th class="min-w-[300px] px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB;" rowspan="2">
-                                            Item Name
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            Category
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            UoM
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB;" colspan="4">
-                                            Item Details
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            Total Quantity on Hand Per Unit
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            Transfer Reason
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            Quantity to Transfer
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
-                                            Received Quantity
-                                        </th>
-                                        <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB;" rowspan="2">
-                                            Action
-                                        </th>
-                                    </tr>
-                                    <tr style="background-color: #F4F7FB;">
-                                        <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
-                                            QTY
-                                        </th>
-                                        <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
-                                            Batch Number
-                                        </th>
-                                        <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
-                                            Expiry Date
-                                        </th>
-                                        <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
-                                            Location
-                                        </th>
-                                    </tr>
-                                </thead>
+                <div class="bg-white overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm text-left table-sm">
+                            <thead>
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="min-w-[300px] px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB;" rowspan="2">
+                                        Item Name
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        Category
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        UoM
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB;" colspan="4">
+                                        Item Details
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        Total Quantity on Hand Per Unit
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        Transfer Reason
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        Quantity to Transfer
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB;" rowspan="2">
+                                        Received Quantity
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB;" rowspan="2">
+                                        Action
+                                    </th>
+                                </tr>
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
+                                        QTY
+                                    </th>
+                                    <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
+                                        Batch Number
+                                    </th>
+                                    <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
+                                        Expiry Date
+                                    </th>
+                                    <th class="px-2 py-1 text-xs font-bold text-center" style="color: #4F6FCB;">
+                                        Location
+                                    </th>
+                                </tr>
+                            </thead>
 
-                            <tbody>
-                                <template v-for="(item, index) in form" :key="item.id">
-                        <!-- Show allocations if they exist, otherwise show one row with main item data -->
-                                <tr v-for="(allocation, allocIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])" :key="`${item.id}-${allocIndex}`" class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                        <!-- Item Name -->
-                                        <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
-                                            class="px-3 py-2 text-xs font-medium text-gray-800 align-top items-center">
-                                            {{ item.product?.name || "N/A" }}
-                                        </td>
+                        <tbody>
+                            <template v-for="(item, index) in form" :key="item.id">
+                    <!-- Show allocations if they exist, otherwise show one row with main item data -->
+                            <tr v-for="(allocation, allocIndex) in (item.inventory_allocations?.length > 0 ? item.inventory_allocations : [{}])" :key="`${item.id}-${allocIndex}`" class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                                    <!-- Item Name -->
+                                    <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
+                                        class="px-3 py-2 text-xs font-medium text-gray-800 align-top items-center">
+                                        {{ item.product?.name || "N/A" }}
+                                    </td>
 
-                                        <!-- Category -->
-                                        <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
-                                            class="px-3 py-2 text-xs text-gray-700 align-top items-center">
-                                            {{ item.product?.category?.name || "N/A" }}
-                                        </td>
+                                    <!-- Category -->
+                                    <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
+                                        class="px-3 py-2 text-xs text-gray-700 align-top items-center">
+                                        {{ item.product?.category?.name || "N/A" }}
+                                    </td>
 
-                                        <!-- UoM -->
-                                        <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
-                                            class="px-3 py-2 text-xs text-gray-700 align-top items-center">
-                                            {{ item.uom || "N/A" }}
-                                        </td>
+                                    <!-- UoM -->
+                                    <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
+                                        class="px-3 py-2 text-xs text-gray-700 align-top items-center">
+                                        {{ item.uom || "N/A" }}
+                                    </td>
 
-                                        <!-- QTY -->
-                                        <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                    <!-- QTY -->
+                                    <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                        {{
+                                            (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) ||
+                                            0
+                                        }}
+                                    </td>
+
+                                    <!-- Batch Number -->
+                                    <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                        <span :class="{
+                                            'text-red-600 font-bold':
+                                                allocation.batch_number ===
+                                                'HK5273',
+                                        }">
                                             {{
-                                                (allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) ||
-                                                0
-                                            }}
-                                        </td>
-
-                                        <!-- Batch Number -->
-                                        <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
-                                            <span :class="{
-                                                'text-red-600 font-bold':
-                                                    allocation.batch_number ===
-                                                    'HK5273',
-                                            }">
-                                                {{
-                                                    allocation.batch_number ||
-                                                    "N/A"
-                                                }}
-                                            </span>
-                                        </td>
-
-                                        <!-- Expiry Date -->
-                                        <td class="px-2 py-1 text-xs border-b text-center">
-                                            <span :class="{
-                                                'text-red-600':
-                                                    isExpiringItem(
-                                                        allocation.expiry_date
-                                                    ),
-                                            }">
-                                                {{
-                                                    allocation.expiry_date
-                                                        ? moment(
-                                                            allocation.expiry_date
-                                                        ).format("DD/MM/YYYY")
-                                                        : "N/A"
-                                                }}
-                                            </span>
-                                        </td>
-
-                                        <!-- Location -->
-                                        <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
-                                            {{
-                                                allocation.location ||
+                                                allocation.batch_number ||
                                                 "N/A"
                                             }}
-                                        </td>
+                                        </span>
+                                    </td>
 
-                                        <!-- Total Quantity on Hand -->
-                                        <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
-                                            class="px-3 py-2 text-xs text-gray-800 align-top items-center">
-                                            {{ item.quantity_per_unit || 0 }}
-                                        </td>
+                                    <!-- Expiry Date -->
+                                    <td class="px-2 py-1 text-xs border-b text-center">
+                                        <span :class="{
+                                            'text-red-600':
+                                                isExpiringItem(
+                                                    allocation.expiry_date
+                                                ),
+                                        }">
+                                            {{
+                                                allocation.expiry_date
+                                                    ? moment(
+                                                        allocation.expiry_date
+                                                    ).format("DD/MM/YYYY")
+                                                    : "N/A"
+                                            }}
+                                        </span>
+                                    </td>
 
-                                        <!-- Transfer Reason -->
-                                        <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
-                                            {{ allocation.transfer_reason || "N/A" }}
-                                        </td>
+                                    <!-- Location -->
+                                    <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                        {{
+                                            allocation.location ||
+                                            "N/A"
+                                        }}
+                                    </td>
 
-                                        <!-- Quantity to Transfer -->
-                                        <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
-                                            <div class="flex flex-col items-center gap-1">
-                                                <span class="font-medium">{{ allocation.allocated_quantity }}</span>
-                                                <input 
-                                                    :readonly="!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id"
-                                                    type="number" 
-                                                    v-model="allocation.updated_quantity"
-                                                    :placeholder="(allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) || 0"
-                                                    min="1"
-                                                    :class="[
-                                                        'w-full text-center border border-gray-300 px-1 py-1 text-xs',
-                                                        (!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
-                                                    ]"
-                                                    @input="handleQuantityInput($event, allocation)"
-                                                />
-                                                <span class="text-xs text-gray-500" v-if="isUpdatingQuantity[allocation.id]">
-                                                    Updating...
-                                                </span>
-                                            </div>
-                                        </td>
+                                    <!-- Total Quantity on Hand -->
+                                    <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1"
+                                        class="px-3 py-2 text-xs text-gray-800 align-top items-center">
+                                        {{ item.quantity_per_unit || 0 }}
+                                    </td>
 
-                                        <!-- Received Quantity -->
-                                        <td class="px-2 py-1 text-xs border border-gray-300 text-center text-black"
-                                        >
+                                    <!-- Transfer Reason -->
+                                    <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                        {{ allocation.transfer_reason || "N/A" }}
+                                    </td>
+
+                                    <!-- Quantity to Transfer -->
+                                    <td class="px-2 py-1 text-xs border-b text-center text-gray-900">
+                                        <div class="flex flex-col items-center gap-1">
+                                            <span class="font-medium">{{ allocation.allocated_quantity }}</span>
                                             <input 
+                                                :readonly="!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id"
                                                 type="number" 
-                                                v-model="allocation.received_quantity" 
-                                                :max="getMaxReceivedQuantity(allocation)"
-                                                @input="validateReceivedQuantity(allocation, allocIndex)"
-                                                min="0"
-                                                :readonly="props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered'"
+                                                v-model="allocation.updated_quantity"
+                                                :placeholder="(allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) || 0"
+                                                min="1"
                                                 :class="[
-                                                    'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-                                                    (props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered') ? 'bg-gray-100 cursor-not-allowed' : ''
+                                                    'w-full text-center border border-gray-300 px-1 py-1 text-xs',
+                                                    (!['pending', 'reviewed'].includes(props.transfer.status) || props.transfer.from_facility_id !== $page.props.auth.user?.facility_id) ? 'bg-gray-100 cursor-not-allowed' : ''
                                                 ]"
+                                                @input="handleQuantityInput($event, allocation)"
                                             />
-                                            <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
-                                            <button 
-                                                v-if="((allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) || 0) !== (allocation.received_quantity || 0) && ['delivered', 'received'].includes(props.transfer.status)"
-                                                @click="openBackOrderModal(item, allocation)"
-                                                class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1 block">
-                                                Back Order
-                                            </button>
-                                        </td>
+                                            <span class="text-xs text-gray-500" v-if="isUpdatingQuantity[allocation.id]">
+                                                Updating...
+                                            </span>
+                                        </div>
+                                    </td>
 
-                                        <!-- Action -->
-                                        <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1" class="px-3 py-2 text-xs text-center align-top items-center">
-                                            <button v-if="
-                                                props.transfer.status ===
-                                                'pending'
-                                            " @click="removeItem(index)"
-                                                class="text-red-600 hover:text-red-800 transition-colors"
-                                                title="Delete item">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                        </div>
+                                    <!-- Received Quantity -->
+                                    <td class="px-2 py-1 text-xs border border-gray-300 text-center text-black"
+                                    >
+                                        <input 
+                                            type="number" 
+                                            v-model="allocation.received_quantity" 
+                                            :max="getMaxReceivedQuantity(allocation)"
+                                            @input="validateReceivedQuantity(allocation, allocIndex)"
+                                            min="0"
+                                            :readonly="props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered'"
+                                            :class="[
+                                                'w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
+                                                (props.transfer.to_facility_id !== $page.props.auth.user?.facility_id || props.transfer.status !== 'delivered') ? 'bg-gray-100 cursor-not-allowed' : ''
+                                            ]"
+                                        />
+                                        <span v-if="isReceived[allocIndex]" class="text-xs text-gray-500">Updating...</span>
+                                        <button 
+                                            v-if="((allocation.updated_quantity !== null && allocation.updated_quantity !== undefined && allocation.updated_quantity > 0 ? allocation.updated_quantity : allocation.allocated_quantity) || 0) !== (allocation.received_quantity || 0) && ['delivered', 'received'].includes(props.transfer.status)"
+                                            @click="openBackOrderModal(item, allocation)"
+                                            class="text-xs text-orange-600 underline hover:text-orange-800 cursor-pointer mt-1 block">
+                                            Back Order
+                                        </button>
+                                    </td>
+
+                                    <!-- Action -->
+                                    <td v-if="allocIndex === 0" :rowspan="item.inventory_allocations?.length || 1" class="px-3 py-2 text-xs text-center align-top items-center">
+                                        <button v-if="
+                                            props.transfer.status ===
+                                            'pending'
+                                        " @click="removeItem(index)"
+                                            class="text-red-600 hover:text-red-800 transition-colors"
+                                            title="Delete item">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
                     </div>
                 </div>
+            </div>
 
-            <!-- dispatch information -->
-            <div v-if="props.transfer.dispatch?.length > 0"
-                class="mt-8 mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-800">
-                        Dispatch Information
-                    </h2>
-                </div>
+        <!-- dispatch information -->
+        <div v-if="props.transfer.dispatch?.length > 0"
+            class="mt-8 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    Dispatch Information
+                </h2>
+            </div>
 
-                <div class="bg-white rounded-lg shadow-lg divide-y divide-gray-200">
-                    <div v-for="dispatch in props.transfer.dispatch" :key="dispatch.id" class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Driver & Company Info -->
-                            <div class="space-y-4">
-                                <div>
-                                    <h3 class="text-sm font-medium text-gray-500">Driver Information</h3>
-                                    <div class="mt-2 space-y-2">
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                            <span class="text-sm text-gray-900">{{ dispatch.driver?.name }}</span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                            </svg>
-                                            <span class="text-sm text-gray-600">{{ dispatch.driver_number }}</span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
-                                            </svg>
-                                            <span class="text-sm text-gray-600">ID: {{ dispatch.driver?.driver_id || 'N/A' }}</span>
-                                        </div>
+            <div class="bg-white rounded-lg shadow-lg divide-y divide-gray-200">
+                <div v-for="dispatch in props.transfer.dispatch" :key="dispatch.id" class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Driver & Company Info -->
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500">Driver Information</h3>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span class="text-sm text-gray-900">{{ dispatch.driver?.name }}</span>
                                     </div>
-                                </div>
-
-                                <div>
-                                    <h3 class="text-sm font-medium text-gray-500">Vehicle Information</h3>
-                                    <div class="mt-2 space-y-2">
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
-                                            </svg>
-                                            <span class="text-sm text-gray-900">Plate: {{ dispatch.plate_number }}</span>
-                                        </div>
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <span class="text-sm text-gray-600">{{ dispatch.driver_number }}</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
+                                        </svg>
+                                        <span class="text-sm text-gray-600">ID: {{ dispatch.driver?.driver_id || 'N/A' }}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Dispatch Details -->
-                            <div class="space-y-4">
-                                <div>
-                                    <h3 class="text-sm font-medium text-gray-500">Dispatch Details</h3>
-                                    <div class="mt-2 space-y-2">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500">Vehicle Information</h3>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
+                                        </svg>
+                                        <span class="text-sm text-gray-900">Plate: {{ dispatch.plate_number }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dispatch Details -->
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500">Dispatch Details</h3>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
+                                        </svg>
+                                        <span class="text-sm text-gray-900">{{
+                                            moment(dispatch.dispatch_date || dispatch.created_at).format('DD/MMM/YYYY') }}</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                        <span class="text-sm text-gray-600">{{ dispatch.received_cartons ?? 0 }}/{{ dispatch.no_of_cartoons }} Cartons</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-sm text-gray-600">Dispatched on {{
+                                            moment(dispatch.created_at).format('MMMM D, YYYY h:mm A') }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
                                         <div class="flex items-center">
                                             <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                            <span class="text-sm text-gray-900">{{
-                                                moment(dispatch.dispatch_date || dispatch.created_at).format('DD/MMM/YYYY') }}</span>
+                                            <span class="text-sm text-gray-600">Delivery Images</span>
                                         </div>
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        <button 
+                                            v-if="dispatch.image && dispatch.image !== 'null' && dispatch.image !== ''"
+                                            @click="viewDispatchImages(dispatch)"
+                                            class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                            title="View delivery images"
+                                        >
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            <span class="text-sm text-gray-600">{{ dispatch.received_cartons ?? 0 }}/{{ dispatch.no_of_cartoons }} Cartons</span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span class="text-sm text-gray-600">Dispatched on {{
-                                                moment(dispatch.created_at).format('MMMM D, YYYY h:mm A') }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex items-center">
-                                                <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span class="text-sm text-gray-600">Delivery Images</span>
-                                            </div>
-                                            <button 
-                                                v-if="dispatch.image && dispatch.image !== 'null' && dispatch.image !== ''"
-                                                @click="viewDispatchImages(dispatch)"
-                                                class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                                                title="View delivery images"
-                                            >
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                View
-                                            </button>
-                                            <span v-else class="text-xs text-gray-400">No images</span>
-                                        </div>
+                                            View
+                                        </button>
+                                        <span v-else class="text-xs text-gray-400">No images</span>
                                     </div>
                                 </div>
                             </div>
@@ -747,354 +747,354 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Transfer actions -->
-            <div class="mt-8 mb-[80px] bg-white rounded-lg shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">
-                    Transfer Status Actions
-                </h3>
-                <div class="flex items-start mb-6">
-                    <!-- Status Action Buttons -->
-                    <div class="flex flex-wrap items-center justify-center gap-4 px-1 py-2">
+        <!-- Transfer actions -->
+        <div class="mt-8 mb-[80px] bg-white rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">
+                Transfer Status Actions
+            </h3>
+            <div class="flex items-start mb-6">
+                <!-- Status Action Buttons -->
+                <div class="flex flex-wrap items-center justify-center gap-4 px-1 py-2">
 
-                            <!-- Review Status Display (Read-only) -->
+                        <!-- Review Status Display (Read-only) -->
+                        <div class="relative">
+                            <div class="flex flex-col">
+                                <button :class="[
+                                    props.transfer.status === 'pending'
+                                        ? 'bg-yellow-500'
+                                        : statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) > statusOrder.indexOf('pending')
+                                            ? 'bg-green-500'
+                                            : 'bg-gray-300',
+                                ]"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
+                                    <img src="/assets/images/review.png" class="w-5 h-5 mr-2" alt="Review" />
+                                    <span class="text-sm font-bold text-white">{{
+                                        statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) > statusOrder.indexOf("pending")
+                                            ? "Reviewed"
+                                            : props.transfer.status === "pending"
+                                                ? "Waiting to be reviewed"
+                                                : "Review"
+                                    }}</span>
+                                </button>
+                                <span v-show="props.transfer?.reviewed_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.transfer?.reviewed_at).format("DD/MM/YYYY HH:mm") }}
+                                </span>
+                                <span v-show="props.transfer?.reviewed_by" class="text-sm text-gray-600">
+                                    By {{ props.transfer?.reviewed_by?.name }}
+                                </span>
+                            </div>
+                            <div v-if="props.transfer.status === 'pending'"
+                                class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
+                            </div>
+                        </div>
+
+                        <!-- Approve Status Display (Read-only) -->
+                        <div class="relative" v-if="props.transfer.status !== 'rejected'">
+                            <div class="flex flex-col">
+                                <button :class="[
+                                    props.transfer.status == 'reviewed'
+                                        ? 'bg-yellow-500'
+                                        : statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) >
+                                            statusOrder.indexOf('reviewed')
+                                            ? 'bg-green-500'
+                                            : 'bg-gray-300',
+                                ]"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
+                                    <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
+                                    <span class="text-sm font-bold text-white">{{
+                                        statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) >
+                                            statusOrder.indexOf("reviewed")
+                                            ? "Approved"
+                                            : props.transfer.status === "reviewed"
+                                                ? "Waiting to be approved"
+                                                : "Approve"
+                                    }}</span>
+                                </button>
+                                <span v-show="props.transfer?.approved_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.transfer?.approved_at).format("DD/MM/YYYY HH:mm") }}
+                                </span>
+                                <span v-show="props.transfer?.approved_by" class="text-sm text-gray-600">
+                                    By {{ props.transfer?.approved_by?.name }}
+                                </span>
+                            </div>
+                            <div v-if="props.transfer.status === 'reviewed'"
+                                class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
+                            </div>
+                        </div>
+
+                        <!-- Process button -->
+                        <div class="relative" v-if="props.transfer.status !== 'rejected'">
+                            <div class="flex flex-col">
+                                <button @click="
+                                    changeStatus(
+                                        props.transfer.id,
+                                        'in_process',
+                                        'is_process'
+                                    )
+                                    " :disabled="isType['is_process'] ||
+                                    props.transfer.status !== 'approved' ||
+                                    !canDispatch
+                                    " :class="[
+                                    props.transfer.status === 'approved'
+                                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                                        : statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) >
+                                            statusOrder.indexOf('approved')
+                                            ? 'bg-green-500'
+                                            : 'bg-gray-300 cursor-not-allowed',
+                                ]"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
+                                    <svg v-if="
+                                        isType['is_process'] &&
+                                        props.transfer.status == 'approved'
+                                    " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4">
+                                        </circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
+                                    <template v-else>
+                                        <img src="/assets/images/inprocess.png" class="w-5 h-5 mr-2"
+                                            alt="Process" />
+                                        <span class="text-sm font-bold text-white">{{
+                                            statusOrder.indexOf(
+                                                props.transfer.status
+                                            ) >
+                                                statusOrder.indexOf("approved")
+                                                ? "Processed"
+                                                : isType["is_process"]
+                                                    ? "Please Wait..."
+                                                    : props.transfer.status ===
+                                                        "approved" &&
+                                                        !canDispatch
+                                                        ? "Waiting to be processed"
+                                                        : "Process"
+                                        }}</span>
+                                    </template>
+                                </button>
+                                <span v-show="props.transfer?.processed_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.transfer?.processed_at).format("DD/MM/YYYY HH:mm") }}
+                                </span>
+                                <span v-show="props.transfer?.processed_by" class="text-sm text-gray-600">
+                                    By {{ props.transfer?.processed_by?.name }}
+                                </span>
+                            </div>
+                            <div v-if="props.transfer.status === 'approved'"
+                                class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
+                            </div>
+                        </div>
+
+                        <!-- Dispatch button -->
+                        <div class="relative" v-if="props.transfer.status !== 'rejected'">
+                            <div class="flex flex-col">
+                                <button @click="showDispatchForm = true" :disabled="isType['is_dispatch'] ||
+                                    props.transfer.status !==
+                                    'in_process' ||
+                                    !canDispatch
+                                    " :class="[
+                                    props.transfer.status === 'in_process'
+                                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                                        : statusOrder.indexOf(
+                                            props.transfer.status
+                                        ) >
+                                            statusOrder.indexOf('in_process')
+                                            ? 'bg-green-500'
+                                            : 'bg-gray-300 cursor-not-allowed',
+                                ]" class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
+                                    <svg v-if="
+                                        isType['is_dispatch'] &&
+                                        props.transfer.status ===
+                                        'in_process'
+                                    " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4">
+                                        </circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
+                                    <template v-else>
+                                        <img src="/assets/images/dispatch.png" class="w-5 h-5 mr-2"
+                                            alt="Dispatch" />
+                                        <span class="text-sm font-bold text-white">{{
+                                            statusOrder.indexOf(
+                                                props.transfer.status
+                                            ) >
+                                                statusOrder.indexOf(
+                                                    "in_process"
+                                                )
+                                                ? "Dispatched"
+                                                : isType["is_dispatch"]
+                                                    ? "Please Wait..."
+                                                    : props.transfer.status ===
+                                                        "in_process" &&
+                                                        !canDispatch
+                                                        ? "Waiting to be dispatched"
+                                                        : "Dispatch"
+                                        }}</span>
+                                    </template>
+                                </button>
+                                <span v-show="props.transfer?.dispatched_at" class="text-sm text-gray-600">
+                                    On {{ moment(props.transfer?.dispatched_at).format("DD/MM/YYYY HH:mm") }}
+                                </span>
+                                <span v-show="props.transfer?.dispatched_by" class="text-sm text-gray-600">
+                                    By {{ props.transfer?.dispatched_by?.name }}
+                                </span>
+                            </div>
+                            <div v-if="props.transfer.status === 'in_process'"
+                                class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
+                            </div>
+                        </div>
+
+                        <!-- Order Delivery Indicators -->
+                        <div class="flex flex-col gap-4 sm:flex-row" v-if="props.transfer.status !== 'rejected'">
+                            <!-- Delivered Status -->
                             <div class="relative">
                                 <div class="flex flex-col">
-                                    <button :class="[
-                                        props.transfer.status === 'pending'
-                                            ? 'bg-yellow-500'
-                                            : statusOrder.indexOf(
-                                                props.transfer.status
-                                            ) > statusOrder.indexOf('pending')
-                                                ? 'bg-green-500'
-                                                : 'bg-gray-300',
-                                    ]"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
-                                        <img src="/assets/images/review.png" class="w-5 h-5 mr-2" alt="Review" />
-                                        <span class="text-sm font-bold text-white">{{
-                                            statusOrder.indexOf(
-                                                props.transfer.status
-                                            ) > statusOrder.indexOf("pending")
-                                                ? "Reviewed"
-                                                : props.transfer.status === "pending"
-                                                    ? "Waiting to be reviewed"
-                                                    : "Review"
-                                        }}</span>
+                                    <button @click="openDeliveryForm()"
+                                        :disabled="isType['is_delivering'] || props.transfer?.status != 'dispatched' || !canReceive"
+                                        :class="[
+                                            props.transfer.status == 'dispatched' && canReceive
+                                                ? 'bg-yellow-300'
+                                                : statusOrder.indexOf(props.transfer.status) >
+                                                    statusOrder.indexOf('dispatched')
+                                                    ? 'bg-green-500 cursor-not-allowed'
+                                                    : 'bg-gray-300 cursor-not-allowed',
+                                        ]"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
+                                        <img src="/assets/images/delivery.png" class="w-5 h-5 mr-2" alt="delivered" />
+                                        <span class="text-sm font-bold text-white">
+                                            {{
+                                                statusOrder.indexOf(
+                                                    props.transfer.status
+                                                ) > statusOrder.indexOf("delivered")
+                                                    ? "Delivered"
+                                                    : isType['is_delivering'] 
+                                                        ? 'Please Wait....' 
+                                                        : !canReceive 
+                                                            ? 'Waiting to be Delivered' 
+                                                            : "Mark as Delivered"
+                                            }}
+                                        </span>
                                     </button>
-                                    <span v-show="props.transfer?.reviewed_at" class="text-sm text-gray-600">
-                                        On {{ moment(props.transfer?.reviewed_at).format("DD/MM/YYYY HH:mm") }}
+                                    <span v-show="props.transfer?.delivered_at" class="text-sm text-gray-600">
+                                        On {{ moment(props.transfer?.delivered_at).format("DD/MM/YYYY HH:mm") }}
                                     </span>
-                                    <span v-show="props.transfer?.reviewed_by" class="text-sm text-gray-600">
-                                        By {{ props.transfer?.reviewed_by?.name }}
+                                    <span v-show="props.transfer?.delivered_by" class="text-sm text-gray-600">
+                                        By {{ props.transfer?.delivered_by?.name }}
                                     </span>
                                 </div>
-                                <div v-if="props.transfer.status === 'pending'"
+
+                                <!-- Pulse Indicator if currently at this status -->
+                                <div v-if="props.transfer.status === 'dispatched'"
                                     class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
                                 </div>
                             </div>
 
-                            <!-- Approve Status Display (Read-only) -->
-                            <div class="relative" v-if="props.transfer.status !== 'rejected'">
-                                <div class="flex flex-col">
-                                    <button :class="[
-                                        props.transfer.status == 'reviewed'
-                                            ? 'bg-yellow-500'
-                                            : statusOrder.indexOf(
-                                                props.transfer.status
-                                            ) >
-                                                statusOrder.indexOf('reviewed')
-                                                ? 'bg-green-500'
-                                                : 'bg-gray-300',
-                                    ]"
-                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm text-white min-w-[160px] cursor-default">
-                                        <img src="/assets/images/approved.png" class="w-5 h-5 mr-2" alt="Approve" />
-                                        <span class="text-sm font-bold text-white">{{
-                                            statusOrder.indexOf(
-                                                props.transfer.status
-                                            ) >
-                                                statusOrder.indexOf("reviewed")
-                                                ? "Approved"
-                                                : props.transfer.status === "reviewed"
-                                                    ? "Waiting to be approved"
-                                                    : "Approve"
-                                        }}</span>
-                                    </button>
-                                    <span v-show="props.transfer?.approved_at" class="text-sm text-gray-600">
-                                        On {{ moment(props.transfer?.approved_at).format("DD/MM/YYYY HH:mm") }}
-                                    </span>
-                                    <span v-show="props.transfer?.approved_by" class="text-sm text-gray-600">
-                                        By {{ props.transfer?.approved_by?.name }}
-                                    </span>
-                                </div>
-                                <div v-if="props.transfer.status === 'reviewed'"
-                                    class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
-                                </div>
-                            </div>
-
-                            <!-- Process button -->
-                            <div class="relative" v-if="props.transfer.status !== 'rejected'">
+                            <!-- Received Status -->
+                            <div class="relative">
                                 <div class="flex flex-col">
                                     <button @click="
                                         changeStatus(
                                             props.transfer.id,
-                                            'in_process',
-                                            'is_process'
+                                            'received',
+                                            'is_receive'
                                         )
-                                        " :disabled="isType['is_process'] ||
-                                        props.transfer.status !== 'approved' ||
-                                        !canDispatch
+                                        " :disabled="isType['is_receive'] ||
+                                        props.transfer.status !==
+                                        'delivered' ||
+                                        !canReceive
                                         " :class="[
-                                        props.transfer.status === 'approved'
+                                        props.transfer.status ===
+                                            'delivered'
                                             ? 'bg-yellow-500 hover:bg-yellow-600'
                                             : statusOrder.indexOf(
                                                 props.transfer.status
                                             ) >
-                                                statusOrder.indexOf('approved')
+                                                statusOrder.indexOf(
+                                                    'delivered'
+                                                )
                                                 ? 'bg-green-500'
                                                 : 'bg-gray-300 cursor-not-allowed',
                                     ]"
                                         class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
                                         <svg v-if="
-                                            isType['is_process'] &&
-                                            props.transfer.status == 'approved'
-                                        " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                stroke-width="4">
-                                            </circle>
-                                            <path class="opacity-75" fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                            </path>
-                                        </svg>
-                                        <template v-else>
-                                            <img src="/assets/images/inprocess.png" class="w-5 h-5 mr-2"
-                                                alt="Process" />
-                                            <span class="text-sm font-bold text-white">{{
-                                                statusOrder.indexOf(
-                                                    props.transfer.status
-                                                ) >
-                                                    statusOrder.indexOf("approved")
-                                                    ? "Processed"
-                                                    : isType["is_process"]
-                                                        ? "Please Wait..."
-                                                        : props.transfer.status ===
-                                                            "approved" &&
-                                                            !canDispatch
-                                                            ? "Waiting to be processed"
-                                                            : "Process"
-                                            }}</span>
-                                        </template>
-                                    </button>
-                                    <span v-show="props.transfer?.processed_at" class="text-sm text-gray-600">
-                                        On {{ moment(props.transfer?.processed_at).format("DD/MM/YYYY HH:mm") }}
-                                    </span>
-                                    <span v-show="props.transfer?.processed_by" class="text-sm text-gray-600">
-                                        By {{ props.transfer?.processed_by?.name }}
-                                    </span>
-                                </div>
-                                <div v-if="props.transfer.status === 'approved'"
-                                    class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
-                                </div>
-                            </div>
-
-                            <!-- Dispatch button -->
-                            <div class="relative" v-if="props.transfer.status !== 'rejected'">
-                                <div class="flex flex-col">
-                                    <button @click="showDispatchForm = true" :disabled="isType['is_dispatch'] ||
-                                        props.transfer.status !==
-                                        'in_process' ||
-                                        !canDispatch
-                                        " :class="[
-                                        props.transfer.status === 'in_process'
-                                            ? 'bg-yellow-500 hover:bg-yellow-600'
-                                            : statusOrder.indexOf(
-                                                props.transfer.status
-                                            ) >
-                                                statusOrder.indexOf('in_process')
-                                                ? 'bg-green-500'
-                                                : 'bg-gray-300 cursor-not-allowed',
-                                    ]" class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                                        <svg v-if="
-                                            isType['is_dispatch'] &&
+                                            isType['is_receive'] &&
                                             props.transfer.status ===
-                                            'in_process'
-                                        " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                            viewBox="0 0 24 24">
+                                            'delivered'
+                                        " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg"
+                                            fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                stroke-width="4">
-                                            </circle>
+                                                stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
                                         <template v-else>
-                                            <img src="/assets/images/dispatch.png" class="w-5 h-5 mr-2"
-                                                alt="Dispatch" />
-                                            <span class="text-sm font-bold text-white">{{
-                                                statusOrder.indexOf(
-                                                    props.transfer.status
-                                                ) >
-                                                    statusOrder.indexOf(
-                                                        "in_process"
-                                                    )
-                                                    ? "Dispatched"
-                                                    : isType["is_dispatch"]
-                                                        ? "Please Wait..."
-                                                        : props.transfer.status ===
-                                                            "in_process" &&
-                                                            !canDispatch
-                                                            ? "Waiting to be dispatched"
-                                                            : "Dispatch"
-                                            }}</span>
-                                        </template>
-                                    </button>
-                                    <span v-show="props.transfer?.dispatched_at" class="text-sm text-gray-600">
-                                        On {{ moment(props.transfer?.dispatched_at).format("DD/MM/YYYY HH:mm") }}
-                                    </span>
-                                    <span v-show="props.transfer?.dispatched_by" class="text-sm text-gray-600">
-                                        By {{ props.transfer?.dispatched_by?.name }}
-                                    </span>
-                                </div>
-                                <div v-if="props.transfer.status === 'in_process'"
-                                    class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
-                                </div>
-                            </div>
-
-                            <!-- Order Delivery Indicators -->
-                            <div class="flex flex-col gap-4 sm:flex-row" v-if="props.transfer.status !== 'rejected'">
-                                <!-- Delivered Status -->
-                                <div class="relative">
-                                    <div class="flex flex-col">
-                                        <button @click="openDeliveryForm()"
-                                            :disabled="isType['is_delivering'] || props.transfer?.status != 'dispatched' || !canReceive"
-                                            :class="[
-                                                props.transfer.status == 'dispatched' && canReceive
-                                                    ? 'bg-yellow-300'
-                                                    : statusOrder.indexOf(props.transfer.status) >
-                                                        statusOrder.indexOf('dispatched')
-                                                        ? 'bg-green-500 cursor-not-allowed'
-                                                        : 'bg-gray-300 cursor-not-allowed',
-                                            ]"
-                                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                                            <img src="/assets/images/delivery.png" class="w-5 h-5 mr-2" alt="delivered" />
+                                            <img src="/assets/images/received.png" class="w-5 h-5 mr-2"
+                                                alt="Received" />
                                             <span class="text-sm font-bold text-white">
                                                 {{
                                                     statusOrder.indexOf(
                                                         props.transfer.status
-                                                    ) > statusOrder.indexOf("delivered")
-                                                        ? "Delivered"
-                                                        : isType['is_delivering'] 
-                                                            ? 'Please Wait....' 
-                                                            : !canReceive 
-                                                                ? 'Waiting to be Delivered' 
-                                                                : "Mark as Delivered"
+                                                    ) >
+                                                        statusOrder.indexOf(
+                                                            "delivered"
+                                                        )
+                                                        ? "Received"
+                                                        : isType["is_receive"]
+                                                            ? "Please Wait..."
+                                                            : props.transfer
+                                                                .status ===
+                                                                "delivered" &&
+                                                                !canReceive
+                                                                ? "Waiting to be received"
+                                                                : "Receive"
                                                 }}
                                             </span>
-                                        </button>
-                                        <span v-show="props.transfer?.delivered_at" class="text-sm text-gray-600">
-                                            On {{ moment(props.transfer?.delivered_at).format("DD/MM/YYYY HH:mm") }}
-                                        </span>
-                                        <span v-show="props.transfer?.delivered_by" class="text-sm text-gray-600">
-                                            By {{ props.transfer?.delivered_by?.name }}
-                                        </span>
-                                    </div>
-
-                                    <!-- Pulse Indicator if currently at this status -->
-                                    <div v-if="props.transfer.status === 'dispatched'"
-                                        class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
-                                    </div>
+                                        </template>
+                                    </button>
+                                    <span v-show="props.transfer?.received_at" class="text-sm text-gray-600">
+                                        On {{ moment(props.transfer?.received_at).format("DD/MM/YYYY HH:mm") }}
+                                    </span>
+                                    <span v-show="props.transfer?.received_by" class="text-sm text-gray-600">
+                                        By
+                                        {{ props.transfer?.received_by?.name }}
+                                    </span>
                                 </div>
 
-                                <!-- Received Status -->
-                                <div class="relative">
-                                    <div class="flex flex-col">
-                                        <button @click="
-                                            changeStatus(
-                                                props.transfer.id,
-                                                'received',
-                                                'is_receive'
-                                            )
-                                            " :disabled="isType['is_receive'] ||
-                                            props.transfer.status !==
-                                            'delivered' ||
-                                            !canReceive
-                                            " :class="[
-                                            props.transfer.status ===
-                                                'delivered'
-                                                ? 'bg-yellow-500 hover:bg-yellow-600'
-                                                : statusOrder.indexOf(
-                                                    props.transfer.status
-                                                ) >
-                                                    statusOrder.indexOf(
-                                                        'delivered'
-                                                    )
-                                                    ? 'bg-green-500'
-                                                    : 'bg-gray-300 cursor-not-allowed',
-                                        ]"
-                                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-sm transition-colors duration-150 text-white min-w-[160px]">
-                                            <svg v-if="
-                                                isType['is_receive'] &&
-                                                props.transfer.status ===
-                                                'delivered'
-                                            " class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg"
-                                                fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                    stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                                </path>
-                                            </svg>
-                                            <template v-else>
-                                                <img src="/assets/images/received.png" class="w-5 h-5 mr-2"
-                                                    alt="Received" />
-                                                <span class="text-sm font-bold text-white">
-                                                    {{
-                                                        statusOrder.indexOf(
-                                                            props.transfer.status
-                                                        ) >
-                                                            statusOrder.indexOf(
-                                                                "delivered"
-                                                            )
-                                                            ? "Received"
-                                                            : isType["is_receive"]
-                                                                ? "Please Wait..."
-                                                                : props.transfer
-                                                                    .status ===
-                                                                    "delivered" &&
-                                                                    !canReceive
-                                                                    ? "Waiting to be received"
-                                                                    : "Receive"
-                                                    }}
-                                                </span>
-                                            </template>
-                                        </button>
-                                        <span v-show="props.transfer?.received_at" class="text-sm text-gray-600">
-                                            On {{ moment(props.transfer?.received_at).format("DD/MM/YYYY HH:mm") }}
-                                        </span>
-                                        <span v-show="props.transfer?.received_by" class="text-sm text-gray-600">
-                                            By
-                                            {{ props.transfer?.received_by?.name }}
-                                        </span>
-                                    </div>
-
-                                    <!-- Pulse Indicator if currently at this status -->
-                                    <div v-if="props.transfer.status === 'delivered'"
-                                        class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
-                                    </div>
+                                <!-- Pulse Indicator if currently at this status -->
+                                <div v-if="props.transfer.status === 'delivered'"
+                                    class="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse">
                                 </div>
                             </div>
-
-                            <!-- Status indicator for rejected status -->
-                            <div v-if="props.transfer.status === 'rejected'"
-                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span class="text-sm font-bold">Rejected</span>
-                            </div>
-
                         </div>
+
+                        <!-- Status indicator for rejected status -->
+                        <div v-if="props.transfer.status === 'rejected'"
+                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-100 text-red-800 min-w-[160px]">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span class="text-sm font-bold">Rejected</span>
+                        </div>
+
                     </div>
                 </div>
             </div>

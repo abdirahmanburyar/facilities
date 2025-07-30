@@ -1,5 +1,9 @@
 <template>
-    <AuthenticatedLayout title="Monthly Inventory Report">
+    <AuthenticatedLayout 
+        title="Monthly Inventory Report"
+        description="View and analyze monthly inventory reports with detailed stock movements and balances"
+        img="/assets/images/report.png"
+    >
         <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold leading-tight text-gray-800">
                 Monthly Inventory Report

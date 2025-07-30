@@ -13,6 +13,7 @@ use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
 use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\MonthlyInventoryReportController;
+use App\Http\Controllers\FacilityInventoryMovementController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReasonController;
 use App\Http\Controllers\DeliveryController;
@@ -339,6 +340,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::get('/export', 'export')->name('export');
             Route::get('/summary', 'summary')->name('summary');
             Route::post('/generate', 'generateReport')->name('generate');
+            Route::post('/generate-from-movements', 'generateReportFromMovements')->name('generate-from-movements');
+        });
+
+    // Facility Inventory Movement Reports
+    Route::controller(FacilityInventoryMovementController::class)
+        ->prefix('reports/facility-inventory-movements')
+        ->name('reports.facility-inventory-movements.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/export', 'export')->name('export');
         });
 
     // Reason Management Routes

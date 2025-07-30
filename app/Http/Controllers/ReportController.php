@@ -390,7 +390,7 @@ class ReportController extends Controller
             'item_id' => 'required|integer|exists:facility_monthly_report_items,id',
             'positive_adjustments' => 'nullable|numeric|min:0',
             'negative_adjustments' => 'nullable|numeric|min:0',
-            'stockout_days' => 'nullable|integer|min:0|max:31',
+            'stockout_days' => 'nullable|integer|min:0',
         ]);
 
         // Get current user's facility

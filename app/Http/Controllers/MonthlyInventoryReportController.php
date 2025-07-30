@@ -29,13 +29,7 @@ class MonthlyInventoryReportController extends Controller
             $query->where('status', $request->status);
         }
         
-        if ($request->filled('product_id')) {
-            if (is_array($request->product_id)) {
-                $query->whereIn('items.product_id', $request->product_id);
-            } else {
-                $query->where('items.product_id', $request->product_id);
-            }
-        }
+        // Note: Product filtering is handled on the frontend to filter items within the report
 
         // Only fetch reports if both year and month are provided
         if ($request->filled('month_year')) {
@@ -102,6 +96,7 @@ class MonthlyInventoryReportController extends Controller
         $eligibleProducts = $facility->eligibleProducts()->select('products.id', 'products.name')->get();
         
         // Get existing report items for this period
+
         $existingItems = FacilityMonthlyReportItem::where('parent_id', $monthlyReport->id)
             ->with('product:id,name','product.dosage')
             ->get()
@@ -151,7 +146,7 @@ class MonthlyInventoryReportController extends Controller
             'reports.*.stock_issued' => 'required|numeric|min:0',
             'reports.*.positive_adjustments' => 'nullable|numeric|min:0',
             'reports.*.negative_adjustments' => 'nullable|numeric|min:0',
-            'reports.*.stockout_days' => 'nullable|integer|min:0|max:31',
+            'reports.*.stockout_days' => 'nullable|integer|min:0',
         ]);
 
         $facilityId = auth()->user()->facility_id;
@@ -172,12 +167,11 @@ class MonthlyInventoryReportController extends Controller
 
         foreach ($request->reports as $reportData) {
             try {
-                // Calculate closing balance
-                $closingBalance = $reportData['opening_balance'] 
-                    + $reportData['stock_received'] 
-                    - $reportData['stock_issued'] 
-                    + ($reportData['positive_adjustments'] ?? 0) 
-                    - ($reportData['negative_adjustments'] ?? 0);
+                // Check if this is an update (editing existing item) or creation (initial generation)
+                $existingItem = FacilityMonthlyReportItem::where([
+                    'parent_id' => $monthlyReport->id,
+                    'product_id' => $reportData['product_id'],
+                ])->first();
 
                 $data = [
                     'parent_id' => $monthlyReport->id,
@@ -187,9 +181,19 @@ class MonthlyInventoryReportController extends Controller
                     'stock_issued' => $reportData['stock_issued'],
                     'positive_adjustments' => $reportData['positive_adjustments'] ?? 0,
                     'negative_adjustments' => $reportData['negative_adjustments'] ?? 0,
-                    'closing_balance' => $closingBalance,
                     'stockout_days' => $reportData['stockout_days'] ?? 0,
                 ];
+
+                // For new items (initial generation), calculate closing balance manually
+                // For existing items (editing), let the model calculate automatically
+                if (!$existingItem) {
+                    $data['closing_balance'] = $reportData['opening_balance'] 
+                        + $reportData['stock_received'] 
+                        - $reportData['stock_issued'] 
+                        + ($reportData['positive_adjustments'] ?? 0) 
+                        - ($reportData['negative_adjustments'] ?? 0);
+                }
+                // Note: For existing items, closing_balance will be automatically calculated by model
 
                 FacilityMonthlyReportItem::updateOrCreate([
                     'parent_id' => $monthlyReport->id,
@@ -203,7 +207,7 @@ class MonthlyInventoryReportController extends Controller
         }
 
         if (empty($errors)) {
-            return redirect()->route('monthly-reports.index')
+            return redirect()->route('reports.monthly-reports.index')
                 ->with('success', "Successfully saved {$savedCount} monthly reports.");
         } else {
             return redirect()->back()
@@ -365,7 +369,181 @@ class MonthlyInventoryReportController extends Controller
     }
 
     /**
-     * Trigger report generation via queue from the web interface
+     * Generate reports automatically from facility movements
+     */
+    public function generateReportFromMovements(Request $request)
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2030',
+            'month' => 'required|integer|min:1|max:12',
+        ]);
+
+        $facilityId = auth()->user()->facility_id;
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
+
+        try {
+            // Get facility and check eligibility
+            $facility = auth()->user()->facility;
+            if (!$facility) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Facility not found for current user.'
+                ], 400);
+            }
+
+            // Create date range for the month
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+            $previousMonth = $startDate->copy()->subMonth();
+
+            // Create or get the monthly report
+            $monthlyReport = FacilityMonthlyReport::firstOrCreate([
+                'facility_id' => $facilityId,
+                'report_period' => $reportPeriod,
+            ], [
+                'status' => 'draft',
+            ]);
+
+            // Get facility movements for the month grouped by product
+            $movements = \App\Models\FacilityInventoryMovement::where('facility_id', $facilityId)
+                ->whereBetween('movement_date', [$startDate, $endDate])
+                ->with('product')
+                ->get()
+                ->groupBy('product_id');
+
+            // Get opening balances from previous month's closing balance
+            $previousReportItems = FacilityMonthlyReportItem::whereHas('report', function($q) use ($facilityId, $previousMonth) {
+                $q->where('facility_id', $facilityId)
+                  ->where('report_period', $previousMonth->format('Y-m'));
+            })->get()->keyBy('product_id');
+
+            $createdCount = 0;
+            $updatedCount = 0;
+            
+            foreach ($movements as $productId => $productMovements) {
+                $product = $productMovements->first()->product;
+                
+                // Calculate opening balance from previous month or current inventory
+                $openingBalance = 0;
+                if (isset($previousReportItems[$productId])) {
+                    $openingBalance = $previousReportItems[$productId]->closing_balance;
+                } else {
+                    // Get current facility inventory for this product as fallback
+                    $currentInventory = \App\Models\FacilityInventory::where('facility_id', $facilityId)
+                        ->whereHas('items', function($q) use ($productId) {
+                            $q->where('product_id', $productId);
+                        })
+                        ->with(['items' => function($q) use ($productId) {
+                            $q->where('product_id', $productId);
+                        }])
+                        ->first();
+                    
+                    if ($currentInventory && $currentInventory->items->count() > 0) {
+                        $openingBalance = $currentInventory->items->sum('quantity');
+                    }
+                }
+
+                // Calculate movements
+                $stockReceived = $productMovements->where('movement_type', 'facility_received')->sum('facility_received_quantity');
+                $stockIssued = $productMovements->where('movement_type', 'facility_issued')->sum('facility_issued_quantity');
+                
+                // Calculate closing balance
+                $closingBalance = $openingBalance + $stockReceived - $stockIssued;
+
+                // Create or update report item
+                $item = FacilityMonthlyReportItem::updateOrCreate([
+                    'parent_id' => $monthlyReport->id,
+                    'product_id' => $productId,
+                ], [
+                    'opening_balance' => $openingBalance,
+                    'stock_received' => $stockReceived,
+                    'stock_issued' => $stockIssued,
+                    'positive_adjustments' => 0,
+                    'negative_adjustments' => 0,
+                    'closing_balance' => $closingBalance,
+                    'stockout_days' => 0, // This would need manual input or separate calculation
+                ]);
+                
+                if ($item->wasRecentlyCreated) {
+                    $createdCount++;
+                } else {
+                    $updatedCount++;
+                }
+            }
+
+            // Also create empty items for products with no movements but are eligible
+            $eligibleProducts = $facility->eligibleProducts()->select('products.id', 'products.name')->get();
+            $movementProductIds = $movements->keys()->toArray();
+            
+            foreach ($eligibleProducts as $product) {
+                if (!in_array($product->id, $movementProductIds)) {
+                    // Get opening balance from previous month
+                    $openingBalance = 0;
+                    if (isset($previousReportItems[$product->id])) {
+                        $openingBalance = $previousReportItems[$product->id]->closing_balance;
+                    }
+
+                    $item = FacilityMonthlyReportItem::firstOrCreate([
+                        'parent_id' => $monthlyReport->id,
+                        'product_id' => $product->id,
+                    ], [
+                        'opening_balance' => $openingBalance,
+                        'stock_received' => 0,
+                        'stock_issued' => 0,
+                        'positive_adjustments' => 0,
+                        'negative_adjustments' => 0,
+                        'closing_balance' => $openingBalance,
+                        'stockout_days' => 0,
+                    ]);
+                    
+                    if ($item->wasRecentlyCreated) {
+                        $createdCount++;
+                    }
+                }
+            }
+
+            $totalProducts = $createdCount + $updatedCount;
+            $message = "Monthly report generated successfully from facility movements.";
+            if ($createdCount > 0) {
+                $message .= " {$createdCount} new items created.";
+            }
+            if ($updatedCount > 0) {
+                $message .= " {$updatedCount} existing items updated.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'created_count' => $createdCount,
+                    'updated_count' => $updatedCount,
+                    'total_products' => $totalProducts,
+                    'report_period' => $reportPeriod,
+                    'facility_id' => $facilityId,
+                    'movements_processed' => $movements->count()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Monthly report generation from movements failed: ' . $e->getMessage(), [
+                'facility_id' => $facilityId,
+                'year' => $year,
+                'month' => $month,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate report from movements: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Trigger report generation via queue from the web interface (legacy - creates empty items)
      */
     public function generateReport(Request $request)
     {

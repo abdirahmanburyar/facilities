@@ -1,5 +1,9 @@
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout 
+        title="Create Monthly Report"
+        description="Create a new monthly inventory report with opening balances, stock movements, and adjustments"
+        img="/assets/images/report.png"
+    >
         <Head :title="`Monthly Report - ${monthName} ${year}`" />
         
         <div class="mb-[80px]">
@@ -14,7 +18,7 @@
                             </div>
                             <div class="flex space-x-2">
                                 <Link 
-                                    :href="route('monthly-reports.index')"
+                                    :href="route('reports.monthly-reports.index')"
                                     class="inline-flex items-center px-3 py-1 bg-gray-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 focus:bg-gray-600 active:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                 >
                                     Back to Reports
@@ -227,134 +231,228 @@
     </AuthenticatedLayout>
 </template>
 
-<script>
+<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import Swal from 'sweetalert2';
 
-export default {
-    components: {
-        AuthenticatedLayout,
-        Head,
-        Link,
-    },
-    
-    props: {
-        reportData: Array,
-        year: Number,
-        month: Number,
-        monthName: String,
-        facility: Object,
-    },
-    
-    data() {
-        return {
-            isSaving: false,
-            selectedYear: this.year,
-            selectedMonth: this.month,
-            reportData: JSON.parse(JSON.stringify(this.reportData)), // Deep copy
-            monthNames: {
-                1: 'January', 2: 'February', 3: 'March', 4: 'April',
-                5: 'May', 6: 'June', 7: 'July', 8: 'August',
-                9: 'September', 10: 'October', 11: 'November', 12: 'December'
-            },
-            availableYears: this.generateYears(),
-        };
-    },
-    
-    computed: {
-        totalOpeningBalance() {
-            return this.reportData.reduce((sum, item) => sum + (parseFloat(item.opening_balance) || 0), 0);
-        },
-        
-        totalReceived() {
-            return this.reportData.reduce((sum, item) => sum + (parseFloat(item.stock_received) || 0), 0);
-        },
-        
-        totalIssued() {
-            return this.reportData.reduce((sum, item) => sum + (parseFloat(item.stock_issued) || 0), 0);
-        },
-        
-        totalClosingBalance() {
-            return this.reportData.reduce((sum, item) => sum + (parseFloat(item.closing_balance) || 0), 0);
-        },
-    },
-    
-    methods: {
-        generateYears() {
-            const currentYear = new Date().getFullYear();
-            const years = [];
-            for (let year = currentYear - 2; year <= currentYear + 1; year++) {
-                years.push(year);
-            }
-            return years;
-        },
-        
-        updatePeriod() {
-            // Navigate to the new period
-            router.get(route('monthly-reports.create'), {
-                year: this.selectedYear,
-                month: this.selectedMonth
-            });
-        },
-        
-        loadReportData() {
-            this.updatePeriod();
-        },
-        
-        calculateClosingBalance(index) {
-            const item = this.reportData[index];
-            const opening = parseFloat(item.opening_balance) || 0;
-            const received = parseFloat(item.stock_received) || 0;
-            const issued = parseFloat(item.stock_issued) || 0;
-            const positiveAdj = parseFloat(item.positive_adjustments) || 0;
-            const negativeAdj = parseFloat(item.negative_adjustments) || 0;
-            
-            item.closing_balance = opening + received - issued + positiveAdj - negativeAdj;
-        },
-        
-        calculateAllClosingBalances() {
-            this.reportData.forEach((item, index) => {
-                this.calculateClosingBalance(index);
-            });
-        },
-        
-        saveReports() {
-            this.isSaving = true;
-            
-            // Prepare data for submission
-            const reportsToSave = this.reportData.map(item => ({
-                product_id: item.product_id,
-                opening_balance: parseFloat(item.opening_balance) || 0,
-                stock_received: parseFloat(item.stock_received) || 0,
-                stock_issued: parseFloat(item.stock_issued) || 0,
-                positive_adjustments: parseFloat(item.positive_adjustments) || 0,
-                negative_adjustments: parseFloat(item.negative_adjustments) || 0,
-                stockout_days: parseInt(item.stockout_days) || 0,
-                comments: item.comments || '',
-            }));
-            
-            router.post(route('monthly-reports.store'), {
-                year: this.selectedYear,
-                month: this.selectedMonth,
-                reports: reportsToSave,
-            }, {
-                onSuccess: () => {
-                    this.isSaving = false;
-                },
-                onError: () => {
-                    this.isSaving = false;
-                }
-            });
-        },
-        
-        formatNumber(value) {
-            return parseFloat(value || 0).toLocaleString();
-        },
-    },
-    
-    mounted() {
-        // Calculate all closing balances on mount
-        this.calculateAllClosingBalances();
-    }
+// Debounce utility
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+const props = defineProps({
+    reportData: Array,
+    year: [Number, String],
+    month: [Number, String],
+    monthName: String,
+    facility: Object,
+});
+
+// Reactive state
+const isSaving = ref(false);
+const selectedYear = ref(parseInt(props.year));
+const selectedMonth = ref(parseInt(props.month));
+const reportData = ref(JSON.parse(JSON.stringify(props.reportData))); // Deep copy
+
+const monthNames = {
+    1: 'January', 2: 'February', 3: 'March', 4: 'April',
+    5: 'May', 6: 'June', 7: 'July', 8: 'August',
+    9: 'September', 10: 'October', 11: 'November', 12: 'December'
 };
+
+// Generate available years
+function generateYears() {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+        years.push(year);
+    }
+    return years;
+}
+
+const availableYears = generateYears();
+
+// Computed properties
+const totalOpeningBalance = computed(() => {
+    return reportData.value.reduce((sum, item) => sum + (parseFloat(item.opening_balance) || 0), 0);
+});
+
+const totalReceived = computed(() => {
+    return reportData.value.reduce((sum, item) => sum + (parseFloat(item.stock_received) || 0), 0);
+});
+
+const totalIssued = computed(() => {
+    return reportData.value.reduce((sum, item) => sum + (parseFloat(item.stock_issued) || 0), 0);
+});
+
+const totalClosingBalance = computed(() => {
+    return reportData.value.reduce((sum, item) => sum + (parseFloat(item.closing_balance) || 0), 0);
+});
+
+// Methods
+function updatePeriod() {
+    try {
+        router.get(route('reports.monthly-reports.create'), {
+            year: selectedYear.value,
+            month: selectedMonth.value
+        });
+    } catch (error) {
+        console.error('Navigation error:', error);
+        Swal.fire({
+            title: 'Navigation Error',
+            text: 'Failed to load new period. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    }
+}
+
+function loadReportData() {
+    updatePeriod();
+}
+
+function calculateClosingBalance(index) {
+    try {
+        const item = reportData.value[index];
+        const opening = parseFloat(item.opening_balance) || 0;
+        const received = parseFloat(item.stock_received) || 0;
+        const issued = parseFloat(item.stock_issued) || 0;
+        const positiveAdj = parseFloat(item.positive_adjustments) || 0;
+        const negativeAdj = parseFloat(item.negative_adjustments) || 0;
+        
+        // Calculate closing balance without validation during calculation
+        // Validation will happen during save
+        item.closing_balance = opening + received - issued + positiveAdj - negativeAdj;
+    } catch (error) {
+        console.error('Calculation error:', error);
+        // Don't show SweetAlert during bulk calculations to avoid spam
+        console.warn('Failed to calculate closing balance for item:', item);
+    }
+}
+
+function calculateAllClosingBalances() {
+    try {
+        let calculatedCount = 0;
+        reportData.value.forEach((item, index) => {
+            calculateClosingBalance(index);
+            calculatedCount++;
+        });
+        
+        // Show success message
+        Swal.fire({
+            title: 'Calculation Complete',
+            text: `Successfully calculated closing balances for ${calculatedCount} items`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } catch (error) {
+        console.error('Bulk calculation error:', error);
+        Swal.fire({
+            title: 'Calculation Error',
+            text: 'Failed to calculate all closing balances. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    }
+}
+
+function validateReports() {
+    for (const item of reportData.value) {
+        // Check for negative values
+        if (item.opening_balance < 0 || item.stock_received < 0 || 
+            item.stock_issued < 0 || item.positive_adjustments < 0 || 
+            item.negative_adjustments < 0 || item.stockout_days < 0) {
+            return { valid: false, message: 'All values must be greater than or equal to 0' };
+        }
+        
+
+    }
+    return { valid: true };
+}
+
+// Create debounced version of the save function
+const debouncedSaveReports = debounce(async () => {
+    // Validate before saving
+    const validation = validateReports();
+    if (!validation.valid) {
+        Swal.fire({
+            title: 'Validation Error',
+            text: validation.message,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    isSaving.value = true;
+    
+    try {
+        // Prepare data for submission
+        const reportsToSave = reportData.value.map(item => ({
+            product_id: item.product_id,
+            opening_balance: parseFloat(item.opening_balance) || 0,
+            stock_received: parseFloat(item.stock_received) || 0,
+            stock_issued: parseFloat(item.stock_issued) || 0,
+            positive_adjustments: parseFloat(item.positive_adjustments) || 0,
+            negative_adjustments: parseFloat(item.negative_adjustments) || 0,
+            stockout_days: parseInt(item.stockout_days) || 0,
+            comments: item.comments || '',
+        }));
+        
+        router.post(route('reports.monthly-reports.store'), {
+            year: selectedYear.value,
+            month: selectedMonth.value,
+            reports: reportsToSave,
+        }, {
+            onSuccess: () => {
+                isSaving.value = false;
+                Swal.fire({
+                    title: 'Success',
+                    text: 'Monthly reports saved successfully',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                });
+            },
+            onError: (errors) => {
+                isSaving.value = false;
+                console.error('Save errors:', errors);
+                Swal.fire({
+                    title: 'Save Failed',
+                    text: 'Failed to save reports. Please check your data and try again.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        });
+    } catch (error) {
+        isSaving.value = false;
+        console.error('Save error:', error);
+        Swal.fire({
+            title: 'Unexpected Error',
+            text: 'An unexpected error occurred. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    }
+}, 500);
+
+function saveReports() {
+    debouncedSaveReports();
+}
+
+function formatNumber(value) {
+    return parseFloat(value || 0).toLocaleString();
+}
+
+// Initialize on mount
+onMounted(() => {
+    calculateAllClosingBalances();
+});
 </script>

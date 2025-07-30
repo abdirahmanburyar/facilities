@@ -1,5 +1,9 @@
 <template>
-    <AuthenticatedLayout title="LMIS Monthly Report">
+    <AuthenticatedLayout 
+        title="LMIS Monthly Report"
+        description="Detailed view of LMIS monthly inventory report with approval workflow and data export options"
+        img="/assets/images/report.png"
+    >
         <div class="mb-6">
             <h2 class="text-xs font-semibold leading-tight text-gray-800">
                 LMIS Monthly Report: {{ monthName }}
