@@ -6,7 +6,6 @@ use App\Models\FacilityMonthlyReport;
 use App\Models\FacilityMonthlyReportItem;
 use App\Models\Product;
 use App\Models\Facility;
-use App\Jobs\GenerateMonthlyInventoryReportJob;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;

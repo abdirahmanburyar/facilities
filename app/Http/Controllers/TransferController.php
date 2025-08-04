@@ -308,16 +308,16 @@ class TransferController extends Controller
                         }
                         
                         // Record facility inventory movement for received quantity
-                        if ($finalQuantity > 0) {
-                            FacilityInventoryMovementService::recordTransferReceived(
-                                $transfer,
-                                $item,
-                                $finalQuantity,
-                                $allocation->batch_number,
-                                $allocation->expiry_date,
-                                $allocation->barcode
-                            );
-                        }
+                        // if ($finalQuantity > 0) {
+                        //     FacilityInventoryMovementService::recordTransferReceived(
+                        //         $transfer,
+                        //         $item,
+                        //         $finalQuantity,
+                        //         $allocation->batch_number,
+                        //         $allocation->expiry_date,
+                        //         $allocation->barcode
+                        //     );
+                        // }
                     }
                 }
                 
@@ -1730,16 +1730,16 @@ class TransferController extends Controller
                         }
                         
                         // Record facility inventory movement for received quantity
-                        if ($finalQuantity > 0) {
-                            FacilityInventoryMovementService::recordTransferReceived(
-                                $transfer,
-                                $item,
-                                $finalQuantity,
-                                $allocation->batch_number,
-                                $allocation->expiry_date,
-                                $allocation->barcode
-                            );
-                        }
+                        // if ($finalQuantity > 0) {
+                        //     FacilityInventoryMovementService::recordTransferReceived(
+                        //         $transfer,
+                        //         $item,
+                        //         $finalQuantity,
+                        //         $allocation->batch_number,
+                        //         $allocation->expiry_date,
+                        //         $allocation->barcode
+                        //     );
+                        // }
                     }
                 }
                 
