@@ -275,7 +275,7 @@ const uploadFile = async () => {
 // Download template function
 const downloadTemplate = () => {
     // Create a CSV format that Excel can open properly
-    const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date', 'Location'];
+    const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
     
     // Create CSV content with headers
     const csvContent = headers.join(',') + '\n';
@@ -626,43 +626,18 @@ function getResults(page = 1) {
                     <div class="mb-6">
                         <h4 class="text-sm font-medium text-gray-900 mb-3">Required Columns</h4>
                         <div class="bg-gray-50 rounded-lg p-4">
-                            <ul class="space-y-2 text-sm text-gray-600">
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Item</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Category</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">UoM</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Quantity</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Batch No</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Expiry Date</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Location</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
-                            </ul>
+                            <table class="w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Item</th>
+                                        <th class="text-left">Category</th>
+                                        <th class="text-left">UoM</th>
+                                        <th class="text-left">Quantity</th>
+                                        <th class="text-left">Batch No</th>
+                                        <th class="text-left">Expiry Date</th>
+                                    </tr>
+                                </thead>
+                            </table>
                         </div>
                     </div>
 

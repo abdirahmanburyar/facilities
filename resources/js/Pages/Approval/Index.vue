@@ -10,8 +10,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <input type="text" v-model="search" placeholder="Search" class="w-1/2 rounded border-2 border-gray-300" />
                         <div class="flex justify-between mb-6">
-                            <button v-if="hasPermission('approval.create')" 
-                                    @click="openCreateModal()"
+                            <button @click="openCreateModal()"
                                     class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
                                 Add New Approval
                             </button>
@@ -77,13 +76,11 @@
                                         {{ approval.description || 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button v-if="hasPermission('approval.edit')" 
-                                                @click="openEditModal(approval)"
+                                        <button @click="openEditModal(approval)"
                                                 class="text-indigo-600 hover:text-indigo-900 mr-4">
                                             Edit
                                         </button>
-                                        <button v-if="hasPermission('approval.delete')" 
-                                                @click="confirmDelete(approval)"
+                                        <button @click="confirmDelete(approval)"
                                                 class="text-red-600 hover:text-red-900">
                                             Delete
                                         </button>
@@ -350,9 +347,5 @@ const deleteApproval = () => {
             toast.error(error.response.data || 'An unexpected error occurred. Please try again later.');
             console.error('Delete error:', error);
         });
-};
-
-const hasPermission = (permission) => {
-    return page.props.auth?.permissions && page.props.auth.permissions.includes(permission);
 };
 </script>

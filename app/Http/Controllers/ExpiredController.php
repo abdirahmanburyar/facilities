@@ -27,7 +27,10 @@ class ExpiredController extends Controller
     
         $query = FacilityInventoryItem::query();
     
-        $query->with(['product.dosage:id,name', 'product.category:id,name']);
+        $query->whereHas('inventory', function ($q) {
+            $q->where('facility_id', auth()->user()->facility_id);
+        })
+        ->with(['product.dosage:id,name', 'product.category:id,name']);
     
         $query->where('quantity', '>', 0)
             ->where(function($q) use ($now, $oneYearFromNow) {

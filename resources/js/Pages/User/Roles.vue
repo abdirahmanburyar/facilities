@@ -69,20 +69,6 @@
                       </div>
                       <div class="ml-3 text-sm">
                         <label :for="`role-${role.id}`" class="font-medium text-gray-700">{{ role.name }}</label>
-                        <div class="text-xs text-gray-500 mt-1">
-                          <div class="flex flex-wrap gap-1">
-                            <span 
-                              v-for="permission in role.permissions.slice(0, 3)" 
-                              :key="permission.id"
-                              class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                            >
-                              {{ permission.name }}
-                            </span>
-                            <span v-if="role.permissions.length > 3" class="text-gray-500">
-                              +{{ role.permissions.length - 3 }} more
-                            </span>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>

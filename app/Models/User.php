@@ -48,7 +48,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'permission_updated_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -75,121 +74,25 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the permissions for the user.
+     * Get the roles for the user.
      */
-    public function permissions()
+    public function roles()
     {
-        return $this->belongsToMany(Permission::class, 'permission_user')
+        return $this->belongsToMany(Role::class, 'user_roles')
                     ->withTimestamps();
     }
 
     /**
-     * Check if user has a specific permission.
+     * Sync roles for the user.
      */
-    public function hasPermission($permission)
+    public function syncRoles($roles)
     {
-        // Admin users have all permissions
-        if ($this->isAdmin()) {
-            return true;
+        if (is_array($roles)) {
+            $this->roles()->sync($roles);
+        } else {
+            $this->roles()->sync([$roles]);
         }
-
-        // Manager System permission grants full access
-        if ($this->permissions()->where('name', 'manager-system')->exists()) {
-            return true;
-        }
-
-        // Regular permission check
-        if (is_string($permission)) {
-            return $this->permissions()->where('name', $permission)->exists();
-        }
-
-        if (is_object($permission)) {
-            return $this->permissions()->where('id', $permission->id)->exists();
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if user has any of the given permissions.
-     */
-    public function hasAnyPermission($permissions)
-    {
-        // Admin users have all permissions
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        // Manager System permission grants full access
-        if ($this->permissions()->where('name', 'manager-system')->exists()) {
-            return true;
-        }
-
-        if (is_string($permissions)) {
-            $permissions = [$permissions];
-        }
-
-        return $this->permissions()->whereIn('name', $permissions)->exists();
-    }
-
-    /**
-     * Assign a permission to the user.
-     */
-    public function givePermissionTo($permission)
-    {
-        if (is_string($permission)) {
-            $permission = Permission::where('name', $permission)->first();
-        }
-
-        if ($permission && !$this->hasPermission($permission)) {
-            $this->permissions()->attach($permission->id);
-        }
-
+        
         return $this;
-    }
-
-    /**
-     * Remove a permission from the user.
-     */
-    public function revokePermissionTo($permission)
-    {
-        if (is_string($permission)) {
-            $permission = Permission::where('name', $permission)->first();
-        }
-
-        if ($permission && $this->hasPermission($permission)) {
-            $this->permissions()->detach($permission->id);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Get all permissions for the user.
-     * This method provides compatibility with Spatie package.
-     */
-    public function getAllPermissions()
-    {
-        return $this->permissions;
-    }
-
-    /**
-     * Check if user has a specific permission (Spatie compatibility).
-     */
-    public function hasPermissionTo($permission)
-    {
-        return $this->hasPermission($permission);
-    }
-
-
-
-    /**
-     * Check if user is a system administrator.
-     */
-    public function isAdmin()
-    {
-        // Check if user has admin email or username
-        return in_array($this->email, ['admin@warehouse.com', 'admin@admin.com']) || 
-               in_array($this->username, ['admin', 'administrator']);
     }
 }

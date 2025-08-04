@@ -1,6 +1,5 @@
 <template>
     <div class="app-container">
-        <!-- Permission changes are now handled globally in app.js -->
         <!-- Sidebar -->
         <div :class="['sidebar', { 'sidebar-open': sidebarOpen }]" class="p-0">
             <div class="white-box" style="border-color: white;">
@@ -8,7 +7,6 @@
                 <img src="/assets/images/moh.png" class="moh-logo" style="height: 30px" />
                 <img src="/assets/images/psi.jpg" class="psi-logo" style="height: 30px" />
                 </Link>
-
             </div>
             <div class="sidebar-menu">
                 <Link
@@ -38,7 +36,7 @@
                 </Link>
 
                 <Link :href="route('orders.index')" class="menu-item" :class="{ active: route().current('orders.*') }"
-                    v-if="$page.props.auth.can.order_view" @click="setCurrentPage('orders')">
+                    @click="setCurrentPage('orders')">
                 <div class="menu-content">
                     <div class="menu-icon">
                         <img v-if="route().current('orders.*')" src="/assets/images/tracking-b.png" class="order-icon"
@@ -49,7 +47,7 @@
                 </div>
                 </Link>
 
-                <Link :href="route('transfers.index')" class="menu-item" v-if="$page.props.auth.can.transfer_view"
+                <Link :href="route('transfers.index')" class="menu-item"
                     :class="{ active: route().current('transfers.*') }" @click="setCurrentPage('transfers')">
                 <div class="menu-content">
                     <div class="menu-icon">
@@ -62,7 +60,6 @@
                 </Link>
 
                 <Link
-                    v-if="$page.props.auth.can.inventory_view"
                     :href="route('inventories.index')"
                     class="menu-item"
                     :class="{ active: route().current('inventories.*') }"
@@ -87,18 +84,6 @@
                     </div>
                 </Link>
 
-                <Link :href="route('dispence.index')" class="menu-item" v-if="$page.props.auth.can.dispence_view"
-                    :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
-                <div class="menu-content">
-                    <div class="menu-icon">
-                        <img v-if="route().current('dispence.*')" src="/assets/images/dispence-b.png"
-                            class="dispence-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/dispence-w.png" class="dispence-icon" style="height: 24px" />
-                    </div>
-                    <span class="menu-text">Dispence</span>
-                </div>
-                </Link>
-
                 <Link :href="route('expired.index')" class="menu-item" :class="{ active: route().current('expired.*') }"
                     @click="setCurrentPage('expired')">
                 <div class="menu-content">
@@ -116,9 +101,9 @@
                     :class="{ active: route().current('dispence.*') }" @click="setCurrentPage('dispence')">
                 <div class="menu-content">
                     <div class="menu-icon">
-                        <img v-if="route().current('dispence.*')" src="/assets/images/despense-b.png"
+                        <img v-if="route().current('dispence.*')" src="/assets/images/dispense-b.png"
                             class="dispence-icon" style="height: 24px" />
-                        <img v-else src="/assets/images/despense-w.png" class="dispence-icon" style="height: 24px" />
+                        <img v-else src="/assets/images/dispense-w.png" class="dispence-icon" style="height: 24px" />
                     </div>
                     <span class="menu-text">Dispence</span>
                 </div>
@@ -265,56 +250,8 @@ const props = defineProps({
 });
 
 const page = usePage();
-const debug = ref(false); // Set to true to see permissions debug info
 const sidebarOpen = ref(true);
 const currentPage = ref('dashboard');
-
-// Setup permission change listener
-onMounted(() => {
-    setupPermissionChangeListener();
-});
-
-// Function to handle permission change events
-const setupPermissionChangeListener = () => {
-    if (!window.Echo) {
-        console.warn('⚠️ Echo not available, permission change listener not set up');
-        return;
-    }
-
-    // Get the current user ID
-    const currentUserId = page.props.auth?.user?.id;
-    if (!currentUserId) {
-        console.warn('⚠️ User ID not available, permission change listener not set up');
-        return;
-    }
-
-    console.log('🔄 Setting up permission change listener for user:', currentUserId);
-
-    // Listen on the private user channel
-    const channel = window.Echo.private(`user.${currentUserId}`);
-
-    // Listen for permission change events
-    channel.listen('.permissions-changed', (event) => {
-        console.log('🔔 Permission changed event received:', event);
-        handlePermissionEvent(event);
-    });
-
-};
-
-// Function to handle the permission event
-const handlePermissionEvent = (event) => {
-    console.log('🔄 Permission change detected, reloading page...');
-
-    toast.info('Your permissions have been updated. The page will reload to apply changes.');
-
-    // Reload the page after a short delay
-    setTimeout(() => {
-        console.log('🔄 Reloading page now...');
-        window.location.reload();
-    }, 3000);
-};
-
-
 
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value;
@@ -533,8 +470,9 @@ const logout = () => {
     white-space: nowrap;
     transition: opacity 0.3s ease;
     text-align: center;
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 5px;
     line-height: 1;
     width: 100%;
 }

@@ -43,6 +43,6 @@ Broadcast::channel('user.{id}', function ($user, $id) {
 
 // Private channel for transfer events
 Broadcast::channel('transfer.{id}', function ($user, $id) {
-    // Allow access if user has permission to view transfers
-    return $user->can('transfer.view');
+    // Allow access to all authenticated users
+    return auth()->check();
 });

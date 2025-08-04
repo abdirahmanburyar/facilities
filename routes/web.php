@@ -19,7 +19,6 @@ use App\Http\Controllers\ReasonController;
 use App\Http\Controllers\DeliveryController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Spatie\Permission\Middleware\PermissionMiddleware;
 
 // Broadcast routes
 Broadcast::routes(['middleware' => ['web', 'auth']]);
@@ -54,32 +53,27 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
     // User Management Routes
-    Route::middleware(PermissionMiddleware::class.':user.view')
-    ->prefix('users')
+    Route::prefix('users')
     ->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('users.index');
         // Create and Edit routes for navigation purposes
         Route::get('/create', function() {
             return Inertia::render('User/Create');
-        })->middleware(PermissionMiddleware::class.':user.create')->name('users.create');
-        Route::post('/store', [UserController::class, 'store'])->middleware(PermissionMiddleware::class.':user.create')->name('users.store');
+        })->name('users.create');
+        Route::post('/store', [UserController::class, 'store'])->name('users.store');
         
         // User roles management
-        Route::get('/{user}/roles', [UserController::class, 'showRoles'])
-            ->middleware(PermissionMiddleware::class.':user.edit')
-            ->name('users.roles');
-        Route::delete('/{user}', [UserController::class, 'destroy'])->middleware(PermissionMiddleware::class.':user.delete')->name('users.destroy');
+        Route::get('/{user}/roles', [UserController::class, 'showRoles'])->name('users.roles');
+        Route::delete('/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
     
     // Role Management Routes
-    Route::middleware(PermissionMiddleware::class.':user.view')->group(function () {
-        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
-        Route::get('/roles-permissions', [RoleController::class, 'getAllRolesAndPermissions'])->name('roles.get-all');
-    });
-    Route::post('/roles', [RoleController::class, 'store'])->middleware(PermissionMiddleware::class.':user.create')->name('roles.store');
-    Route::put('/roles/{role}', [RoleController::class, 'update'])->middleware(PermissionMiddleware::class.':user.edit')->name('roles.update');
-    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware(PermissionMiddleware::class.':user.delete')->name('roles.destroy');
-    Route::post('/users/{user}/roles', [RoleController::class, 'assignRoles'])->middleware(PermissionMiddleware::class.':user.edit')->name('users.roles.assign');
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+    Route::get('/roles-permissions', [RoleController::class, 'getAllRoles'])->name('roles.get-all');
+    Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    Route::post('/users/{user}/roles', [RoleController::class, 'assignRoles'])->name('users.roles.assign');
     
 
     
@@ -99,20 +93,18 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     Route::controller(InventoryController::class)
         ->prefix('/inventories')
         ->group(function () {
-            Route::get('/', 'index')->middleware(PermissionMiddleware::class.':inventory.view')->name('inventories.index');
-            Route::post('/store', 'store')->middleware(PermissionMiddleware::class.':inventory.create')->name('inventories.store');
-            Route::put('/{inventory}', 'update')->middleware(PermissionMiddleware::class.':inventory.edit')->name('inventories.update');
-            Route::delete('/{inventory}', 'destroy')->middleware(PermissionMiddleware::class.':inventory.delete')->name('inventories.destroy');
-            Route::post('/bulk', 'bulk')->middleware(PermissionMiddleware::class.':inventory.delete')->name('inventories.bulk');
+            Route::get('/', 'index')->name('inventories.index');
+            Route::post('/store', 'store')->name('inventories.store');
+            Route::put('/{inventory}', 'update')->name('inventories.update');
+            Route::delete('/{inventory}', 'destroy')->name('inventories.destroy');
+            Route::post('/bulk', 'bulk')->name('inventories.bulk');
 
-            Route::post('/import', 'import')->middleware(PermissionMiddleware::class . ':inventory.create')->name('inventories.import');
+            Route::post('/import', 'import')->name('inventories.import');
             Route::get('/get-locations', 'getLocations')->name('invetnories.getLocations');
         });
     
     // Settings Routes
-    Route::middleware(PermissionMiddleware::class.':settings.view')->group(function () {
-        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-    });
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

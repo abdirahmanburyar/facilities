@@ -129,10 +129,6 @@ class ReportController extends Controller
                 ->with('error', 'No report found for the specified period.');
         }
 
-        // Get user permissions
-        $user = auth()->user();
-        $canApprove = $user->can('lmis.approve');
-
         return Inertia::render('Reports/ViewMonthlyInventory', [
             'reports' => $query,
             'facility' => $currentFacility,
@@ -141,7 +137,7 @@ class ReportController extends Controller
             'isApproved' => $query->status === 'approved',
             'noReportsFound' => false,
             'message' => null,
-            'canApprove' => $canApprove
+            'canApprove' => true
         ]);
     }
 
@@ -295,12 +291,11 @@ class ReportController extends Controller
                 ->first();
 
             // Get user permissions
-            $user = auth()->user();
             $permissions = [
-                'can_submit' => $user->can('lmis.submit'),
-                'can_review' => $user->can('lmis.review'),
-                'can_approve' => $user->can('lmis.approve'),
-                'can_edit' => $user->can('lmis.edit'),
+                'can_submit' => true,
+                'can_review' => true,
+                'can_approve' => true,
+                'can_edit' => true,
             ];
 
             // Build audit trail using relationships
@@ -571,12 +566,7 @@ class ReportController extends Controller
             }
 
             // Check permission
-            if (!auth()->user()->can('lmis.approve')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You do not have permission to approve reports.'
-                ], 403);
-            }
+            // Permission check removed - all users can approve reports
 
             $report->update([
                 'status' => 'approved',
@@ -629,12 +619,7 @@ class ReportController extends Controller
             }
 
             // Check permission
-            if (!auth()->user()->can('lmis.approve')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You do not have permission to reject reports.'
-                ], 403);
-            }
+            // Permission check removed - all users can reject reports
 
             $report->update([
                 'status' => 'rejected',

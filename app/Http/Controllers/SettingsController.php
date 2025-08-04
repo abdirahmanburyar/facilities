@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Warehouse;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Http\Resources\UserResource;
 use Inertia\Inertia;
@@ -19,7 +18,7 @@ class SettingsController extends Controller
         $tab = $request->query('tab', 'General');
         
         // Get users with filtering if tab is 'users'
-        $users = User::with('roles', 'facility');
+        $users = User::with('facility');
         
         if ($tab === 'users') {
             // Apply search filter if provided
@@ -43,7 +42,7 @@ class SettingsController extends Controller
         }
         
         // Get roles with filtering if tab is 'roles'
-        $roles = Role::with('permissions');
+        $roles = Role::query();
         
         if ($tab === 'roles') {
             // Apply search filter if provided
@@ -92,7 +91,6 @@ class SettingsController extends Controller
             'approvals' => ApprovalResource::collection($approvals->paginate(10)),
             'users' => UserResource::collection($users->paginate(10)->withQueryString()),
             'roles' => $roles->get(),
-            'permissions' => Permission::all(),
             'warehouses' => Warehouse::where('is_active', true)->get(),
             'activeTab' => $tab,
             'filters' => $request->only('search', 'sort_field', 'sort_direction', 'tab')

@@ -18,7 +18,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query()->with(['roles', 'facility']);
+        $query = User::query()->with(['facility']);
         
         // Search functionality
         if ($request->has('search')) {
@@ -37,15 +37,11 @@ class UserController extends Controller
         
         $users = $query->paginate(10)->withQueryString();
         
-        // Get all roles for the roles modal
-        $roles = \Spatie\Permission\Models\Role::all();
-        
         // Get all warehouses for the warehouse selection
         $warehouses = Warehouse::where('is_active', true)->get();
                 
         return Inertia::render('User/Index', [
             'users' => UserResource::collection($users),
-            'roles' => $roles,
             'warehouses' => $warehouses,
             'filters' => $request->only(['search', 'sort_field', 'sort_direction']),
         ]);
@@ -100,7 +96,7 @@ class UserController extends Controller
     public function showRoles(User $user)
     {
         $user->load('roles');
-        $roles = \Spatie\Permission\Models\Role::with('permissions')->get();
+        $roles = \App\Models\Role::all();
         
         return Inertia::render('User/Roles', [
             'user' => $user,

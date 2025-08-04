@@ -1590,10 +1590,6 @@ class TransferController extends Controller
             // Permission checks based on status
             switch ($newStatus) {
                 case 'reviewed':
-                    if (!$user->can('transfer_review')) {
-                        DB::rollBack();
-                        return response()->json('You do not have permission to review transfers', 403);
-                    }
                     if ($transfer->status !== 'pending') {
                         DB::rollBack();
                         return response()->json('Transfer must be pending to review', 400);
@@ -1603,10 +1599,6 @@ class TransferController extends Controller
                     break;
 
                 case 'approved':
-                    if (!$user->can('transfer_approve')) {
-                        DB::rollBack();
-                        return response()->json('You do not have permission to approve transfers', 403);
-                    }
                     if ($transfer->status !== 'reviewed') {
                         DB::rollBack();
                         return response()->json('Transfer must be reviewed to approve', 400);

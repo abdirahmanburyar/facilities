@@ -33,8 +33,6 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
-                'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name') : [],
-                'can' => $this->getUserPermissions($request),
             ],
             // show warehouse for the current user
             'warehouse' => $request->user() ? $request->user()->warehouse : null,     
@@ -44,33 +42,5 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
         ];
-    }
-    
-    /**
-     * Get the user permissions.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
-    protected function getUserPermissions(Request $request): array
-    {
-        if (!$request->user()) {
-            return [];
-        }
-
-        // Get all permissions for the user
-        $permissions = $request->user()->getAllPermissions()->pluck('name');
-
-
-        // Convert to a flattened can object for easier checking in Vue
-        // e.g. 'order.view' becomes 'order_view' => true
-        $flattenedPermissions = [];
-        foreach ($permissions as $permission) {
-            // Convert dot notation to underscore for Vue compatibility
-            $key = str_replace(['.', '-'], '_', $permission);
-            $flattenedPermissions[$key] = true;
-        }
-
-        return $flattenedPermissions;
     }
 }

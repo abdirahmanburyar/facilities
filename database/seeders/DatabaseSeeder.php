@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Database\Seeders\CategorySeeder;
 use Database\Seeders\WarehouseSeeder;
-use Database\Seeders\RolesAndPermissionsSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,7 +24,6 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            RolesAndPermissionsSeeder::class, // Add roles and permissions
             CategorySeeder::class,
             WarehouseSeeder::class,
         ]);

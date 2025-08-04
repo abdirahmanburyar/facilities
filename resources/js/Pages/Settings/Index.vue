@@ -41,7 +41,7 @@
 
                 <!-- Roles Tab Content -->
                 <div v-show="currentTab === 'roles'" class="transition-opacity duration-150" :class="{'opacity-100': currentTab === 'roles', 'opacity-0': currentTab !== 'roles'}">
-                    <RoleIndex :roles="props.roles" :permissions="props.permissions" :filters="props.filters" />
+                    <RoleIndex :roles="props.roles" :filters="props.filters" />
                 </div>
 
                 <!-- Approval Tab Content -->
@@ -50,7 +50,7 @@
                 </div>
             </div>
         </div>
-    </AuthenticatedLayout>a
+    </AuthenticatedLayout>
 </template>
 
 <script setup>
@@ -65,7 +65,6 @@ const props = defineProps({
     approvals: Object,
     users: Object,
     roles: Array,
-    permissions: Array,
     warehouses: Array,
     filters: Object,
     activeTab: {

@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\Role;
 
 class RoleController extends Controller
 {
@@ -15,26 +14,22 @@ class RoleController extends Controller
      */
     public function index()
     {
-        $roles = Role::with('permissions')->get();
-        $permissions = Permission::all();
+        $roles = Role::all();
         
         return Inertia::render('Role/Index', [
             'roles' => $roles,
-            'permissions' => $permissions
         ]);
     }
 
     /**
-     * Get all roles and permissions for AJAX requests.
+     * Get all roles for AJAX requests.
      */
-    public function getAllRolesAndPermissions()
+    public function getAllRoles()
     {
-        $roles = Role::with('permissions')->get();
-        $permissions = Permission::all();
+        $roles = Role::all();
         
         return response()->json([
             'roles' => $roles,
-            'permissions' => $permissions
         ]);
     }
 
@@ -45,21 +40,15 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:roles,name',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,id',
         ]);
 
         $role = Role::create(['name' => $request->name]);
-        
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Role created successfully',
-                'role' => $role->load('permissions')
+                'role' => $role
             ]);
         }
 
@@ -81,21 +70,15 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,id',
         ]);
 
         $role->update(['name' => $request->name]);
-        
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Role updated successfully',
-                'role' => $role->load('permissions')
+                'role' => $role
             ]);
         }
 

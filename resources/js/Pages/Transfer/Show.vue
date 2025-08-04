@@ -2382,23 +2382,17 @@ const statusOrder = ref([
 ]);
 
 const canApprove = computed(() => {
-    return page.props.auth.can?.transfer_approve || false;
+    return true;
 });
 
 const canDispatch = computed(() => {
     const auth = page.props.auth;
-    return (
-        auth.user.facility_id === props.transfer.from_facility_id &&
-        auth.can.transfer_dispatch
-    );
+    return auth.user.facility_id === props.transfer.from_facility_id;
 });
 
 const canReceive = computed(() => {
     const auth = page.props.auth;
-    return (
-        auth.user.facility_id == props.transfer.to_facility_id &&
-        auth.can.transfer_receive
-    );
+    return auth.user.facility_id == props.transfer.to_facility_id;
 });
 
 // Function to change transfer status

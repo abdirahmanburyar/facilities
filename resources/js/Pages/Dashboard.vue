@@ -675,10 +675,8 @@ onMounted(() => {
                         <select v-model="facilityDataType" class="border border-gray-300 rounded-md px-3 py-2 min-w-[180px]">
                             <option value="opening_balance">Beginning Balance</option>
                             <option value="stock_received">QTY Received</option>
-                            <option value="stock_issued">Issued Quantity</option>
-                            <option value="positive_adjustments">Positive Adjustments</option>
-                            <option value="negative_adjustments">Negative Adjustments</option>
-                            <option value="closing_balance">Closing Balance (Calculated)</option>
+                            <option value="stock_issued">Monthly Consumption</option>
+                            <option value="closing_balance">Closing Balance</option>
                         </select>
                     </div>
                 </div>

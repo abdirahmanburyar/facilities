@@ -41,13 +41,22 @@
                         {{ resending ? "Sending..." : "Resend Code" }}
                     </button>
 
-                    <PrimaryButton
-                        class="ml-4"
-                        :class="{ 'opacity-25': form.processing }"
-                        :disabled="form.processing"
-                    >
-                        {{ form.processing ? "Verifying..." : "Verify" }}
-                    </PrimaryButton>
+                    <div class="flex items-center space-x-4">
+                        <button
+                            type="button"
+                            class="text-sm text-red-600 underline cursor-pointer hover:text-red-800"
+                            @click="logout"
+                        >
+                            Logout
+                        </button>
+
+                        <PrimaryButton
+                            :class="{ 'opacity-25': form.processing }"
+                            :disabled="form.processing"
+                        >
+                            {{ form.processing ? "Verifying..." : "Verify" }}
+                        </PrimaryButton>
+                    </div>
                 </div>
             </form>
         </div>
@@ -56,7 +65,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, router } from "@inertiajs/vue3";
 import GuestLayout from "@/Layouts/GuestLayout.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
@@ -102,5 +111,9 @@ const resendCode = async () => {
         .finally(() => {
             resending.value = false;
         });
+};
+
+const logout = () => {
+    router.post(route("logout"));
 };
 </script>

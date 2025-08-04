@@ -16,18 +16,11 @@
         <div class="mb-8 p-4 bg-gray-50 rounded-lg">
           <h3 class="text-lg font-medium mb-4">Create New Role</h3>
           <form @submit.prevent="createRole">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <InputLabel for="role-name" value="Role Name" />
                 <TextInput id="role-name" type="text" class="mt-1 block w-full" v-model="form.name" required />
                 <InputError :message="form.errors.name" class="mt-2" />
-              </div>
-
-              <div>
-                <InputLabel value="Permissions" />
-                <SelectInput v-model="form.permissions" :options="permissions" multiple class="mt-1 block w-full"
-                  placeholder="Select permissions" />
-                <InputError :message="form.errors.permissions" class="mt-2" />
               </div>
             </div>
 
@@ -78,9 +71,6 @@
                       {{ sort_direction === 'asc' ? '↑' : '↓' }}
                     </span>
                   </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Permissions
-                  </th>
                   <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -93,16 +83,6 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ formatDate(role.created_at) }}</div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900">
-                      <div class="flex flex-wrap gap-1">
-                        <span v-for="permission in role.permissions" :key="permission.id"
-                          class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {{ permission.name }}
-                        </span>
-                      </div>
-                    </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                     <button @click="editRole(role)" class="text-indigo-600 hover:text-indigo-900 mr-3">
@@ -132,13 +112,6 @@
             <InputError :message="editForm.errors.name" class="mt-2" />
           </div>
 
-          <div class="mt-4">
-            <InputLabel value="Permissions" />
-            <SelectInput v-model="editForm.permissions" :options="permissions" multiple class="mt-1 block w-full"
-              placeholder="Select permissions" />
-            <InputError :message="editForm.errors.permissions" class="mt-2" />
-          </div>
-
           <div class="mt-6 flex justify-end">
             <SecondaryButton :disabled="editForm.processing || isSubmitted" @click="closeEditModal" class="mr-3">
               Cancel
@@ -162,14 +135,12 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Modal from '@/Components/Modal.vue';
-import SelectInput from '@/Components/SelectInput.vue';
 import Swal from 'sweetalert2';
 import debounce from 'lodash/debounce';
 import { useToast } from 'vue-toastification';
 
 const props = defineProps({
   roles: Array,
-  permissions: Array,
   filters: Object
 });
 
@@ -188,15 +159,13 @@ watch(search, debounce(() => {
 
 // Form for creating a new role
 const form = useForm({
-  name: '',
-  permissions: []
+  name: ''
 });
 
 // Form for editing a role
 const editForm = useForm({
   id: null,
-  name: '',
-  permissions: []
+  name: ''
 });
 
 const editingRole = ref(false);
@@ -274,7 +243,6 @@ const editRole = (role) => {
   currentRole.value = role;
   editForm.id = role.id;
   editForm.name = role.name;
-  editForm.permissions = role.permissions.map(p => p.id);
   editingRole.value = true;
 };
 
