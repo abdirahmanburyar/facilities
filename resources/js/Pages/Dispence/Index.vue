@@ -17,7 +17,7 @@
 
             <!-- Filters Section -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Search -->
                     <div class="relative">
                         <input type="text" v-model="search"
@@ -33,28 +33,20 @@
                     </div>
 
                     <!-- Date Range -->
-                    <div class="flex items-center gap-2">
-                        <input type="date" v-model="date_from"
-                            class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                            @change="date_to = null"
-                            placeholder="From Date" />
-                        <span class="text-gray-500">to</span>
-                        <input type="date" v-model="date_to"
-                            class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                            :min="date_from"
-                            placeholder="To Date" />
-                    </div>
-
-                    <!-- Items Count Filter -->
-                    <div>
-                        <select v-model="items_filter" 
-                            
-                            class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                            <option value="">All Items Count</option>
-                            <option value="1-5">1-5 Items</option>
-                            <option value="6-10">6-10 Items</option>
-                            <option value="11+">11+ Items</option>
-                        </select>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                        <div class="w-full sm:w-auto">
+                            <input type="date" v-model="date_from"
+                                class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                @change="date_to = null"
+                                placeholder="From Date" />
+                        </div>
+                        <span class="text-gray-500 text-center sm:text-left">to</span>
+                        <div class="w-full sm:w-auto">
+                            <input type="date" v-model="date_to"
+                                class="border border-gray-300 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                :min="date_from"
+                                placeholder="To Date" />
+                        </div>
                     </div>
 
                     <!-- Per Page -->
@@ -248,7 +240,6 @@ const per_page = ref(props.filters.per_page || 10);
 const search = ref(props.filters.search || '');
 const date_from = ref(props.filters.date_from || '');
 const date_to = ref(props.filters.date_to || '');
-const items_filter = ref(props.filters.items_filter || '');
 
 const today = moment().format('YYYY-MM-DD');
 
@@ -271,7 +262,6 @@ const clearFilters = () => {
     search.value = '';
     date_from.value = '';
     date_to.value = '';
-    items_filter.value = '';
     per_page.value = 10;
     reloadDispences();
 };
@@ -281,7 +271,6 @@ const reloadDispences = () => {
     if (search.value) query.search = search.value;
     if (date_from.value) query.date_from = date_from.value;
     if (date_to.value) query.date_to = date_to.value;
-    if (items_filter.value) query.items_filter = items_filter.value;
     if (per_page.value) {
         query.per_page = per_page.value;
     }
@@ -303,8 +292,7 @@ watch([
   () => search.value, 
   () => per_page.value, 
   () => date_from.value, 
-  () => date_to.value, 
-  () => items_filter.value 
+  () => date_to.value 
 ], () => {
     reloadDispences();
 }, { deep: true });
