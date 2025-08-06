@@ -1180,24 +1180,20 @@ class OrderController extends Controller
             //     $soh = 0;
             // }
     
-            // Get last 4 months for AMC calculation (exclude current month)
-            $months = [];
-            for ($i = 1; $i <= 3; $i++) {
-                $months[] = Carbon::now()->subMonths($i)->format('Y-m');
-            }
+            // Calculate screened AMC using AMC Service
+            $amcService = new \App\Services\AMCService();
+            $amcResult = $amcService->calculateScreenedAMC($facility->id, $productId);
+            $amc = $amcResult['amc'];
 
-            logger()->info('Months', ['months' => $months]);
-
-            $totalConsumption = DB::table('monthly_consumption_items as mci')
-                ->join('monthly_consumption_reports as mcr', 'mci.parent_id', '=', 'mcr.id')
-                ->where('mcr.facility_id', $facility->id)
-                ->whereIn('mcr.month_year', $months)
-                ->where('mci.product_id', $productId)
-                ->sum('mci.quantity');
-
-    
-            // Average Monthly Consumption (AMC) = total / 4 months
-            $amc = $totalConsumption / 3;
+            // Log screening details for debugging
+            logger()->info('AMC Screening Results', [
+                'product_id' => $productId,
+                'facility_id' => $facility->id,
+                'amc' => $amc,
+                'valid_months' => $amcResult['valid_months_count'],
+                'excluded_months' => $amcResult['excluded_months_count'],
+                'screening_details' => $amcResult['screening_details']
+            ]);
     
             // Determine days since last received order update, fallback to quarter start if none
             $lastReceivedOrder = Order::where('facility_id', $facility->id)
