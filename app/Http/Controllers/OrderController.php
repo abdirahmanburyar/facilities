@@ -22,6 +22,7 @@ use App\Models\FacilityInventory;
 use App\Models\Driver;
 use App\Models\LogisticCompany;
 use App\Models\Transfer;
+use App\Models\MonthlyConsumptionItem;
 // Note: IssuedQuantity model removed - using FacilityInventoryMovementService instead
 // App Events and Resources
 use App\Models\EligibleItem;
@@ -1180,19 +1181,131 @@ class OrderController extends Controller
             //     $soh = 0;
             // }
     
-            // Calculate screened AMC using AMC Service
-            $amcService = new \App\Services\AMCService();
-            $amcResult = $amcService->calculateScreenedAMC($facility->id, $productId);
-            $amc = $amcResult['amc'];
+            // AMC Screening Logic - implemented directly in controller
+            // Get monthly consumption data for the item (optimized query)
+            $monthlyConsumptions = DB::table('monthly_consumption_items as mci')
+                ->join('monthly_consumption_reports as mcr', 'mci.parent_id', '=', 'mcr.id')
+                ->select('mci.id', 'mci.product_id', 'mci.quantity', 'mcr.month_year', 'mcr.facility_id')
+                ->where('mcr.facility_id', $facility->id)
+                ->where('mci.product_id', $productId)
+                ->where('mci.quantity', '>', 0) // Pre-filter zero quantities at database level
+                ->orderBy('mcr.month_year', 'desc') // Database-level sorting (newest first)
+                ->limit(12) // Limit to last 12 months for performance
+                ->get();
 
-            // Log screening details for debugging
+            $totalMonths = [];
+            $includedMonths = [];
+            $eligibleMonths = [];
+            
+            // Convert to array for faster processing
+            $monthsData = $monthlyConsumptions->toArray();
+            
+            // Build total months array for output (already filtered for non-zero)
+            foreach ($monthsData as $consumption) {
+                $totalMonths[] = [
+                    'month' => $consumption->month_year,
+                    'quantity' => (float) $consumption->quantity
+                ];
+            }
+
+            // Apply screening logic - find 3 months that pass screening (optimized)
+            $eligibleMonths = [];
+            $processedMonths = [];
+            $monthsCount = count($monthsData);
+            
+            // Skip current month (index 0) and start from index 1
+            for ($index = 1; $index < $monthsCount && count($eligibleMonths) < 3; $index++) {
+                $currentMonth = $monthsData[$index];
+                $monthName = $currentMonth->month_year;
+                $currentQuantity = (float) $currentMonth->quantity;
+                
+                // For first two eligible months, automatically include (no screening)
+                if (count($eligibleMonths) < 2) {
+                    $eligibleMonths[] = $currentMonth;
+                    $processedMonths[] = [
+                        'month' => $monthName,
+                        'quantity' => $currentQuantity,
+                        'status' => 'included',
+                        'reason' => 'First 2 eligible months - no screening applied'
+                    ];
+                    continue;
+                }
+                
+                // Apply screening for 3rd month onwards
+                // Calculate average of last 2 eligible months (optimized calculation)
+                $recent1 = $eligibleMonths[count($eligibleMonths) - 1];
+                $recent2 = $eligibleMonths[count($eligibleMonths) - 2];
+                $averageOfRecent = ((float) $recent1->quantity + (float) $recent2->quantity) / 2;
+                
+                // Calculate percentage difference (optimized)
+                $percentDifference = $averageOfRecent > 0 
+                    ? round(abs(($currentQuantity - $averageOfRecent) / $averageOfRecent) * 100, 2)
+                    : ($currentQuantity > 0 ? 100 : 0);
+
+                // Decision rule: ≤ 70% include, > 70% exclude
+                if ($percentDifference <= 70) {
+                    $eligibleMonths[] = $currentMonth;
+                    $processedMonths[] = [
+                        'month' => $monthName,
+                        'quantity' => $currentQuantity,
+                        'status' => 'included',
+                        'reason' => "Deviation {$percentDifference}% ≤ 70%",
+                        'deviation_percentage' => $percentDifference,
+                        'average_of_recent_2' => round($averageOfRecent, 2)
+                    ];
+                } else {
+                    $processedMonths[] = [
+                        'month' => $monthName,
+                        'quantity' => $currentQuantity,
+                        'status' => 'excluded',
+                        'reason' => "Deviation {$percentDifference}% > 70% - continuing search",
+                        'deviation_percentage' => $percentDifference,
+                        'average_of_recent_2' => round($averageOfRecent, 2)
+                    ];
+                }
+            }
+            
+            // Add current month to processed months for transparency
+            if (count($monthsData) > 0) {
+                $currentMonth = $monthsData[0];
+                array_unshift($processedMonths, [
+                    'month' => $currentMonth->month_year,
+                    'quantity' => (float) $currentMonth->quantity,
+                    'status' => 'excluded',
+                    'reason' => 'Current month - excluded from AMC calculation'
+                ]);
+            }
+            
+            $includedMonths = $processedMonths;
+
+            // Calculate final AMC based on eligible months (optimized calculation)
+            $eligibleCount = count($eligibleMonths);
+            if ($eligibleCount >= 3) {
+                // Use exactly the 3 eligible months found (optimized sum)
+                $sum = 0;
+                for ($i = 0; $i < 3; $i++) {
+                    $sum += (float) $eligibleMonths[$i]->quantity;
+                }
+                $amc = $sum / 3;
+            } elseif ($eligibleCount == 2) {
+                // If only 2 months found → AMC = sum / 2
+                $amc = ((float) $eligibleMonths[0]->quantity + (float) $eligibleMonths[1]->quantity) / 2;
+            } elseif ($eligibleCount == 1) {
+                // If only 1 month found → AMC = that month's quantity
+                $amc = (float) $eligibleMonths[0]->quantity;
+            } else {
+                // No eligible months found
+                $amc = 0;
+            }
+
+            // Log AMC screening results
             logger()->info('AMC Screening Results', [
                 'product_id' => $productId,
                 'facility_id' => $facility->id,
-                'amc' => $amc,
-                'valid_months' => $amcResult['valid_months_count'],
-                'excluded_months' => $amcResult['excluded_months_count'],
-                'screening_details' => $amcResult['screening_details']
+                'total_months_count' => count($totalMonths),
+                'eligible_months_count' => $eligibleCount,
+                'final_amc' => round($amc, 2),
+                'included_months' => $includedMonths
             ]);
     
             // Determine days since last received order update, fallback to quarter start if none
@@ -1251,10 +1364,14 @@ class OrderController extends Controller
                 'name' => $product->name,
                 'quantity' => $requiredQuantity ?? 0,
                 'soh' => $soh,
-                'amc' => $amc,
+                'amc' => round($amc, 2),
                 'days_since_quarter_start' => $daysRemaining,
                 'no_of_days' => $daysRemaining,
-                'insufficient_inventory' => false
+                'insufficient_inventory' => false,
+                // AMC Screening Results
+                'included_months' => $includedMonths,
+                'total_months' => $totalMonths,
+                'eligible_months_count' => $eligibleCount
             ], 200);
     
         } catch (\Throwable $e) {

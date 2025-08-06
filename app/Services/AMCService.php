@@ -10,7 +10,6 @@ use Illuminate\Support\Collection;
 class AMCService
 {
     const SCREENING_THRESHOLD = 70.0; // 70% threshold
-    const MIN_MONTHS_FOR_SCREENING = 3; // Need at least 3 months for screening
 
     /**
      * Calculate screened AMC for a specific product at a facility
@@ -20,25 +19,25 @@ class AMCService
      * @param int $monthsToAnalyze
      * @return array
      */
-    public function calculateScreenedAMC(int $facilityId, int $productId, int $monthsToAnalyze = 6): array
+    public function calculateScreenedAMC(int $facilityId, int $productId, int $monthsToAnalyze = 12): array
     {
-        // Get monthly consumption data sorted by date
+        // Get monthly consumption data sorted by date (oldest first)
         $monthlyItems = $this->getMonthlyConsumptionData($facilityId, $productId, $monthsToAnalyze);
         
-        if ($monthlyItems->count() < self::MIN_MONTHS_FOR_SCREENING) {
+        if ($monthlyItems->count() < 4) {
             return $this->handleInsufficientData($monthlyItems);
         }
 
-        // Apply screening logic
+        // Apply screening logic month by month
         $screeningResults = $this->applyScreeningLogic($monthlyItems);
         
-        // Calculate final AMC from valid months
-        $finalAMC = $this->calculateFinalAMC($screeningResults['validMonths']);
+        // Calculate final AMC from eligible months
+        $finalAMC = $this->calculateFinalAMC($screeningResults['eligibleMonths']);
         
         return [
             'amc' => $finalAMC,
             'total_months_analyzed' => $monthlyItems->count(),
-            'valid_months_count' => $screeningResults['validMonths']->count(),
+            'eligible_months_count' => $screeningResults['eligibleMonths']->count(),
             'excluded_months_count' => $screeningResults['excludedMonths']->count(),
             'screening_details' => $screeningResults['details'],
             'months_breakdown' => $screeningResults['monthsBreakdown']
@@ -53,7 +52,7 @@ class AMCService
      */
     private function applyScreeningLogic(Collection $monthlyItems): array
     {
-        $validMonths = collect();
+        $eligibleMonths = collect();
         $excludedMonths = collect();
         $details = [];
         $monthsBreakdown = [];
@@ -63,29 +62,29 @@ class AMCService
             return $item->report->month_year;
         });
 
-        foreach ($sortedItems as $currentItem) {
+        foreach ($sortedItems as $index => $currentItem) {
             $monthYear = $currentItem->report->month_year;
             $currentQuantity = $currentItem->quantity;
             
             // For first 3 months, automatically include (no screening possible)
-            if ($validMonths->count() < self::MIN_MONTHS_FOR_SCREENING) {
-                $validMonths->push($currentItem);
+            if ($index < 3) {
+                $eligibleMonths->push($currentItem);
                 $monthsBreakdown[] = [
                     'month_year' => $monthYear,
                     'quantity' => $currentQuantity,
-                    'is_valid' => true,
-                    'reason' => 'Insufficient previous data for screening',
+                    'is_eligible' => true,
+                    'reason' => 'First 3 months - no screening applied',
                     'deviation_percentage' => null,
                     'average_of_previous_3' => null,
                     'color_code' => 'green'
                 ];
-                $details[] = "✅ {$monthYear}: {$currentQuantity} units - Included (insufficient previous data)";
+                $details[] = "✅ {$monthYear}: {$currentQuantity} units - Included (first 3 months)";
                 continue;
             }
 
-            // Calculate average of last 3 valid months
-            $lastThreeValid = $validMonths->take(-3);
-            $averageConsumption = $lastThreeValid->avg('quantity');
+            // Get the previous 3 months data (not just eligible ones, but all previous)
+            $previousThreeMonths = $sortedItems->slice($index - 3, 3);
+            $averageConsumption = $previousThreeMonths->avg('quantity');
             
             // Calculate percentage difference
             $deviationPercentage = $this->calculateDeviationPercentage($currentQuantity, $averageConsumption);
@@ -93,11 +92,11 @@ class AMCService
             // Apply screening threshold
             if ($deviationPercentage <= self::SCREENING_THRESHOLD) {
                 // Include this month
-                $validMonths->push($currentItem);
+                $eligibleMonths->push($currentItem);
                 $monthsBreakdown[] = [
                     'month_year' => $monthYear,
                     'quantity' => $currentQuantity,
-                    'is_valid' => true,
+                    'is_eligible' => true,
                     'deviation_percentage' => $deviationPercentage,
                     'average_of_previous_3' => round($averageConsumption, 2),
                     'reason' => "Deviation {$deviationPercentage}% ≤ 70%",
@@ -105,23 +104,30 @@ class AMCService
                 ];
                 $details[] = "✅ {$monthYear}: {$currentQuantity} units - Included (deviation: {$deviationPercentage}%)";
             } else {
-                // Exclude this month
+                // Exclude this month - use most recent previous eligible month instead
+                $mostRecentEligible = $eligibleMonths->last();
+                if ($mostRecentEligible) {
+                    $eligibleMonths->push($mostRecentEligible); // Add duplicate of most recent eligible
+                }
+                
                 $excludedMonths->push($currentItem);
                 $monthsBreakdown[] = [
                     'month_year' => $monthYear,
                     'quantity' => $currentQuantity,
-                    'is_valid' => false,
+                    'is_eligible' => false,
                     'deviation_percentage' => $deviationPercentage,
                     'average_of_previous_3' => round($averageConsumption, 2),
-                    'reason' => "Deviation {$deviationPercentage}% > 70%",
+                    'reason' => "Deviation {$deviationPercentage}% > 70% - replaced with most recent eligible",
+                    'replacement_month' => $mostRecentEligible ? $mostRecentEligible->report->month_year : null,
+                    'replacement_quantity' => $mostRecentEligible ? $mostRecentEligible->quantity : null,
                     'color_code' => 'red'
                 ];
-                $details[] = "❌ {$monthYear}: {$currentQuantity} units - Excluded (deviation: {$deviationPercentage}%)";
+                $details[] = "❌ {$monthYear}: {$currentQuantity} units - Excluded (deviation: {$deviationPercentage}%), replaced with {$mostRecentEligible->report->month_year}: {$mostRecentEligible->quantity} units";
             }
         }
 
         return [
-            'validMonths' => $validMonths,
+            'eligibleMonths' => $eligibleMonths,
             'excludedMonths' => $excludedMonths,
             'details' => $details,
             'monthsBreakdown' => $monthsBreakdown
@@ -145,29 +151,29 @@ class AMCService
     }
 
     /**
-     * Calculate final AMC from valid months
+     * Calculate final AMC from eligible months
      * 
-     * @param Collection $validMonths
+     * @param Collection $eligibleMonths
      * @return float
      */
-    private function calculateFinalAMC(Collection $validMonths): float
+    private function calculateFinalAMC(Collection $eligibleMonths): float
     {
-        if ($validMonths->isEmpty()) {
+        if ($eligibleMonths->isEmpty()) {
             return 0.0;
         }
 
-        $validCount = $validMonths->count();
+        $eligibleCount = $eligibleMonths->count();
         
-        if ($validCount >= 3) {
-            // Use last 3 valid months
-            $lastThree = $validMonths->take(-3);
+        if ($eligibleCount >= 3) {
+            // Use last 3 eligible months for AMC calculation
+            $lastThree = $eligibleMonths->take(-3);
             return round($lastThree->avg('quantity'), 2);
-        } elseif ($validCount == 2) {
-            // Use average of 2 months
-            return round($validMonths->avg('quantity'), 2);
+        } elseif ($eligibleCount == 2) {
+            // If only 2 months are eligible, AMC = sum of 2 / 2
+            return round($eligibleMonths->avg('quantity'), 2);
         } else {
-            // Use single month
-            return round($validMonths->first()->quantity, 2);
+            // If only 1 month is eligible, AMC = that 1 month's quantity
+            return round($eligibleMonths->first()->quantity, 2);
         }
     }
 
@@ -197,7 +203,7 @@ class AMCService
     }
 
     /**
-     * Handle cases with insufficient data
+     * Handle cases with insufficient data (less than 4 months)
      * 
      * @param Collection $monthlyItems
      * @return array
@@ -209,14 +215,14 @@ class AMCService
         return [
             'amc' => $amc,
             'total_months_analyzed' => $monthlyItems->count(),
-            'valid_months_count' => $monthlyItems->count(),
+            'eligible_months_count' => $monthlyItems->count(),
             'excluded_months_count' => 0,
-            'screening_details' => ['Insufficient data for screening (need at least 3 months)'],
+            'screening_details' => ['Insufficient data for screening (need at least 4 months for screening to begin)'],
             'months_breakdown' => $monthlyItems->map(function ($item) {
                 return [
                     'month_year' => $item->report->month_year,
                     'quantity' => $item->quantity,
-                    'is_valid' => true,
+                    'is_eligible' => true,
                     'reason' => 'Insufficient data for screening',
                     'color_code' => 'green'
                 ];
@@ -237,7 +243,7 @@ class AMCService
         
         return [
             'amc_value' => $result['amc'],
-            'calculation_method' => $this->getCalculationMethod($result['valid_months_count']),
+            'calculation_method' => $this->getCalculationMethod($result['eligible_months_count']),
             'reliability_score' => $this->calculateReliabilityScore($result),
             'recommendation' => $this->getRecommendation($result)
         ];
@@ -249,16 +255,16 @@ class AMCService
      * @param int $validMonthsCount
      * @return string
      */
-    private function getCalculationMethod(int $validMonthsCount): string
+    private function getCalculationMethod(int $eligibleMonthsCount): string
     {
-        if ($validMonthsCount >= 3) {
-            return "Average of last 3 valid months";
-        } elseif ($validMonthsCount == 2) {
-            return "Average of 2 valid months";
-        } elseif ($validMonthsCount == 1) {
+        if ($eligibleMonthsCount >= 3) {
+            return "Average of last 3 eligible months";
+        } elseif ($eligibleMonthsCount == 2) {
+            return "Average of 2 eligible months";
+        } elseif ($eligibleMonthsCount == 1) {
             return "Single month value";
         } else {
-            return "No valid data available";
+            return "No eligible data available";
         }
     }
 
@@ -270,12 +276,12 @@ class AMCService
      */
     private function calculateReliabilityScore(array $result): string
     {
-        $validRatio = $result['total_months_analyzed'] > 0 
-            ? $result['valid_months_count'] / $result['total_months_analyzed'] 
+        $eligibleRatio = $result['total_months_analyzed'] > 0 
+            ? $result['eligible_months_count'] / $result['total_months_analyzed'] 
             : 0;
 
-        if ($validRatio >= 0.8) return "High";
-        if ($validRatio >= 0.6) return "Medium";
+        if ($eligibleRatio >= 0.8) return "High";
+        if ($eligibleRatio >= 0.6) return "Medium";
         return "Low";
     }
 
@@ -287,10 +293,10 @@ class AMCService
      */
     private function getRecommendation(array $result): string
     {
-        if ($result['excluded_months_count'] > $result['valid_months_count']) {
+        if ($result['excluded_months_count'] > $result['eligible_months_count']) {
             return "High variability detected. Consider investigating consumption patterns.";
         }
-        if ($result['valid_months_count'] < 3) {
+        if ($result['eligible_months_count'] < 3) {
             return "Limited historical data. Monitor and collect more data for better accuracy.";
         }
         return "AMC calculation is reliable based on historical data.";
