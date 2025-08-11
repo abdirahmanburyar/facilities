@@ -581,6 +581,13 @@
                                             <span class="text-sm text-gray-600">Date:</span>
                                             <span class="text-sm text-gray-800">{{ dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString() : 'N/A' }}</span>
                                         </div>
+                                        <div class="flex items-center justify-between" v-if="hasDispatchImages(dispatch)">
+                                            <span class="text-sm text-gray-600">Images:</span>
+                                            <button @click="openDispatchImages(dispatch)"
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                View Image(s)
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1122,6 +1129,28 @@
                 </div>
             </Modal>
 
+            <!-- Dispatch Images Modal -->
+            <Modal :show="showDispatchImagesModal" @close="closeDispatchImages" maxWidth="4xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-900">Dispatch Images</h2>
+                        <button @click="closeDispatchImages" class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-auto">
+                        <div v-for="(img, idx) in selectedDispatchImages" :key="idx" class="rounded-lg overflow-hidden border border-gray-200">
+                            <img :src="img" class="w-full h-64 object-contain bg-gray-50" />
+                        </div>
+                    </div>
+                    <div v-if="selectedDispatchImages.length === 0" class="text-center text-gray-500 py-10">
+                        No images available.
+                    </div>
+                </div>
+            </Modal>
+
             <!-- Delivery Form Modal -->
             <Modal :show="showDeliveryModal" @close="closeDeliveryForm" maxWidth="full">
                 <div class="p-6">
@@ -1324,6 +1353,52 @@ const props = defineProps({
 });
 
 const { order, error, products } = toRefs(props);
+// Dispatch images modal state
+const showDispatchImagesModal = ref(false);
+const selectedDispatchImages = ref([]);
+
+// Normalize dispatch.image/dispatch.images into an array of string paths
+const getDispatchImagePaths = (dispatch) => {
+    if (!dispatch) return [];
+    const raw = dispatch.image ?? dispatch.images ?? [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (!trimmed) return [];
+        // Try JSON parse first
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch (e) {
+            // Not JSON, continue
+        }
+        // Fallback: comma-separated or single path
+        if (trimmed.includes(',')) {
+            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        return [trimmed];
+    }
+    return [];
+};
+
+const hasDispatchImages = (dispatch) => getDispatchImagePaths(dispatch).length > 0;
+
+const resolveImageUrl = (path) => {
+    if (!path) return '';
+    // If already absolute or starts with /storage or /, return as-is
+    if (path.startsWith('http') || path.startsWith('/')) return path;
+    // Laravel public path typically serves via /storage or direct public
+    return `/${path.replace(/^public\//, '')}`;
+};
+const openDispatchImages = (dispatch) => {
+    const imgs = getDispatchImagePaths(dispatch).map(resolveImageUrl);
+    selectedDispatchImages.value = imgs;
+    showDispatchImagesModal.value = true;
+};
+const closeDispatchImages = () => {
+    showDispatchImagesModal.value = false;
+    selectedDispatchImages.value = [];
+};
 
 // Back order modal state
 const showBackOrderModal = ref(false);
