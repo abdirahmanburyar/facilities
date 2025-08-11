@@ -51,13 +51,16 @@ class FacilityReorderLevelController extends Controller
 
         $created = 0; $updated = 0;
         foreach ($request->items as $item) {
-            $record = FacilityReorderLevel::firstOrNew([
-                'facility_id' => $facilityId,
-                'product_id' => $item['product_id'],
-            ]);
-            $record->amc = $item['amc'];
-            $record->lead_time = $item['lead_time'];
-            $record->save();
+            $record = FacilityReorderLevel::updateOrCreate(
+                [
+                    'facility_id' => $facilityId,
+                    'product_id' => $item['product_id'],
+                ],
+                [
+                    'amc' => $item['amc'],
+                    'lead_time' => $item['lead_time'],
+                ]
+            );
             $record->wasRecentlyCreated ? $created++ : $updated++;
         }
 
