@@ -361,7 +361,8 @@ function isLowStockGroup(inventory) {
 function needsReorder(inventory) {
     const total = getTotalQuantity(inventory);
     const reorder = Number(inventory.reorder_level) || 0;
-    return total <= reorder;
+    // Align with low stock formula: needs reorder when total <= 70% of reorder level
+    return reorder > 0 && total <= (reorder * 0.7);
 }
 
 // Check if inventory is out of stock
