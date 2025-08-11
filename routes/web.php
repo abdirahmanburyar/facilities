@@ -109,12 +109,15 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
     
     // Settings Routes
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-    // Facility Reorder Levels
-    Route::controller(FacilityReorderLevelController::class)->group(function () {
-        Route::get('/facility-reorder-levels', 'index')->name('facility-reorder-levels.index');
-        Route::post('/facility-reorder-levels', 'store')->name('facility-reorder-levels.store');
-        Route::put('/facility-reorder-levels/{reorderLevel}', 'update')->name('facility-reorder-levels.update');
-        Route::delete('/facility-reorder-levels/{reorderLevel}', 'destroy')->name('facility-reorder-levels.destroy');
+    // Facility Reorder Levels under inventories prefix
+    Route::prefix('/inventories')
+        ->name('inventories.')
+        ->controller(FacilityReorderLevelController::class)
+        ->group(function () {
+        Route::get('/reorder-levels', 'index')->name('facility-reorder-levels.index');
+        Route::post('/reorder-levels', 'store')->name('facility-reorder-levels.store');
+        Route::put('/reorder-levels/{reorderLevel}', 'update')->name('facility-reorder-levels.update');
+        Route::delete('/reorder-levels/{reorderLevel}', 'destroy')->name('facility-reorder-levels.destroy');
     });
     
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');

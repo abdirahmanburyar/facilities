@@ -9,6 +9,7 @@
           <button @click="reload" class="px-3 py-1 text-sm bg-blue-600 text-white rounded">Search</button>
         </div>
         <div class="flex items-center gap-2">
+          <Link :href="route('inventories.index')" class="px-3 py-1 text-sm bg-gray-200 text-gray-800 rounded">Back to Inventory</Link>
           <button @click="showAddModal=true" class="px-3 py-1 text-sm bg-green-600 text-white rounded">Add Reorder Levels</button>
         </div>
       </div>
@@ -93,7 +94,7 @@
   </template>
 
 <script setup>
-import { Head, router } from '@inertiajs/vue3'
+import { Head, router, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Multiselect from 'vue-multiselect'
 import 'vue-multiselect/dist/vue-multiselect.css'
@@ -119,7 +120,7 @@ onMounted(() => { loadProducts() })
 function reload() {
   const query = {}
   if (search.value) query.search = search.value
-  router.get(route('facility-reorder-levels.index'), query, { preserveState: true, preserveScroll: true, only: ['reorderLevels','filters'] })
+  router.get(route('inventories.facility-reorder-levels.index'), query, { preserveState: true, preserveScroll: true, only: ['reorderLevels','filters'] })
 }
 
 function format(v) { return Number(v || 0).toLocaleString() }
@@ -146,7 +147,7 @@ async function save() {
     if (isEditing.value && editingId.value) {
       // Update single record (fallback to POST with method spoofing to avoid route name cache issues)
       const r = rows.value[0]
-      await axios.post(`/facility-reorder-levels/${editingId.value}`, {
+      await axios.post(`/inventories/reorder-levels/${editingId.value}`, {
         _method: 'PUT',
         product_id: r.product.id,
         amc: r.amc,
@@ -156,7 +157,7 @@ async function save() {
       const payload = {
         items: rows.value.map(r => ({ product_id: r.product.id, amc: r.amc, lead_time: r.lead_time }))
       }
-      await axios.post(route('facility-reorder-levels.store'), payload)
+      await axios.post(route('inventories.facility-reorder-levels.store'), payload)
     }
     showAddModal.value = false
     rows.value = [{ product: null, amc: 0, lead_time: 1 }]
@@ -169,7 +170,7 @@ async function save() {
 }
 
 async function remove(id) {
-  await router.delete(route('facility-reorder-levels.destroy', id))
+  await router.delete(route('inventories.facility-reorder-levels.destroy', id))
 }
 
 function openEdit(record) {
