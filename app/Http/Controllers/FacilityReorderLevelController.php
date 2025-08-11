@@ -69,9 +69,19 @@ class FacilityReorderLevelController extends Controller
 
     public function destroy(FacilityReorderLevel $reorderLevel)
     {
-        $this->authorize('delete', $reorderLevel);
-        $reorderLevel->delete();
-        return back()->with('success', 'Reorder level deleted.');
+        try {
+            if ($reorderLevel->facility_id !== auth()->user()->facility_id) {
+                abort(403, 'Unauthorized');
+            }
+            $reorderLevel->delete();
+            return back()->with('success', 'Reorder level deleted.');
+        } catch (\Throwable $e) {
+            \Log::error('Failed to delete facility reorder level', [
+                'id' => $reorderLevel->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Failed to delete reorder level.');
+        }
     }
 
     public function update(Request $request, FacilityReorderLevel $reorderLevel)

@@ -184,15 +184,13 @@ async function remove(id) {
 
   if (!result.isConfirmed) return
 
-  await router.delete(route('inventories.facility-reorder-levels.destroy', id), {
-    preserveScroll: true,
-    onSuccess: () => {
-      Swal.fire({ title: 'Deleted!', text: 'Reorder level deleted.', icon: 'success', timer: 1500, showConfirmButton: false })
-    },
-    onError: () => {
-      Swal.fire({ title: 'Failed', text: 'Failed to delete reorder level.', icon: 'error' })
-    }
-  })
+  try {
+    await axios.post(`/inventories/reorder-levels/${id}`, { _method: 'DELETE' })
+    Swal.fire({ title: 'Deleted!', text: 'Reorder level deleted.', icon: 'success', timer: 1500, showConfirmButton: false })
+    reload()
+  } catch (e) {
+    Swal.fire({ title: 'Failed', text: 'Failed to delete reorder level.', icon: 'error' })
+  }
 }
 
 function openEdit(record) {
