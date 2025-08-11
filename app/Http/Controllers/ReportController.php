@@ -236,6 +236,44 @@ class ReportController extends Controller
     }
 
     /**
+     * Get eligible products for the current user's facility
+     */
+    public function getTemplateProducts(Request $request)
+    {
+        try {
+            $facility = auth()->user()->facility;
+            if (!$facility) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No facility assigned to your account.',
+                    'products' => []
+                ], 403);
+            }
+
+            // Products eligible for this facility (by facility_type)
+            $products = $facility->eligibleProducts()
+                ->select('products.id', 'products.name')
+                ->orderBy('products.name')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'products' => $products,
+                'count' => $products->count()
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching eligible products for facility', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch eligible products'
+            ], 500);
+        }
+    }
+
+    /**
      * Get report generation status
      */
     public function getReportStatus(Request $request)

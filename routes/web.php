@@ -17,6 +17,7 @@ use App\Http\Controllers\FacilityInventoryMovementController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReasonController;
 use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\FacilityReorderLevelController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -102,10 +103,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
             Route::post('/import', 'import')->name('inventories.import');
             Route::get('/get-locations', 'getLocations')->name('invetnories.getLocations');
             Route::get('/template-items', 'templateItems')->name('inventories.templateItems');
+            // products for templates (used by facility reorder levels modal)
+            Route::get('/template-products', [ReportController::class, 'getTemplateProducts'])->name('inventory.template-products');
         });
     
     // Settings Routes
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    // Facility Reorder Levels
+    Route::controller(FacilityReorderLevelController::class)->group(function () {
+        Route::get('/facility-reorder-levels', 'index')->name('facility-reorder-levels.index');
+        Route::post('/facility-reorder-levels', 'store')->name('facility-reorder-levels.store');
+        Route::put('/facility-reorder-levels/{reorderLevel}', 'update')->name('facility-reorder-levels.update');
+        Route::delete('/facility-reorder-levels/{reorderLevel}', 'destroy')->name('facility-reorder-levels.destroy');
+    });
     
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

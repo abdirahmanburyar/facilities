@@ -405,6 +405,12 @@ function getResults(page = 1) {
                         </svg>
                         {{ isUploading ? 'Uploading...' : 'Upload Excel' }}
                     </button>
+                    <Link :href="route('facility-reorder-levels.index')" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg font-medium text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8M5 12a7 7 0 1114 0A7 7 0 015 12z" />
+                        </svg>
+                        Reorder Levels
+                    </Link>
                 </div>
             </div>
             <!-- Filters Card -->
