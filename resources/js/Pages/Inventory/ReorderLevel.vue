@@ -10,7 +10,7 @@
         </div>
         <div class="flex items-center gap-2">
           <Link :href="route('inventories.index')" class="px-3 py-1 text-sm bg-gray-200 text-gray-800 rounded">Back to Inventory</Link>
-          <a :href="route('inventories.facility-reorder-levels.template')" class="px-3 py-1 text-sm bg-indigo-600 text-white rounded">Download Template</a>
+          <button @click="openImportModal" class="px-3 py-1 text-sm bg-amber-600 text-white rounded">Upload Bulk</button>
           <button @click="showAddModal=true" class="px-3 py-1 text-sm bg-green-600 text-white rounded">Add Reorder Levels</button>
         </div>
       </div>
@@ -91,6 +91,33 @@
         </div>
       </div>
     </div>
+    
+    <!-- Import Modal -->
+    <div v-if="showImport" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-xl p-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold">Bulk Upload Reorder Levels</div>
+          <button @click="showImport=false" class="text-gray-600">✕</button>
+        </div>
+
+        <p class="text-xs text-gray-600 mb-3">Use the template to prepare your data. Only eligible items for your facility will be accepted.</p>
+        <div class="mb-4">
+          <a :href="route('inventories.facility-reorder-levels.template')" class="px-3 py-1 text-sm bg-indigo-600 text-white rounded">Download Template</a>
+        </div>
+
+        <div class="border rounded p-4 mb-4">
+          <input type="file" accept=".xlsx,.xls" @change="onFileChange" class="text-sm" />
+        </div>
+
+        <div class="flex items-center justify-end gap-2">
+          <button @click="showImport=false" class="px-3 py-1 text-sm bg-gray-200 rounded">Cancel</button>
+          <button @click="uploadImport" :disabled="isImporting || !importFile" class="px-3 py-1 text-sm bg-amber-600 text-white rounded">
+            {{ isImporting ? 'Uploading...' : 'Upload' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </AuthenticatedLayout>
   </template>
 
@@ -116,6 +143,9 @@ const products = ref([])
 const isSaving = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+const showImport = ref(false)
+const importFile = ref(null)
+const isImporting = ref(false)
 
 onMounted(() => { loadProducts() })
 
@@ -204,6 +234,35 @@ function openEdit(record) {
     amc: Number(record.amc || 0),
     lead_time: Number(record.lead_time || 1)
   }]
+}
+
+function openImportModal() {
+  showImport.value = true
+}
+
+function onFileChange(e) {
+  importFile.value = e.target.files[0] || null
+}
+
+async function uploadImport() {
+  if (!importFile.value) {
+    Swal.fire({ title: 'No file', text: 'Please choose an Excel file first.', icon: 'warning' })
+    return
+  }
+  isImporting.value = true
+  try {
+    const form = new FormData()
+    form.append('file', importFile.value)
+    await axios.post(route('inventories.facility-reorder-levels.import'), form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    Swal.fire({ title: 'Imported', text: 'Reorder levels imported successfully.', icon: 'success', timer: 1500, showConfirmButton: false })
+    showImport.value = false
+    importFile.value = null
+    reload()
+  } catch (e) {
+    Swal.fire({ title: 'Failed', text: e.response?.data?.message || 'Import failed.', icon: 'error' })
+  } finally {
+    isImporting.value = false
+  }
 }
 </script>
 

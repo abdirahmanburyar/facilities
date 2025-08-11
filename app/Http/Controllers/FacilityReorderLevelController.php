@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\FacilityReorderLevelsTemplateExport;
+use App\Imports\FacilityReorderLevelsImport;
 
 class FacilityReorderLevelController extends Controller
 {
@@ -133,6 +134,35 @@ class FacilityReorderLevelController extends Controller
         $filename = "Facility-Reorder-Levels-Template-{$facilityName}.xlsx";
 
         return Excel::download(new FacilityReorderLevelsTemplateExport($rows), $filename);
+    }
+
+    /**
+     * Import reorder levels from uploaded Excel template
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        $facility = auth()->user()->facility;
+        if (!$facility) {
+            return back()->with('error', 'No facility assigned to your account');
+        }
+
+        // Build product name => id map based on eligible products for this facility
+        $map = $facility->eligibleProducts()
+            ->select('products.id', 'products.name')
+            ->get()
+            ->mapWithKeys(function ($p) {
+                return [strtolower($p->name) => (int) $p->id];
+            })
+            ->toArray();
+
+        $import = new FacilityReorderLevelsImport($facility->id, $map);
+        Excel::import($import, $request->file('file'));
+
+        return back()->with('success', "Import completed. Created: {$import->created}, Updated: {$import->updated}, Skipped: {$import->skipped}");
     }
 }
 
