@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Carbon\Carbon;
 
 class DeliveryController extends Controller
@@ -50,8 +51,15 @@ class DeliveryController extends Controller
             if ($request->hasFile('images')) {
                 $images = $request->file('images');
                 $destination = public_path('delivery-images');
-                if (!is_dir($destination)) {
-                    @mkdir($destination, 0775, true);
+
+                // Ensure destination exists with proper permissions
+                if (!File::exists($destination)) {
+                    try {
+                        File::makeDirectory($destination, 0755, true, true);
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        return response()->json('Failed to prepare uploads directory: ' . $e->getMessage(), 500);
+                    }
                 }
 
                 foreach ($images as $image) {
