@@ -1123,7 +1123,7 @@
             </Modal>
 
             <!-- Delivery Form Modal -->
-            <Modal :show="showDeliveryModal" @close="closeDeliveryForm" maxWidth="4xl">
+            <Modal :show="showDeliveryModal" @close="closeDeliveryForm" maxWidth="full">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-xl font-semibold text-gray-900">
@@ -1143,7 +1143,7 @@
                             <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="space-y-2">
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-blue-700">Driver:</span>
-                                    <span class="text-sm text-blue-800">{{ dispatch.driver_name || 'N/A' }}</span>
+                                    <span class="text-sm text-blue-800">{{ dispatch.driver?.name || dispatch.driver_name || 'N/A' }}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-sm font-medium text-blue-700">Phone:</span>
@@ -1173,7 +1173,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div v-for="dispatch in props.order.dispatch" :key="dispatch.id" class="space-y-2">
                                     <label class="block text-sm font-medium text-gray-700">
-                                        Received Cartons for {{ dispatch.driver_name || 'Driver' }}
+                                        Received Cartons from {{ dispatch.driver?.name || dispatch.driver_name || 'Driver' }}
                                     </label>
                                     <input 
                                         type="number" 
@@ -1232,18 +1232,6 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Notes (Optional)
-                                    </label>
-                                    <textarea 
-                                        v-model="deliveryForm.notes"
-                                        rows="4"
-                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                        placeholder="Add any additional notes about the delivery..."
-                                    ></textarea>
-                                </div>
                             </div>
                         </div>
 
@@ -1262,8 +1250,8 @@
                                             <li v-if="!Object.values(deliveryForm.received_cartoons).some(qty => qty > 0)">
                                                 At least some cartons must be received
                                             </li>
-                                            <li v-if="hasDiscrepancy && deliveryForm.images.length === 0 && !deliveryForm.acknowledgeDiscrepancy">
-                                                Either upload images or acknowledge the discrepancy
+                                            <li v-if="hasDiscrepancy && deliveryForm.images.length === 0">
+                                                Upload images for the discrepancy
                                             </li>
                                             <li v-if="!Object.entries(deliveryForm.received_cartoons).every(([dispatchId, received]) => {
                                                 const dispatch = props.order.dispatch?.find(d => d.id == dispatchId);
@@ -1969,9 +1957,8 @@ const isDeliveryFormValid = computed(() => {
     // Basic validation - at least some cartons should be received
     const hasReceivedCartons = Object.values(deliveryForm.value.received_cartoons).some(qty => qty > 0);
     
-    // If there's a discrepancy, either images are required OR user must acknowledge
-    if (hasDiscrepancy.value && deliveryForm.value.images.length === 0 && !deliveryForm.value.acknowledgeDiscrepancy) {
-        console.log('Form invalid: Has discrepancy but no images and not acknowledged');
+    // If there's a discrepancy, images are required
+    if (hasDiscrepancy.value && deliveryForm.value.images.length === 0) {
         return false;
     }
     
@@ -2005,9 +1992,7 @@ const showDeliveryModal = ref(false);
 const isSubmittingDelivery = ref(false);
 const deliveryForm = ref({
     received_cartoons: {},
-    images: [],
-    notes: '',
-    acknowledgeDiscrepancy: false
+    images: []
 });
 
 // Cleanup on unmount
@@ -2073,8 +2058,6 @@ const openDeliveryForm = () => {
     // Initialize form
     deliveryForm.value.received_cartoons = {};
     deliveryForm.value.images = [];
-    deliveryForm.value.notes = '';
-    deliveryForm.value.acknowledgeDiscrepancy = false;
     
     // Pre-fill cartons with dispatched quantities (assuming all received initially)
     props.order.dispatch?.forEach(dispatch => {
@@ -2088,9 +2071,7 @@ const closeDeliveryForm = () => {
     showDeliveryModal.value = false;
     deliveryForm.value = {
         received_cartoons: {},
-        images: [],
-        notes: '',
-        acknowledgeDiscrepancy: false
+        images: []
     };
 };
 
@@ -2140,12 +2121,7 @@ const submitDeliveryForm = async () => {
         formData.append('order_id', props.order.id);
         formData.append('received_cartoons', JSON.stringify(deliveryForm.value.received_cartoons));
         
-        // Add acknowledgment to notes if there's a discrepancy
-        let notes = deliveryForm.value.notes;
-        if (hasDiscrepancy.value && deliveryForm.value.acknowledgeDiscrepancy) {
-            notes = (notes ? notes + '\n\n' : '') + 'DISCREPANCY ACKNOWLEDGED: User has acknowledged the discrepancy between dispatched and received cartons.';
-        }
-        formData.append('notes', notes);
+        // Notes removed from form
         
         // Append images
         deliveryForm.value.images.forEach((image, index) => {
