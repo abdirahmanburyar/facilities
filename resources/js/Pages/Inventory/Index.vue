@@ -354,7 +354,8 @@ function isLowStockGroup(inventory) {
     const reorder = Number(inventory.reorder_level) || 0;
     if (total <= 0) return false;
     const margin = total - reorder;
-    return margin <= (0.3 * total);
+    // Low stock only when above reorder but within 30% margin
+    return margin > 0 && margin <= (0.3 * total);
 }
 
 // Needs reorder (item-based): total <= reorder_level
