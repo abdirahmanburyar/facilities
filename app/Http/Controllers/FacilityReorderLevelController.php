@@ -8,6 +8,9 @@ use App\Models\Facility;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\FacilityReorderLevelsTemplateExport;
 
 class FacilityReorderLevelController extends Controller
 {
@@ -104,6 +107,32 @@ class FacilityReorderLevelController extends Controller
         ]);
 
         return back()->with('success', 'Reorder level updated.');
+    }
+
+    /**
+     * Download CSV template of eligible products for current user's facility
+     */
+    public function template()
+    {
+        $facility = auth()->user()->facility;
+        if (!$facility) {
+            abort(403, 'No facility assigned to your account');
+        }
+
+        $products = $facility->eligibleProducts()
+            ->select('products.name')
+            ->orderBy('products.name')
+            ->pluck('name')
+            ->toArray();
+
+        $rows = array_map(function ($name) {
+            return [$name, '', ''];
+        }, $products);
+
+        $facilityName = preg_replace('/[^A-Za-z0-9\-]/', '-', $facility->name ?? 'facility');
+        $filename = "Facility-Reorder-Levels-Template-{$facilityName}.xlsx";
+
+        return Excel::download(new FacilityReorderLevelsTemplateExport($rows), $filename);
     }
 }
 

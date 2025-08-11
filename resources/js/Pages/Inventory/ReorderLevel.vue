@@ -10,6 +10,7 @@
         </div>
         <div class="flex items-center gap-2">
           <Link :href="route('inventories.index')" class="px-3 py-1 text-sm bg-gray-200 text-gray-800 rounded">Back to Inventory</Link>
+          <a :href="route('inventories.facility-reorder-levels.template')" class="px-3 py-1 text-sm bg-indigo-600 text-white rounded">Download Template</a>
           <button @click="showAddModal=true" class="px-3 py-1 text-sm bg-green-600 text-white rounded">Add Reorder Levels</button>
         </div>
       </div>
