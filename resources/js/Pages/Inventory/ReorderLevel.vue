@@ -100,6 +100,7 @@ import Multiselect from 'vue-multiselect'
 import 'vue-multiselect/dist/vue-multiselect.css'
 import '@/Components/multiselect.css'
 import axios from 'axios'
+import Swal from 'sweetalert2'
 import { computed, ref, watch, onMounted } from 'vue'
 
 const props = defineProps({
@@ -170,7 +171,28 @@ async function save() {
 }
 
 async function remove(id) {
-  await router.delete(route('inventories.facility-reorder-levels.destroy', id))
+  const result = await Swal.fire({
+    title: 'Delete Reorder Level?',
+    text: 'This action cannot be undone.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#6b7280'
+  })
+
+  if (!result.isConfirmed) return
+
+  await router.delete(route('inventories.facility-reorder-levels.destroy', id), {
+    preserveScroll: true,
+    onSuccess: () => {
+      Swal.fire({ title: 'Deleted!', text: 'Reorder level deleted.', icon: 'success', timer: 1500, showConfirmButton: false })
+    },
+    onError: () => {
+      Swal.fire({ title: 'Failed', text: 'Failed to delete reorder level.', icon: 'error' })
+    }
+  })
 }
 
 function openEdit(record) {
