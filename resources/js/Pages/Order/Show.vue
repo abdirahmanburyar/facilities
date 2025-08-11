@@ -1385,10 +1385,23 @@ const hasDispatchImages = (dispatch) => getDispatchImagePaths(dispatch).length >
 
 const resolveImageUrl = (path) => {
     if (!path) return '';
-    // If already absolute or starts with /storage or /, return as-is
-    if (path.startsWith('http') || path.startsWith('/')) return path;
-    // Laravel public path typically serves via /storage or direct public
-    return `/${path.replace(/^public\//, '')}`;
+    // Absolute URL or already rooted path
+    if (path.startsWith('http')) return path;
+    if (path.startsWith('/storage/')) return path;
+    if (path.startsWith('/')) return path; // other absolute server paths
+
+    // Common Laravel storage mapping: "public/..." -> "/storage/..."
+    if (path.startsWith('public/')) {
+        return `/storage/${path.substring('public/'.length)}`;
+    }
+
+    // Already relative to storage
+    if (path.startsWith('storage/')) {
+        return `/${path}`;
+    }
+
+    // Fallback: root it
+    return `/${path}`;
 };
 const openDispatchImages = (dispatch) => {
     const imgs = getDispatchImagePaths(dispatch).map(resolveImageUrl);
