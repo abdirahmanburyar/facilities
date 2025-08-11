@@ -1385,22 +1385,12 @@ const hasDispatchImages = (dispatch) => getDispatchImagePaths(dispatch).length >
 
 const resolveImageUrl = (path) => {
     if (!path) return '';
-    // Absolute URL or already rooted path
+    // Backend now saves FULL URL like https://hc.psivista.com/delivery-images/filename.jpg
     if (path.startsWith('http')) return path;
-    if (path.startsWith('/storage/')) return path;
-    if (path.startsWith('/')) return path; // other absolute server paths
-
-    // Common Laravel storage mapping: "public/..." -> "/storage/..."
-    if (path.startsWith('public/')) {
-        return `/storage/${path.substring('public/'.length)}`;
-    }
-
-    // Already relative to storage
-    if (path.startsWith('storage/')) {
-        return `/${path}`;
-    }
-
-    // Fallback: root it
+    // If a relative path somehow comes through, prefer /delivery-images
+    if (path.startsWith('/delivery-images/')) return path;
+    if (path.startsWith('delivery-images/')) return `/${path}`;
+    if (path.startsWith('/')) return path;
     return `/${path}`;
 };
 const openDispatchImages = (dispatch) => {

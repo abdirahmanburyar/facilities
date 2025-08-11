@@ -45,15 +45,25 @@ class DeliveryController extends Controller
             
 
             
-            // Handle image uploads
+            // Handle image uploads - save to public/delivery-images and store FULL URL
             $imagePaths = [];
             if ($request->hasFile('images')) {
                 $images = $request->file('images');
+                $destination = public_path('delivery-images');
+                if (!is_dir($destination)) {
+                    @mkdir($destination, 0775, true);
+                }
+
                 foreach ($images as $image) {
                     if ($image->isValid()) {
                         $filename = 'delivery_' . time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                        $path = $image->storeAs('public/delivery-images', $filename);
-                        $imagePaths[] = $path;
+                        // Move file to public/delivery-images
+                        $image->move($destination, $filename);
+
+                        // Build full URL using APP_URL, fallback to request host
+                        $baseUrl = rtrim(config('app.url') ?: $request->getSchemeAndHttpHost(), '/');
+                        $fullUrl = $baseUrl . '/delivery-images/' . $filename;
+                        $imagePaths[] = $fullUrl;
                     }
                 }
             }
