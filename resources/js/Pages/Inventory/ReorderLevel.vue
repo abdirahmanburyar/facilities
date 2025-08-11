@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+    <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-[80px]">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
