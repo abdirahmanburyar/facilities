@@ -308,8 +308,6 @@ class OrderController extends Controller
         }
     }
 
-
-
     public function getOutstanding(Request $request, $id)
     {
         try {
@@ -730,10 +728,10 @@ class OrderController extends Controller
     }
 
     private const QUARTER_START_DATES = [
-        1 => '01-01',
-        2 => '01-04',
-        3 => '01-07',
-        4 => '01-10'
+        1 => '01-12',
+        2 => '01-03',
+        3 => '01-06',
+        4 => '01-09'
     ];
 
     /**
@@ -1296,18 +1294,7 @@ class OrderController extends Controller
             } else {
                 // No eligible months found
                 $amc = 0;
-            }
-
-            // Log AMC screening results
-            logger()->info('AMC Screening Results', [
-                'product_id' => $productId,
-                'facility_id' => $facility->id,
-                'total_months_count' => count($totalMonths),
-                'eligible_months_count' => $eligibleCount,
-                'final_amc' => round($amc, 2),
-                'included_months' => $includedMonths
-            ]);
-    
+            }    
             // Determine days since last received order update, fallback to quarter start if none
             $lastReceivedOrder = Order::where('facility_id', $facility->id)
                 ->where('status', 'received')
