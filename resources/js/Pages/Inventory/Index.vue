@@ -353,9 +353,8 @@ function isLowStockGroup(inventory) {
     const total = getTotalQuantity(inventory);
     const reorder = Number(inventory.reorder_level) || 0;
     if (total <= 0 || reorder <= 0) return false;
-    // Screening: first exclude items that need reorder, then check within 30% band above reorder
-    if (total <= reorder) return false; // handled by needsReorder
-    return total <= (reorder * 1.3);
+    // Low stock = total_on_hand <= (reorder_level - 30% of reorder_level)
+    return total <= (reorder * 0.7);
 }
 
 // Needs reorder (item-based): total <= reorder_level
