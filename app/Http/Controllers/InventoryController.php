@@ -45,8 +45,10 @@ class InventoryController extends Controller
             ->whereBetween('movement_date', [$startDate, $endDate])
             ->groupBy('product_id');
 
+        $facilityId = auth()->user()->facility_id;
+
         $query = FacilityInventory::query()
-            ->where('facility_id', auth()->user()->facility_id)
+            ->where('facility_inventories.facility_id', $facilityId)
             ->with([
                 'product:id,name,category_id,dosage_id',
                 'product.category:id,name',
@@ -55,9 +57,14 @@ class InventoryController extends Controller
             ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
                 $join->on('facility_inventories.product_id', '=', 'amc_data.product_id');
             })
+            // Use facility_reorder_levels when available for this facility
+            ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
+                $join->on('facility_inventories.product_id', '=', 'frl.product_id')
+                     ->where('frl.facility_id', '=', $facilityId);
+            })
             ->addSelect('facility_inventories.*')
-            ->addSelect(DB::raw('COALESCE(amc_data.amc, 0) as amc'))
-            ->addSelect(DB::raw('ROUND(COALESCE(amc_data.amc, 0) * 6) as reorder_level'));
+            ->addSelect(DB::raw('COALESCE(frl.amc, COALESCE(amc_data.amc, 0)) as amc'))
+            ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'));
 
         if ($request->filled('search')) {   
             $search = $request->search;

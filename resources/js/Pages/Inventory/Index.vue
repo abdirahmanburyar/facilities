@@ -339,12 +339,30 @@ const formatDate = (date) => {
     return moment(date).format("DD/MM/YYYY");
 };
 
-// Check if inventory is low
-const isLowStock = (inventory) => {
-    return (
-        inventory.quantity > 0 && inventory.quantity <= inventory.reorder_level
-    );
-};
+// Helpers for totals and statuses per inventory group (item-based)
+function getTotalQuantity(inventory) {
+    try {
+        return Array.isArray(inventory.items)
+            ? inventory.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0)
+            : 0;
+    } catch (e) { return 0; }
+}
+
+// Low stock rule: (total - reorder) <= 30% of total, and total > 0
+function isLowStockGroup(inventory) {
+    const total = getTotalQuantity(inventory);
+    const reorder = Number(inventory.reorder_level) || 0;
+    if (total <= 0) return false;
+    const margin = total - reorder;
+    return margin <= (0.3 * total);
+}
+
+// Needs reorder (item-based): total <= reorder_level
+function needsReorder(inventory) {
+    const total = getTotalQuantity(inventory);
+    const reorder = Number(inventory.reorder_level) || 0;
+    return total <= reorder;
+}
 
 // Check if inventory is out of stock
 const isOutOfStock = (inventory) => {
@@ -360,10 +378,17 @@ const inStockCount = computed(() => {
 });
 
 const lowStockCount = computed(() => {
-    const stat = Object.values(props.inventoryStatusCounts).find(
-        (s) => s.status === "low_stock"
-    );
-    return stat.count;
+    // Recompute low stock using new 30% margin rule across groups
+    try {
+        return (props.inventories?.data || []).filter((inv) => isLowStockGroup(inv)).length;
+    } catch { return 0; }
+});
+
+// Count of items that need reorder (item-based)
+const reorderItemsCount = computed(() => {
+    try {
+        return (props.inventories?.data || []).filter((inv) => needsReorder(inv)).length;
+    } catch { return 0; }
 });
 
 const outOfStockCount = computed(() => {
@@ -482,7 +507,7 @@ function getResults(page = 1) {
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.reorder_level }}</td>
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-4 whitespace-nowrap text-xs font-medium align-top">
                                         <div class="flex items-center space-x-3">
-                                            <div v-if="isLowStock(inventory)">
+                                            <div v-if="needsReorder(inventory)">
                                                 <img
                                                     src="/assets/images/reorder_status.png"
                                                     alt="Reorder Status"
@@ -530,11 +555,11 @@ function getResults(page = 1) {
                 <div class="lg:col-span-1">
                     <div class="sticky top-0 z-10 shadow-sm">
                         <div class="space-y-4">
-                            <div class="flex items-center rounded-xl bg-green-50 p-1 shadow">
-                                <img src="/assets/images/in_stock.png" class="w-[40px] h-[40px]" alt="In Stock" />
+                            <div class="flex items-center rounded-xl bg-blue-50 p-1 shadow">
+                                <img src="/assets/images/reorder_status.png" class="w-[40px] h-[40px]" alt="Reorder Items" />
                                 <div class="ml-4 flex flex-col">
-                                    <span class="text-sm font-bold text-green-600">{{ inStockCount }}</span>
-                                    <span class="ml-2 text-xs text-green-600">In Stock</span>
+                                    <span class="text-sm font-bold text-blue-600">{{ reorderItemsCount }}</span>
+                                    <span class="ml-2 text-xs text-blue-600">Reorder Items</span>
                                 </div>
                             </div>
                             <div class="flex items-center rounded-xl bg-orange-50 p-1 shadow">
