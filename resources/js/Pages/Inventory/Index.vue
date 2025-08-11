@@ -273,32 +273,44 @@ const uploadFile = async () => {
 };
 
 // Download template function
-const downloadTemplate = () => {
-    // Create a CSV format that Excel can open properly
-    const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
-    
-    // Create CSV content with headers
-    const csvContent = headers.join(',') + '\n';
-    
-    // Create blob with CSV MIME type
-    const blob = new Blob([csvContent], { 
-        type: 'text/csv;charset=utf-8;' 
-    });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'inventory_import_template.csv');
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up the URL object
-    URL.revokeObjectURL(url);
-    
-    toast.success('Template downloaded successfully! Open with Excel to use.');
+const downloadTemplate = async () => {
+    try {
+        const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
+        const headerRow = headers.join(',');
+
+        // Fetch eligible items for current facility
+        const { data } = await axios.get(route('inventories.templateItems'));
+        const items = data?.items || [];
+
+        // Build CSV rows
+        const rows = items.map(i => [
+            // Escape commas and quotes for CSV safety
+            '"' + String(i.item ?? '').replace(/"/g, '""') + '"',
+            '"' + String(i.category ?? '').replace(/"/g, '""') + '"',
+            '"' + String(i.uom ?? '').replace(/"/g, '""') + '"',
+            '', // Quantity placeholder
+            '', // Batch No placeholder
+            ''  // Expiry Date placeholder
+        ].join(','));
+
+        const csvContent = [headerRow, ...rows].join('\n') + '\n';
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'inventory_import_template.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success('Template downloaded with eligible items for your facility.');
+    } catch (error) {
+        console.error('Template download error:', error);
+        toast.error('Failed to download template.');
+    }
 };
 
 // Submit form

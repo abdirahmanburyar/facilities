@@ -25,6 +25,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Models\EligibleItem;
+use App\Models\Facility;
 
 class InventoryController extends Controller
 {
@@ -258,5 +260,32 @@ class InventoryController extends Controller
                 'message' => 'Import failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Return eligible items for the current user's facility for template download
+     */
+    public function templateItems(Request $request)
+    {
+        $user = auth()->user();
+        $facility = Facility::find($user->facility_id);
+        if (!$facility) {
+            return response()->json(['items' => []]);
+        }
+
+        // Eligible items by facility_type
+        $eligible = EligibleItem::with(['product.category'])
+            ->where('facility_type', $facility->facility_type)
+            ->get();
+
+        $items = $eligible->map(function ($ei) {
+            return [
+                'item' => $ei->product->name ?? '',
+                'category' => $ei->product->category->name ?? '',
+                'uom' => $ei->product->movement ?? '',
+            ];
+        })->values();
+
+        return response()->json(['items' => $items]);
     }
 }

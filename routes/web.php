@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
             Route::post('/import', 'import')->name('inventories.import');
             Route::get('/get-locations', 'getLocations')->name('invetnories.getLocations');
+            Route::get('/template-items', 'templateItems')->name('inventories.templateItems');
         });
     
     // Settings Routes
