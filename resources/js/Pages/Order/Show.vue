@@ -371,19 +371,18 @@
                         <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Facility Inventory Data</th>
                         <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">No. of Days</th>
                         <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Ordered Quantity</th>
-                        <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Quantity to release</th>
-                        <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="4">Item Detail</th>
+                        <th class="px-3 py-2 text-xs font-bold w-40" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6; width: 10rem;" rowspan="2">Quantity to release</th>
+                        <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="3">Item Detail</th>
                     </tr>
                     <tr style="background-color: #F4F7FB;">
                         <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">QTY</th>
                         <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Batch Number</th>
                         <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Expiry Date</th>
-                        <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Location</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-if="form.length === 0">
-                        <td colspan="11" class="px-3 py-3 text-center text-gray-500 border-b" style="border-bottom: 1px solid #B7C6E6;">
+                        <td colspan="10" class="px-3 py-3 text-center text-gray-500 border-b" style="border-bottom: 1px solid #B7C6E6;">
                             No items found. Form length: {{ form.length }}, Order items: {{ props.order.items?.length || 0 }}
                         </td>
                     </tr>
@@ -433,7 +432,7 @@
                                     {{ item.quantity }}
                                 </td>
                                 <td v-if="invIndex === 0" :rowspan="item.inventory_allocations.length"
-                                    class="px-3 py-3 text-xs text-gray-900 align-top">
+                                    class="px-3 py-3 text-xs text-gray-900 align-top w-40" style="width: 10rem;">
                                     <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
                                         class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
                                     <div>
@@ -475,9 +474,7 @@
                                 <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
                                     {{ inv.expiry_date ? moment(inv.expiry_date).format('DD/MM/YYYY') : '' }}
                                 </td>
-                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
-                                    <span v-if="!inv.warehouse?.name && !inv.location">{{ inv.location || '' }}</span>
-                                </td>
+                                
                             </tr>
                         </template>
                         <template v-else>
@@ -506,7 +503,7 @@
                                 </td>
                                 <td class="px-3 py-3 text-xs text-gray-900 align-top">{{ item.no_of_days }}</td>
                                 <td class="px-3 py-3 text-xs text-center text-black align-top">{{ item.quantity }}</td>
-                                <td class="px-3 py-3 text-xs text-gray-900 align-top">
+                                <td class="px-3 py-3 text-xs text-gray-900 align-top w-40" style="width: 10rem;">
                                     <input type="number" placeholder="0" v-model="item.quantity_to_release" readonly
                                         class="w-full rounded-md border border-gray-300 focus:border-orange-500 focus:ring-orange-500 sm:text-sm mb-1" />
                                     <div>
@@ -537,13 +534,6 @@
                                 <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.allocated_quantity || '' }}</td>
                                 <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.batch_number || '' }}</td>
                                 <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">{{ item.expiry_date ? moment(item.expiry_date).format('DD/MM/YYYY') : '' }}</td>
-                                <td class="px-2 py-1 text-xs border-b text-center" style="border-bottom: 1px solid #B7C6E6;">
-                                    <div class="flex flex-col text-xs">
-                                        <span v-if="item.warehouse?.name">WH: {{ item.warehouse.name }}</span>
-                                        <span v-if="item.location?.location">LC: {{ item.location.location }}</span>
-                                        <span v-if="!item.warehouse?.name && !item.location?.location">{{ item.location || '' }}</span>
-                                    </div>
-                                </td>
                             </tr>
                         </template>
                     </template>
