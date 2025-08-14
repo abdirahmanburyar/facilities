@@ -894,13 +894,13 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <!-- Purchase Order (link to Orders as facilities variant) -->
-                <Link :href="route('orders.index')" class="block group">
+                <!-- Dispense -->
+                <Link :href="route('dispence.index')" class="block group">
                     <div class="relative overflow-hidden rounded-xl bg-white border border-gray-200 shadow-sm p-4 transition-all duration-200 hover:shadow-md min-h-[88px] h-full">
                         <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-400 to-teal-500"></div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="text-base font-semibold text-gray-900">Purchase Order</div>
+                                <div class="text-base font-semibold text-gray-900">Dispense</div>
                             </div>
                             <div class="flex items-center justify-center h-10 w-10 rounded-full bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
