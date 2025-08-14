@@ -793,58 +793,66 @@ onMounted(() => {
                         </div>
                     </div>
 
-        <!-- Expired Statistics Chart Row -->
+        <!-- Quick Start Section (replaces expiry status cards) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-            <!-- Expired Chart - Takes 8 columns -->
+            <!-- Quick Start (left) -->
             <div class="lg:col-span-8 bg-white rounded-xl shadow-lg border border-gray-200 p-3">
                 <div class="mb-2">
-                    <h3 class="text-xl font-bold text-gray-900">Expiry Status Overview</h3>
-                    <p class="text-sm text-gray-600 mt-1">Items by expiry status and timeline</p>
+                    <h3 class="text-xl font-bold text-gray-900">Quick Start</h3>
+                    <p class="text-sm text-gray-600 mt-1">Jump into common actions</p>
                 </div>
-                <div class="h-64">
-                    <Doughnut :data="expiredChartData" :options="doughnutChartOptions" />
-                    </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <Link :href="route('orders.index')" class="block group">
+                        <div class="relative overflow-hidden rounded-xl bg-white border border-gray-200 shadow-sm p-4 transition-all duration-200 hover:shadow-md min-h-[88px] h-full">
+                            <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-indigo-400 to-blue-500"></div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-base font-semibold text-gray-900">Orders</div>
+                                </div>
+                                <div class="flex items-center justify-center h-10 w-10 rounded-full bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
+                    <Link :href="route('transfers.index')" class="block group">
+                        <div class="relative overflow-hidden rounded-xl bg-white border border-gray-200 shadow-sm p-4 transition-all duration-200 hover:shadow-md min-h-[88px] h-full">
+                            <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-400 to-purple-600"></div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-base font-semibold text-gray-900">Transfers</div>
+                                </div>
+                                <div class="flex items-center justify-center h-10 w-10 rounded-full bg-violet-50 text-violet-600 transition-colors group-hover:bg-violet-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4M4 17h12m0 0l-4 4m4-4l-4-4"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
+                    <Link :href="route('inventories.index')" class="block group">
+                        <div class="relative overflow-hidden rounded-xl bg-white border border-gray-200 shadow-sm p-4 transition-all duration-200 hover:shadow-md min-h-[88px] h-full">
+                            <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500"></div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-base font-semibold text-gray-900">Inventory</div>
+                                </div>
+                                <div class="flex items-center justify-center h-10 w-10 rounded-full bg-amber-50 text-amber-600 transition-colors group-hover:bg-amber-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.802 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.802-2.034a1 1 0 00-1.175 0l-2.802 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
                 </div>
+            </div>
 
-            <!-- Summary Stats - Takes 4 columns -->
-            <div class="lg:col-span-4 space-y-3">
-                <!-- Expired Items Card -->
-                <div class="bg-gray-600 rounded-xl shadow-sm border border-gray-200 p-3">
-                        <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-sm font-semibold text-white">Expired Items</h3>
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                            </div>
-                    <div class="text-xl font-bold text-white">{{ props.expiredStats?.expired || 0 }}</div>
-                    <div class="text-xs text-white mt-1">Items past expiry date</div>
-                </div>
-                
-                <!-- Expiring in 6 Months Card -->
-                <div class="bg-pink-500 rounded-xl shadow-sm border border-gray-200 p-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-sm font-semibold text-white">Expiring in 6 Months</h3>
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                            </div>
-                    <div class="text-xl font-bold text-white">{{ props.expiredStats.expiring_within_6_months || 0 }}</div>
-                    <div class="text-xs text-white mt-1">Items expiring soon</div>
-                        </div>
-                
-                <!-- Expiring in 1 Year Card -->
-                <div class="bg-orange-400 rounded-xl shadow-sm border border-gray-200 p-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-sm font-semibold text-white">Expiring in 1 Year</h3>
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                    </div>
-                    <div class="text-xl font-bold text-white">{{ props.expiredStats.expiring_within_1_year || 0 }}</div>
-                    <div class="text-xs text-white mt-1">Items to monitor</div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Empty spacer to balance layout (right) -->
+            <div class="lg:col-span-4"></div>
+        </div>
 
         <!-- Order Status Chart Section -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
