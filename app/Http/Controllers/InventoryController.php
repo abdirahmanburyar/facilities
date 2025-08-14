@@ -36,6 +36,8 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $facilityId = auth()->user()->facility_id;
+        $facility = Facility::find($facilityId);
+        $facilityType = $facility?->facility_type;
 
         // AMC based on last 3 months issuance (excluding current)
         $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
@@ -58,7 +60,9 @@ class InventoryController extends Controller
                      ->where('frl.facility_id', '=', $facilityId);
             })
             ->addSelect(DB::raw('COALESCE(frl.amc, COALESCE(amc_data.amc, 0)) as amc'))
-            ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'));
+            ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'))
+            // Restrict to eligible items for this facility type
+            ->whereIn('products.id', EligibleItem::select('product_id')->where('facility_type', $facilityType));
 
         if ($request->filled('search')) {   
             $search = $request->search;
