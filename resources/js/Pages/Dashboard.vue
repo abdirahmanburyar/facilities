@@ -602,23 +602,63 @@ onMounted(() => {
 <template>
     <Head title="Dashboard" />
     <AuthenticatedLayout title="Dashboard" description="Welcome to the dashboard">
-        <!-- Quick Stats Cards Row (homogenized) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <template v-for="card in kpiCards" :key="card.key">
-                <Link :href="route(card.route)" class="block">
-                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200">
-                        <div class="p-4 flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500">{{ card.label }}</div>
-                                <div class="text-2xl font-bold text-gray-900">{{ card.value }}</div>
-                            </div>
-                            <svg class="w-10 h-10" :class="card.accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="card.iconPath" />
-                            </svg>
+        <!-- Quick Stats Cards Row (match warehouse gradient style) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <!-- Blue Card - Delayed Orders -->
+            <Link :href="route('orders.index')" class="block">
+                <div class="relative overflow-hidden rounded-lg cursor-pointer">
+                    <div class="absolute inset-0" style="background: linear-gradient(45deg, #007BFF 0%, #6FB9FF 50%, #D0E7FF 100%);"></div>
+                    <div class="relative p-4">
+                        <div class="flex flex-col">
+                            <h3 class="text-sm font-medium text-white mb-1">Delayed Orders</h3>
+                            <div class="text-2xl font-bold text-white">{{ filteredOrdersDelayedCount || 0 }}</div>
+                            <div class="text-xs font-light text-white mt-1">{{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</div>
                         </div>
                     </div>
-                </Link>
-            </template>
+                </div>
+            </Link>
+
+            <!-- Teal Card - Transfers -->
+            <Link :href="route('transfers.index')" class="block">
+                <div class="relative overflow-hidden rounded-lg cursor-pointer">
+                    <div class="absolute inset-0" style="background: linear-gradient(45deg, #14B8A6 0%, #5EEAD4 50%, #CCFBF1 100%);"></div>
+                    <div class="relative p-4">
+                        <div class="flex flex-col">
+                            <h3 class="text-sm font-medium text-white mb-1">Transfers</h3>
+                            <div class="text-2xl font-bold text-white">{{ filteredTransferReceivedCard || 0 }}</div>
+                            <div class="text-xs font-light text-white mt-1">{{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </Link>
+
+            <!-- Orange Card - Low Stock -->
+            <Link :href="route('inventories.index')" class="block">
+                <div class="relative overflow-hidden rounded-lg cursor-pointer">
+                    <div class="absolute inset-0" style="background: linear-gradient(45deg, #FF8500 0%, #FFB15C 31%, #FFDBB7 100%);"></div>
+                    <div class="relative p-4">
+                        <div class="flex flex-col">
+                            <h3 class="text-sm font-medium text-white mb-1">Low Stock</h3>
+                            <div class="text-2xl font-bold text-white">{{ lowStockCount || 0 }}</div>
+                            <div class="text-xs font-light text-white mt-1">{{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </Link>
+
+            <!-- Red Card - Out of Stock -->
+            <Link :href="route('inventories.index')" class="block">
+                <div class="relative overflow-hidden rounded-lg cursor-pointer">
+                    <div class="absolute inset-0" style="background: linear-gradient(45deg, #DC2626 0%, #FF8A8A 50%, #FFE5E5 100%);"></div>
+                    <div class="relative p-4">
+                        <div class="flex flex-col">
+                            <h3 class="text-sm font-medium text-white mb-1">Out of Stock</h3>
+                            <div class="text-2xl font-bold text-white">{{ outOfStockCount || 0 }}</div>
+                            <div class="text-xs font-light text-white mt-1">{{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </Link>
         </div>
 
         <!-- Tracert Items Section -->
