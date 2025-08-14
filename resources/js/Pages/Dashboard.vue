@@ -334,9 +334,9 @@ const horizontalBarChartOptions = {
             borderWidth: 0,
             borderSkipped: 'left',
             borderRadius: { topRight: 100, bottomRight: 0, topLeft: 0, bottomLeft: 0 },
-            maxBarThickness: 40,
-            barPercentage: 0.6,
-            categoryPercentage: 0.6
+            maxBarThickness: 22,
+            barPercentage: 0.45,
+            categoryPercentage: 0.5
         }
     },
     plugins: {
@@ -395,9 +395,10 @@ const orderChartOptions = {
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
             borderRadius: { topLeft: 100, topRight: 100, bottomLeft: 0, bottomRight: 0 },
-            maxBarThickness: 40,
-            barPercentage: 0.6,
-            categoryPercentage: 0.6
+            barThickness: 12,
+            maxBarThickness: 14,
+            barPercentage: 0.5,
+            categoryPercentage: 0.5
         }
     },
     plugins: {
@@ -646,9 +647,9 @@ const issuedChartOptions = {
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
             borderRadius: { topLeft: 100, topRight: 100, bottomLeft: 0, bottomRight: 0 },
-            maxBarThickness: 40,
-            barPercentage: 0.6,
-            categoryPercentage: 0.6
+            maxBarThickness: 18,
+            barPercentage: 0.45,
+            categoryPercentage: 0.55
         }
     },
     plugins: {
