@@ -333,9 +333,20 @@ const horizontalBarChartOptions = {
         bar: {
             borderWidth: 0,
             borderSkipped: 'left',
-            borderRadius: { topRight: 8, bottomRight: 8, topLeft: 0, bottomLeft: 0 },
-            barThickness: 16,
-            maxBarThickness: 16
+            borderRadius: { topRight: 100, bottomRight: 0, topLeft: 0, bottomLeft: 0 },
+            maxBarThickness: 40,
+            barPercentage: 0.6,
+            categoryPercentage: 0.6
+        }
+    },
+    plugins: {
+        datalabels: {
+            color: '#111827',
+            anchor: 'end',
+            align: 'end',
+            offset: -2,
+            font: { weight: 'bold' },
+            formatter: (v) => formatNumber(v)
         }
     }
 };
@@ -383,9 +394,20 @@ const orderChartOptions = {
             borderWidth: 0,
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
-            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
-            barThickness: 16,
-            maxBarThickness: 16
+            borderRadius: { topLeft: 100, topRight: 100, bottomLeft: 0, bottomRight: 0 },
+            maxBarThickness: 40,
+            barPercentage: 0.6,
+            categoryPercentage: 0.6
+        }
+    },
+    plugins: {
+        datalabels: {
+            color: '#111827',
+            anchor: 'end',
+            align: 'end',
+            offset: -2,
+            font: { weight: 'bold' },
+            formatter: (v) => formatNumber(v)
         }
     }
 };
@@ -623,9 +645,20 @@ const issuedChartOptions = {
             borderWidth: 0,
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
-            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
-            barThickness: 14,
-            maxBarThickness: 14
+            borderRadius: { topLeft: 100, topRight: 100, bottomLeft: 0, bottomRight: 0 },
+            maxBarThickness: 40,
+            barPercentage: 0.6,
+            categoryPercentage: 0.6
+        }
+    },
+    plugins: {
+        datalabels: {
+            color: '#111827',
+            anchor: 'end',
+            align: 'end',
+            offset: -2,
+            font: { weight: 'bold' },
+            formatter: (v) => formatNumber(v)
         }
     }
 };
