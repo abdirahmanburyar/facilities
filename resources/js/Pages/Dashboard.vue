@@ -223,34 +223,17 @@ const orderChartData = computed(() => ({
     }]
 }));
 
-const orderStatusChartData = computed(() => {
-    const filteredStats = selectedOrderStatus.value.length > 0
-        ? Object.fromEntries(
-            Object.entries(props.orderStats).filter(([key]) => 
-                selectedOrderStatus.value.some(status => status.value === key)
-            )
-        )
-        : props.orderStats;
-
-    return {
-        labels: Object.keys(filteredStats).map(key => key.replace('_', ' ').toUpperCase()),
-        datasets: [{
-            label: 'Orders',
-            data: Object.values(filteredStats),
-            backgroundColor: [
-                '#F59E0B', // amber - pending
-                '#3B82F6', // blue - reviewed
-                '#10B981', // emerald - approved
-                '#8B5CF6', // violet - in_process
-                '#EC4899', // pink - dispatched
-                '#F97316', // orange - delivered
-                '#059669', // emerald - received
-                '#EF4444', // red - rejected
-            ],
-            borderWidth: 0,
-        }]
-    };
-});
+// Ring indicators configuration (match warehouse)
+const orderStatusConfig = [
+  { key: 'pending', label: 'Pending', stroke: '#eab308', textClass: 'text-yellow-600' },
+  { key: 'reviewed', label: 'Reviewed', stroke: '#3b82f6', textClass: 'text-blue-600' },
+  { key: 'approved', label: 'Approved', stroke: '#10b981', textClass: 'text-emerald-600' },
+  { key: 'in_process', label: 'In Process', stroke: '#8b5cf6', textClass: 'text-violet-600' },
+  { key: 'dispatched', label: 'Dispatched', stroke: '#ec4899', textClass: 'text-pink-600' },
+  { key: 'delivered', label: 'Delivered', stroke: '#f59e0b', textClass: 'text-amber-600' },
+  { key: 'received', label: 'Received', stroke: '#6366f1', textClass: 'text-indigo-600' },
+  { key: 'rejected', label: 'Rejected', stroke: '#ef4444', textClass: 'text-red-600' }
+];
 
 const expiredChartData = computed(() => ({
     labels: ['Expired', 'Expiring in 6 Months', 'Expiring in 1 Year'],
@@ -874,44 +857,46 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Order Status Chart Section -->
+        <!-- Order Status Overview (rings like warehouse) -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-                <div>
-                    <h3 class="text-xl font-bold text-gray-900">Order Status Overview</h3>
-                    <p class="text-sm text-gray-600 mt-1">Track orders across different statuses</p>
-                            </div>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <!-- Status Filter -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-medium text-gray-600 mb-1">Filter by Status:</label>
-                        <div class="flex gap-2">
-                            <Multiselect
-                                v-model="selectedOrderStatus"
-                                :options="orderStatusOptions"
-                                :searchable="true"
-                                :close-on-select="false"
-                                :multiple="true"
-                                :show-labels="false"
-                                label="label"
-                                track-by="value"
-                                placeholder="Select statuses..."
-                                class="w-full sm:w-48"
-                            />
-                            <button
-                                @click="clearAllStatuses"
-                                class="px-3 py-2 text-xs bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors mt-2"
-                            >
-                                Clear
-                            </button>
+            <div class="mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Order Status Overview</h3>
+                <p class="text-sm text-gray-600 mt-1">Live distribution of orders</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <div
+                    v-for="cfg in orderStatusConfig"
+                    :key="cfg.key"
+                    class="flex items-center justify-center gap-3 p-3 rounded-lg border border-gray-200 hover:shadow-sm transition-all"
+                >
+                    <div class="flex items-center">
+                        <div class="w-14 h-14 relative mr-2">
+                            <svg class="w-14 h-14 transform -rotate-90">
+                                <circle cx="28" cy="28" r="24" fill="none" stroke="#e2e8f0" stroke-width="4" />
+                                <circle
+                                    cx="28"
+                                    cy="28"
+                                    r="24"
+                                    fill="none"
+                                    :stroke="cfg.stroke"
+                                    stroke-width="4"
+                                    :stroke-dasharray="(totalOrdersCount && totalOrdersCount > 0) ? `${(props.orderStats[cfg.key] / totalOrdersCount) * 150.72} 150.72` : '0 150.72'"
+                                />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span :class="['text-xs font-bold', cfg.textClass]">
+                                    {{ totalOrdersCount > 0 ? Math.round((props.orderStats[cfg.key] / totalOrdersCount) * 100) : 0 }}%
+                                </span>
                             </div>
                         </div>
+                        <div class="text-center">
+                            <div class="text-base font-semibold text-gray-900">{{ props.orderStats[cfg.key] || 0 }}</div>
+                            <div class="text-xs text-gray-600">{{ cfg.label }}</div>
                         </div>
-                            </div>
-            <div class="h-80">
-                <Bar :data="orderStatusChartData" :options="orderStatusChartOptions" />
                     </div>
                 </div>
+            </div>
+        </div>
         
     </AuthenticatedLayout>
 </template>
