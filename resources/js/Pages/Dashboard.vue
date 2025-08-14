@@ -151,6 +151,9 @@ const productCategoryChartData = computed(() => ({
             '#8B5CF6', // violet
         ],
         borderWidth: 0,
+        hoverBorderWidth: 0,
+        borderColor: 'transparent',
+        hoverBorderColor: 'transparent',
     }]
 }));
 
@@ -220,6 +223,9 @@ const orderChartData = computed(() => ({
         data: Object.values(orderCounts.value),
         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B'],
         borderWidth: 0,
+        hoverBorderWidth: 0,
+        borderColor: 'transparent',
+        hoverBorderColor: 'transparent',
     }]
 }));
 
@@ -249,6 +255,9 @@ const expiredChartData = computed(() => ({
             '#3B82F6', // blue - expiring later
         ],
         borderWidth: 0,
+        hoverBorderWidth: 0,
+        borderColor: 'transparent',
+        hoverBorderColor: 'transparent',
     }]
 }));
 
@@ -272,7 +281,13 @@ const doughnutChartOptions = {
                 return `${percentage}%`;
             }
         }
-    }
+    },
+    cutout: '40%',
+    elements: {
+        arc: {
+            borderWidth: 0
+        }
+    },
 };
 
 const horizontalBarChartOptions = {
@@ -307,7 +322,19 @@ const horizontalBarChartOptions = {
                 callback: function(value) {
                     return formatNumber(value);
                 }
-            }
+            },
+            grid: { display: false }
+        },
+        y: {
+            grid: { display: false }
+        }
+    },
+    elements: {
+        bar: {
+            borderWidth: 0,
+            borderSkipped: false,
+            barThickness: 28,
+            maxBarThickness: 28
         }
     }
 };
@@ -343,7 +370,20 @@ const orderChartOptions = {
                 callback: function(value) {
                     return formatNumber(value);
                 }
-            }
+            },
+            grid: { display: false }
+        },
+        x: {
+            grid: { display: false }
+        }
+    },
+    elements: {
+        bar: {
+            borderWidth: 0,
+            hoverBorderWidth: 0,
+            borderSkipped: false,
+            barThickness: 28,
+            maxBarThickness: 28
         }
     }
 };
@@ -569,7 +609,20 @@ const issuedChartOptions = {
                 callback: function(value) {
                     return formatNumber(value);
                 }
-            }
+            },
+            grid: { display: false }
+        },
+        x: {
+            grid: { display: false }
+        }
+    },
+    elements: {
+        bar: {
+            borderWidth: 0,
+            hoverBorderWidth: 0,
+            borderSkipped: false,
+            barThickness: 26,
+            maxBarThickness: 26
         }
     }
 };
