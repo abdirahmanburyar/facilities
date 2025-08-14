@@ -35,66 +35,125 @@ class InventoryController extends Controller
      */
     public function index(Request $request)
     {
-        // Step 1: Get last 3 months (excluding current)
+        $facilityId = auth()->user()->facility_id;
+
+        // AMC based on last 3 months issuance (excluding current)
         $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
         $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
-        // Step 2: Convert string date and filter by last 3 months
         $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->where('facility_id', auth()->user()->facility_id)
+            ->where('facility_id', $facilityId)
             ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
             ->whereBetween('movement_date', [$startDate, $endDate])
             ->groupBy('product_id');
 
-        $facilityId = auth()->user()->facility_id;
-
-        $query = FacilityInventory::query()
-            ->where('facility_inventories.facility_id', $facilityId)
-            ->with([
-                'product:id,name,category_id,dosage_id',
-                'product.category:id,name',
-                'product.dosage:id,name'
-            ])
+        // Product-first list to include products with no inventory
+        $productQuery = Product::query()
+            ->select('products.id', 'products.name', 'products.category_id', 'products.dosage_id')
+            ->with(['category:id,name', 'dosage:id,name'])
             ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
-                $join->on('facility_inventories.product_id', '=', 'amc_data.product_id');
+                $join->on('products.id', '=', 'amc_data.product_id');
             })
-            // Use facility_reorder_levels when available for this facility
             ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
-                $join->on('facility_inventories.product_id', '=', 'frl.product_id')
+                $join->on('products.id', '=', 'frl.product_id')
                      ->where('frl.facility_id', '=', $facilityId);
             })
-            ->addSelect('facility_inventories.*')
             ->addSelect(DB::raw('COALESCE(frl.amc, COALESCE(amc_data.amc, 0)) as amc'))
             ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'));
 
         if ($request->filled('search')) {   
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('items', function($itemQuery) use ($search) {
-                    $itemQuery->where('barcode', 'like', "%{$search}%")
-                        ->orWhere('batch_number', 'like', "%{$search}%");
-                })
-                ->orWhereHas('product', function($productQuery) use ($search) {
-                    $productQuery->where('name', 'like', "%{$search}%");
+            $productQuery->where(function($q) use ($search) {
+                $q->where('products.name', 'like', "%{$search}%")
+                  ->orWhereExists(function($sub) use ($search) {
+                      $sub->from('facility_inventories')
+                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
+                          ->whereColumn('facility_inventories.product_id', 'products.id')
+                          ->where(function($w) use ($search){
+                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
+                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
+                          });
                 });
             });
         }
 
         if ($request->filled('product_id')) {
-            $query->where('product_id', $request->product_id);
+            $productQuery->where('products.id', $request->product_id);
         }
 
         if ($request->filled('category')) {
-            $query->whereHas('product.category', fn($q) => $q->where('name', $request->category));
+            $productQuery->whereHas('category', fn($q) => $q->where('name', $request->category));
         }
 
         if ($request->filled('dosage')) {
-            $query->whereHas('product.dosage', fn($q) => $q->where('name', $request->dosage));
+            $productQuery->whereHas('dosage', fn($q) => $q->where('name', $request->dosage));
         }
 
-        $inventories = $query->paginate($request->input('per_page', 25), ['*'], 'page', $request->input('page', 1))
-        ->withQueryString();
-        $inventories->setPath(url()->current()); // Force Laravel to use full URLs
+        $perPage = $request->input('per_page', 25);
+        $page = $request->input('page', 1);
+        $productsPaginator = $productQuery->paginate($perPage, ['products.*'], 'page', $page)->withQueryString();
+        $productsPaginator->setPath(url()->current());
 
+        $productIds = collect($productsPaginator->items())->pluck('id')->all();
+
+        // Existing facility inventories for those products
+        $existingInventories = FacilityInventory::query()
+            ->where('facility_inventories.facility_id', $facilityId)
+            ->with([
+                'product:id,name,category_id,dosage_id',
+                'product.category:id,name',
+                'product.dosage:id,name',
+                'items'
+            ])
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->groupBy('product_id');
+
+        // Merge and ensure placeholder for products without inventory
+        $merged = collect();
+        foreach ($productsPaginator->items() as $product) {
+            $amc = (float) ($product->amc ?? 0);
+            $reorderLevel = (float) ($product->reorder_level ?? round($amc * 6));
+
+            if (isset($existingInventories[$product->id]) && $existingInventories[$product->id]->isNotEmpty()) {
+                $inventory = $existingInventories[$product->id]->first();
+                $inventory->setAttribute('amc', $amc);
+                $inventory->setAttribute('reorder_level', $reorderLevel);
+                $inventory->setRelation('product', $inventory->product->loadMissing('category:id,name', 'dosage:id,name'));
+                $merged->push($inventory);
+            } else {
+                $placeholder = new FacilityInventory();
+                $placeholder->setAttribute('id', -$product->id);
+                $placeholder->setAttribute('facility_id', $facilityId);
+                $placeholder->setAttribute('product_id', $product->id);
+                $placeholder->setAttribute('amc', $amc);
+                $placeholder->setAttribute('reorder_level', $reorderLevel);
+                $placeholder->setRelation('product', $product);
+
+                // Synthetic zero-quantity item
+                $item = new \App\Models\FacilityInventoryItem();
+                $item->setAttribute('id', -$product->id);
+                $item->setAttribute('product_id', $product->id);
+                $item->setAttribute('quantity', 0);
+                $item->setAttribute('batch_number', null);
+                $item->setAttribute('barcode', null);
+                $item->setAttribute('location', null);
+                $item->setAttribute('expiry_date', null);
+                $placeholder->setRelation('items', collect([$item]));
+
+                $merged->push($placeholder);
+            }
+        }
+
+        // Build paginator compatible with frontend
+        $inventories = new \Illuminate\Pagination\LengthAwarePaginator(
+            $merged->values(),
+            $productsPaginator->total(),
+            $productsPaginator->perPage(),
+            $productsPaginator->currentPage(),
+            ['path' => $productsPaginator->path(), 'pageName' => $productsPaginator->getPageName()]
+        );
+
+        // Status counts (product-level in/out/low; out_of_stock as zero-total products)
         $statusCounts = [
             'in_stock' => 0,
             'low_stock' => 0,
@@ -105,27 +164,36 @@ class InventoryController extends Controller
 
         $now = now();
         foreach ($inventories as $inventory) {
-            $amc = $inventory->amc ?: 0;
-            $reorderLevel = $inventory->reorder_level ?: ($amc * 6);
+            $amc = (float) ($inventory->amc ?? 0);
+            $reorderLevel = (float) ($inventory->reorder_level ?? ($amc * 6));
 
+            $totalQty = 0.0;
+            $hasExpired = false;
+            $hasSoonExpiring = false;
             foreach ($inventory->items ?? [] as $item) {
-                $qty = $item->quantity;
-
-                if ($qty == 0) {
-                    $statusCounts['out_of_stock']++;
-                } elseif ($qty <= $reorderLevel) {
-                    $statusCounts['low_stock']++;
-                } else {
-                    $statusCounts['in_stock']++;
-                }
-
+                $qty = (float) ($item->quantity ?? 0);
+                $totalQty += $qty;
                 if ($item->expiry_date) {
                     if ($item->expiry_date < $now) {
-                        $statusCounts['expired']++;
+                        $hasExpired = true;
                     } elseif ($item->expiry_date <= $now->copy()->addDays(160)) {
-                        $statusCounts['soon_expiring']++;
+                        $hasSoonExpiring = true;
                     }
                 }
+            }
+
+            if ($totalQty <= 0.0) {
+                $statusCounts['out_of_stock']++;
+            } elseif ($reorderLevel > 0 && $totalQty <= (0.7 * $reorderLevel)) {
+                $statusCounts['low_stock']++;
+            } else {
+                $statusCounts['in_stock']++;
+            }
+
+            if ($hasExpired) {
+                $statusCounts['expired']++;
+            } elseif ($hasSoonExpiring) {
+                $statusCounts['soon_expiring']++;
             }
         }
 
