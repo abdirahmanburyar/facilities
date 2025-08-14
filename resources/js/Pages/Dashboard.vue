@@ -332,9 +332,10 @@ const horizontalBarChartOptions = {
     elements: {
         bar: {
             borderWidth: 0,
-            borderSkipped: false,
-            barThickness: 28,
-            maxBarThickness: 28
+            borderSkipped: 'left',
+            borderRadius: { topRight: 8, bottomRight: 8, topLeft: 0, bottomLeft: 0 },
+            barThickness: 16,
+            maxBarThickness: 16
         }
     }
 };
@@ -381,9 +382,10 @@ const orderChartOptions = {
         bar: {
             borderWidth: 0,
             hoverBorderWidth: 0,
-            borderSkipped: false,
-            barThickness: 28,
-            maxBarThickness: 28
+            borderSkipped: 'bottom',
+            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+            barThickness: 16,
+            maxBarThickness: 16
         }
     }
 };
@@ -620,9 +622,10 @@ const issuedChartOptions = {
         bar: {
             borderWidth: 0,
             hoverBorderWidth: 0,
-            borderSkipped: false,
-            barThickness: 26,
-            maxBarThickness: 26
+            borderSkipped: 'bottom',
+            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+            barThickness: 14,
+            maxBarThickness: 14
         }
     }
 };
