@@ -366,13 +366,6 @@ class OrderController extends Controller
             if($request->status == 'received') {
                 $invalidItems = [];
                 
-                // Debug: Log order details
-                logger()->info('Validating order for received status', [
-                    'order_id' => $order->id,
-                    'order_status' => $order->status,
-                    'items_count' => $order->items->count(),
-                    'has_backorders' => $order->backorders()->exists()
-                ]);
                 
                 foreach ($order->items as $item) {
                     // Calculate the actual quantity that will be processed for this item
@@ -393,31 +386,13 @@ class OrderController extends Controller
                     
                     // Check if there are any back orders for this order
                     $hasBackOrders = $order->backorders()->exists();
-                    
-                    // Debug: Log item details
-                    logger()->info('Validating item', [
-                        'item_id' => $item->id,
-                        'product_name' => $item->product->name ?? 'Unknown',
-                        'quantity_to_release' => $item->quantity_to_release,
-                        'received_quantity' => $item->received_quantity,
-                        'total_allocated_quantity' => $totalAllocatedQuantity,
-                        'total_final_quantity' => $totalFinalQuantity,
-                        'has_packing_list_differences' => $hasPackingListDifferences,
-                        'has_backorders' => $hasBackOrders,
-                        'allocations_count' => $item->inventory_allocations->count()
-                    ]);
-                    
+                                        
                     // Check if there's a mismatch between received quantity and final quantity
                     $quantityMismatch = $totalFinalQuantity - (float)$item->received_quantity;
                     
                     // Case 1: Allocated inventory not received at all
                     if ($totalFinalQuantity > 0 && (float)$item->received_quantity == 0 && !$hasPackingListDifferences && !$hasBackOrders) {
-                        logger()->warning('Invalid item: Allocated inventory not received', [
-                            'item_id' => $item->id,
-                            'product_name' => $item->product->name,
-                            'total_final_quantity' => $totalFinalQuantity,
-                            'received_quantity' => $item->received_quantity
-                        ]);
+                       
                         $invalidItems[] = [
                             'product_name' => $item->product->name ?? 'Unknown Product',
                             'quantity_to_release' => $item->quantity_to_release,
@@ -427,13 +402,7 @@ class OrderController extends Controller
                     }
                     // Case 2: Quantity mismatch exists but no differences are saved to database
                     elseif ($quantityMismatch > 0 && !$hasPackingListDifferences && !$hasBackOrders) {
-                        logger()->warning('Invalid item: Quantity mismatch without documented differences', [
-                            'item_id' => $item->id,
-                            'product_name' => $item->product->name,
-                            'total_final_quantity' => $totalFinalQuantity,
-                            'received_quantity' => $item->received_quantity,
-                            'quantity_mismatch' => $quantityMismatch
-                        ]);
+                        
                         $invalidItems[] = [
                             'product_name' => $item->product->name ?? 'Unknown Product',
                             'quantity_to_release' => $item->quantity_to_release,
@@ -444,16 +413,10 @@ class OrderController extends Controller
                 }
                 
                 if (!empty($invalidItems)) {
-                    logger()->error('Validation failed for received status', [
-                        'invalid_items' => $invalidItems,
-                        'order_id' => $order->id
-                    ]);
                     DB::rollBack();
                     $errorMessage = "⚠️ Some items have not been properly recorded or processed. Please review the Order Items before marking as received.\n\n";                    
                     return response()->json($errorMessage, 500);
                 }
-                
-                logger()->info('Validation passed for received status', ['order_id' => $order->id]);
             }
             
             $debugInfo = []; // For debugging purposes
@@ -1135,14 +1098,14 @@ class OrderController extends Controller
     public function checkInventory(Request $request)
     {
         try {    
-            logger()->info('Checking Inventory', ['request' => $request->all()]);
             $request->validate([
                 'product_id' => 'required|exists:products,id'
             ]);
             
             $productId = $request->product_id;
             $user = auth()->user();
-            $facility = Facility::find($user->facility_id);
+            $facilityId = $request->input('facility_id', $user->facility_id);
+            $facility = Facility::find($facilityId);
             if (!$facility) {
                 return response()->json("Facility not found.", 500);
             }
@@ -1169,8 +1132,8 @@ class OrderController extends Controller
             }
     
             // Calculate Stock on Hand (SOH)
-            $soh = FacilityInventoryItem::whereHas('inventory', function($query) use ($user){
-                $query->where('facility_id', $user->facility_id);
+            $soh = FacilityInventoryItem::whereHas('inventory', function($query) use ($facilityId){
+                $query->where('facility_id', $facilityId);
             })
                 ->where('product_id', $request->product_id)
                 ->sum('quantity');
@@ -1181,12 +1144,18 @@ class OrderController extends Controller
     
             // AMC Screening Logic - implemented directly in controller
             // Get monthly consumption data for the item (optimized query)
+            $startMonth = $request->input('start_month');
+            $endMonth = $request->input('end_month');
+
             $monthlyConsumptions = DB::table('monthly_consumption_items as mci')
                 ->join('monthly_consumption_reports as mcr', 'mci.parent_id', '=', 'mcr.id')
                 ->select('mci.id', 'mci.product_id', 'mci.quantity', 'mcr.month_year', 'mcr.facility_id')
                 ->where('mcr.facility_id', $facility->id)
                 ->where('mci.product_id', $productId)
                 ->where('mci.quantity', '>', 0) // Pre-filter zero quantities at database level
+                ->when($startMonth && $endMonth, function($q) use ($startMonth, $endMonth){
+                    $q->whereBetween('mcr.month_year', [$startMonth, $endMonth]);
+                })
                 ->orderBy('mcr.month_year', 'desc') // Database-level sorting (newest first)
                 ->limit(12) // Limit to last 12 months for performance
                 ->get();
@@ -1211,8 +1180,16 @@ class OrderController extends Controller
             $processedMonths = [];
             $monthsCount = count($monthsData);
             
-            // Skip current month (index 0) and start from index 1
-            for ($index = 1; $index < $monthsCount && count($eligibleMonths) < 3; $index++) {
+            // Determine start index: skip only if the first month equals the actual current month
+            $startIndex = 0;
+            if ($monthsCount > 0) {
+                $currentMonthY = Carbon::now()->format('Y-m');
+                if (isset($monthsData[0]->month_year) && $monthsData[0]->month_year === $currentMonthY) {
+                    $startIndex = 1; // skip real current month
+                }
+            }
+
+            for ($index = $startIndex; $index < $monthsCount && count($eligibleMonths) < 3; $index++) {
                 $currentMonth = $monthsData[$index];
                 $monthName = $currentMonth->month_year;
                 $currentQuantity = (float) $currentMonth->quantity;
@@ -1263,15 +1240,18 @@ class OrderController extends Controller
                 }
             }
             
-            // Add current month to processed months for transparency
+            // Add current month to processed months for transparency when present
             if (count($monthsData) > 0) {
-                $currentMonth = $monthsData[0];
-                array_unshift($processedMonths, [
-                    'month' => $currentMonth->month_year,
-                    'quantity' => (float) $currentMonth->quantity,
-                    'status' => 'excluded',
-                    'reason' => 'Current month - excluded from AMC calculation'
-                ]);
+                $currentMonthY = Carbon::now()->format('Y-m');
+                if ($monthsData[0]->month_year === $currentMonthY) {
+                    $currentMonth = $monthsData[0];
+                    array_unshift($processedMonths, [
+                        'month' => $currentMonth->month_year,
+                        'quantity' => (float) $currentMonth->quantity,
+                        'status' => 'excluded',
+                        'reason' => 'Current month - excluded from AMC calculation'
+                    ]);
+                }
             }
             
             $includedMonths = $processedMonths;
@@ -1312,7 +1292,6 @@ class OrderController extends Controller
                 // Fallback: use quarter start date
                 $now = Carbon::now();
                 $quarter = $now->quarter;
-                logger()->info('Quarter', ['quarter' => $quarter]);
                 $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
                 $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
                 $daysSince = $quarterStart->diffInDays($now->startOfDay());
