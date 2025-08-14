@@ -169,6 +169,50 @@ const outOfStockCount = computed(() => {
     return props.inventoryStatusCounts?.find(item => item.status === 'out_of_stock')?.count || 0;
 });
 
+// Homogenized KPI cards (unified design like warehouse)
+const kpiCards = computed(() => [
+    {
+        key: 'orders',
+        label: 'Total Orders',
+        value: totalOrdersCount.value || 0,
+        route: 'orders.index',
+        iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        accent: 'text-indigo-600',
+    },
+    {
+        key: 'transfers',
+        label: 'Transfers',
+        value: filteredTransferReceivedCard.value || 0,
+        route: 'transfers.index',
+        iconPath: 'M8 7h12m0 0l-4-4m4 4l-4 4M4 17h12m0 0l-4 4m4-4l-4-4',
+        accent: 'text-purple-600',
+    },
+    {
+        key: 'delayed',
+        label: 'Delayed Orders',
+        value: filteredOrdersDelayedCount.value || 0,
+        route: 'orders.index',
+        iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+        accent: 'text-amber-600',
+    },
+    {
+        key: 'low',
+        label: 'Low Stock',
+        value: lowStockCount.value || 0,
+        route: 'inventories.index',
+        iconPath: 'M12 9v2m0 4h.01M5 20h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z',
+        accent: 'text-orange-600',
+    },
+    {
+        key: 'out',
+        label: 'Out of Stock',
+        value: outOfStockCount.value || 0,
+        route: 'inventories.index',
+        iconPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636',
+        accent: 'text-red-600',
+    },
+]);
+
 const orderChartData = computed(() => ({
     labels: Object.keys(orderCounts.value),
     datasets: [{
@@ -558,98 +602,24 @@ onMounted(() => {
 <template>
     <Head title="Dashboard" />
     <AuthenticatedLayout title="Dashboard" description="Welcome to the dashboard">
-        <!-- Quick Stats Cards Row -->
+        <!-- Quick Stats Cards Row (homogenized) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <!-- Total Orders Card -->
-            <Link :href="route('orders.index')" class="block">
-                <div class="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-br from-green-500 to-green-400"></div>
-                    <div class="relative p-6 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <h3 class="text-sm font-medium text-white mb-1">Total Orders</h3>
-                            <div class="text-2xl font-bold text-white">{{ totalOrdersCount || 0 }}</div>
-                </div>
-                        <div class="flex-shrink-0">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            <template v-for="card in kpiCards" :key="card.key">
+                <Link :href="route(card.route)" class="block">
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200">
+                        <div class="p-4 flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-medium text-gray-500">{{ card.label }}</div>
+                                <div class="text-2xl font-bold text-gray-900">{{ card.value }}</div>
+                            </div>
+                            <svg class="w-10 h-10" :class="card.accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="card.iconPath" />
                             </svg>
                         </div>
                     </div>
-                        </div>
-            </Link>
-
-            <!-- Transfers Card -->
-            <Link :href="route('transfers.index')" class="block">
-                <div class="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-br from-pink-500 to-orange-400"></div>
-                    <div class="relative p-6 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <h3 class="text-sm font-medium text-white mb-1">Transfers</h3>
-                            <div class="text-2xl font-bold text-white">{{ filteredTransferReceivedCard || 0 }}</div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    </div>
-            </Link>
-
-            <!-- Delayed Orders Card -->
-            <Link :href="route('orders.index')" class="block">
-                <div class="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-yellow-400"></div>
-                    <div class="relative p-6 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <h3 class="text-sm font-medium text-white mb-1">Delayed Orders</h3>
-                            <div class="text-2xl font-bold text-white">{{ filteredOrdersDelayedCount || 0 }}</div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    </div>
-            </Link>
-
-            <!-- Low Stock Card -->
-            <Link :href="route('inventories.index')" class="block">
-                <div class="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-yellow-400"></div>
-                    <div class="relative p-6 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <h3 class="text-sm font-medium text-white mb-1">Low Stock</h3>
-                            <div class="text-2xl font-bold text-white">{{ lowStockCount || 0 }}</div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    </div>
-            </Link>
-
-            <!-- Out of Stock Card -->
-            <Link :href="route('inventories.index')" class="block">
-                <div class="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-br from-red-500 to-pink-400"></div>
-                    <div class="relative p-6 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <h3 class="text-sm font-medium text-white mb-1">Out of Stock</h3>
-                            <div class="text-2xl font-bold text-white">{{ outOfStockCount || 0 }}</div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    </div>
-            </Link>
-            </div>
+                </Link>
+            </template>
+        </div>
 
         <!-- Tracert Items Section -->
         <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 mb-6">
