@@ -44,10 +44,10 @@ class InventoryController extends Controller
         $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
         $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
         $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->where('facility_id', $facilityId)
-            ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
+            ->where('facility_inventory_movements.facility_id', $facilityId)
+            ->select('facility_inventory_movements.product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
             ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('product_id');
+            ->groupBy('facility_inventory_movements.product_id');
 
         // Product-first list to include products with no inventory
         $productQuery = Product::query()
@@ -109,9 +109,9 @@ class InventoryController extends Controller
                 'product.dosage:id,name',
                 'items'
             ])
-            ->whereIn('product_id', $productIds)
+            ->whereIn('facility_inventories.product_id', $productIds)
             ->get()
-            ->groupBy('product_id');
+            ->groupBy('facility_inventories.product_id');
 
         // Merge and ensure placeholder for products without inventory
         $merged = collect();
@@ -263,10 +263,10 @@ class InventoryController extends Controller
         $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
         $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
         $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->where('facility_id', $facilityId)
-            ->select('product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
+            ->where('facility_inventory_movements.facility_id', $facilityId)
+            ->select('facility_inventory_movements.product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
             ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('product_id');
+            ->groupBy('facility_inventory_movements.product_id');
 
         // Product-first query to include products with no inventory
         $query = Product::query()
@@ -330,8 +330,8 @@ class InventoryController extends Controller
             $reorderLevel = (float) ($product->reorder_level ?? round($amc * 6));
 
             // Get total quantity for this product from facility inventory
-            $totalQuantity = FacilityInventory::where('facility_id', $facilityId)
-                ->where('product_id', $product->id)
+            $totalQuantity = FacilityInventory::where('facility_inventories.facility_id', $facilityId)
+                ->where('facility_inventories.product_id', $product->id)
                 ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
                 ->sum('facility_inventory_items.quantity') ?? 0.0;
 
