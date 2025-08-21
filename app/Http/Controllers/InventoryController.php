@@ -98,7 +98,7 @@ class InventoryController extends Controller
         $productIds = collect($productsPaginator->items())->pluck('id')->all();
 
         // Existing facility inventories for those products
-        $existingInventories = Inventory::query()
+        $existingInventories = FacilityInventory::query()
             ->with([
                 'product:id,name,category_id,dosage_id',
                 'product.category:id,name',
@@ -122,7 +122,7 @@ class InventoryController extends Controller
                 $inventory->setRelation('product', $inventory->product->loadMissing('category:id,name', 'dosage:id,name'));
                 $merged->push($inventory);
             } else {
-                $placeholder = new Inventory();
+                $placeholder = new FacilityInventory();
                 $placeholder->setAttribute('id', -$product->id);
                 $placeholder->setAttribute('product_id', $product->id);
                 $placeholder->setAttribute('amc', $amc);
