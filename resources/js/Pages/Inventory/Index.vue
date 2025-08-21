@@ -36,9 +36,11 @@ const location = ref(props.filters.location);
 const dosage = ref(props.filters.dosage);
 const category = ref(props.filters.category);
 const warehouse = ref(props.filters.warehouse);
+const status = ref(props.filters?.status || '');
 const per_page = ref(props.filters.per_page || 25);
 const loadedLocation = ref([]);
 const isSubmitting = ref(false);
+const isLoading = ref(false);
 
 // Modal states
 const showAddModal = ref(false);
@@ -129,10 +131,15 @@ const applyFilters = () => {
     if (warehouse.value) query.warehouse = warehouse.value;
     if (dosage.value) query.dosage = dosage.value;
     if (category.value) query.category = category.value;
+    if (status.value) query.status = status.value;
 
     // Always include per_page in query if it exists
     if (per_page.value) query.per_page = per_page.value;
-    if (props.filters.page) query.page = props.filters.page;
+    if (props.filters?.page) query.page = props.filters.page;
+
+    console.log('Applying filters:', query);
+    
+    isLoading.value = true;
 
     router.get(route("inventories.index"), query, {
         preserveState: true,
@@ -146,6 +153,14 @@ const applyFilters = () => {
             "dosage",
             "category",
         ],
+        onFinish: () => {
+            isLoading.value = false;
+        },
+        onError: (errors) => {
+            isLoading.value = false;
+            console.error('Filter error:', errors);
+            toast.error('Failed to apply filters');
+        }
     });
 };
 
@@ -158,6 +173,7 @@ watch(
         () => warehouse.value,
         () => dosage.value,
         () => category.value,
+        () => status.value,
         () => props.filters.page,
     ],
     () => {
@@ -402,6 +418,22 @@ const outOfStockCount = computed(() => {
 function getResults(page = 1) {
     props.filters.page = page;
 }
+
+const clearFilters = () => {
+    search.value = "";
+    location.value = "";
+    warehouse.value = "";
+    dosage.value = "";
+    category.value = "";
+    status.value = "";
+    per_page.value = 25; // Reset per_page to default
+    applyFilters();
+    toast.success("Filters cleared!");
+};
+
+const hasActiveFilters = computed(() => {
+    return search.value || location.value || warehouse.value || dosage.value || category.value || status.value;
+});
 </script>
 
 <template>
@@ -441,19 +473,37 @@ function getResults(page = 1) {
             </div>
             <!-- Filters Card -->
             <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200">
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                     <div class="col-span-1 md:col-span-2 min-w-0">
-                        <input v-model="search" type="text" class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2" placeholder="Search by item name, barcode, batch number, uom" />
+                        <input v-model="search" type="text" :disabled="isLoading" class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" placeholder="Search by item name, barcode, batch number, uom" />
                     </div>
                     <div class="col-span-1 min-w-0">
-                        <Multiselect v-model="category" :options="props.category" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a category" :allow-empty="true" class="multiselect--with-icon w-full" />
+                        <Multiselect v-model="category" :options="props.category" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a category" :allow-empty="true" :disabled="isLoading" class="multiselect--with-icon w-full" />
                     </div>
                     <div class="col-span-1 min-w-0">
-                        <Multiselect v-model="dosage" :options="props.dosage" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a dosage form" :allow-empty="true" class="multiselect--with-icon w-full" />
+                        <Multiselect v-model="dosage" :options="props.dosage" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a dosage form" :allow-empty="true" :disabled="isLoading" class="multiselect--with-icon w-full" />
+                    </div>
+                    <div class="col-span-1 min-w-0">
+                        <select v-model="status" :disabled="isLoading" class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2" :class="{ 'opacity-50 cursor-not-allowed': isLoading }">
+                            <option value="">All Status</option>
+                            <option value="reorder_level">Reorder Level</option>
+                            <option value="low_stock">Low Stock</option>
+                            <option value="out_of_stock">Out of Stock</option>
+                        </select>
                     </div>
                 </div>
                 <div class="flex justify-end items-center gap-4 mt-3">
-                    <select v-model="per_page" class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px] mb-3" @change="props.filters.page = 1">
+                    <button @click="clearFilters" :disabled="isLoading" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300" :class="{ 'opacity-50 cursor-not-allowed': isLoading }">
+                        <svg v-if="!isLoading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <svg v-else class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ isLoading ? 'Clearing...' : 'Clear Filters' }}
+                    </button>
+                    <select v-model="per_page" :disabled="isLoading" class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px] mb-3" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" @change="() => { if (props.filters) props.filters.page = 1; }">
                         <option value="25">25 per page</option>
                         <option value="50">50 per page</option>
                         <option value="100">100 per page</option>
@@ -462,6 +512,28 @@ function getResults(page = 1) {
                     <button @click="showLegend = true" class="px-2 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200 mb-3" title="Icon Legend">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
                     </button>
+                </div>
+                <!-- Filter Summary -->
+                <div v-if="hasActiveFilters" class="mt-3 pt-3 border-t border-gray-200">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <span class="font-medium">Active Filters:</span>
+                        <span v-if="search" class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            Search: {{ search }}
+                            <button @click="search = ''" class="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                        </span>
+                        <span v-if="category" class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            Category: {{ category }}
+                            <button @click="category = null" class="ml-1 text-green-600 hover:text-green-800">×</button>
+                        </span>
+                        <span v-if="dosage" class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                            Dosage: {{ dosage }}
+                            <button @click="dosage = null" class="ml-1 text-purple-600 hover:text-purple-800">×</button>
+                        </span>
+                        <span v-if="status" class="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                            Status: {{ status === 'reorder_level' ? 'Reorder Level' : status === 'low_stock' ? 'Low Stock' : 'Out of Stock' }}
+                            <button @click="status = ''" class="ml-1 text-orange-600 hover:text-orange-800">×</button>
+                        </span>
+                    </div>
                 </div>
             </div>
             <!-- Table and Sidebar (do not change table markup) -->
@@ -486,12 +558,25 @@ function getResults(page = 1) {
                             </tr>
                         </thead>
                         <tbody>
-                            <template v-if="props.inventories.data.length === 0">
+                            <template v-if="isLoading">
+                                <tr>
+                                    <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
+                                        <div class="flex flex-col items-center justify-center gap-2">
+                                            <svg class="animate-spin h-10 w-10 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span>Applying filters...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
                                 <tr>
                                     <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
                                         <div class="flex flex-col items-center justify-center gap-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 118 0v2m-4 4a4 4 0 01-4-4H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2a4 4 0 01-4 4z" /></svg>
-                                            <span>No inventory data found.</span>
+                                            <span>{{ !props.inventories ? 'Loading...' : 'No inventory data found.' }}</span>
                                         </div>
                                     </td>
                                 </tr>
