@@ -53,31 +53,28 @@ class InventoryController extends Controller
         $productQuery = Product::query()
             ->select('products.id', 'products.name', 'products.category_id', 'products.dosage_id')
             ->with(['category:id,name', 'dosage:id,name'])
-            ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
-                $join->on('products.id', '=', 'amc_data.product_id');
-            })
             ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
                 $join->on('products.id', '=', 'frl.product_id')
                      ->where('frl.facility_id', '=', $facilityId);
             })
-            ->addSelect(DB::raw('COALESCE(frl.amc, COALESCE(amc_data.amc, 0)) as amc'))
-            ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'))
+            ->addSelect(DB::raw('COALESCE(frl.amc, 0) as amc'))
+            ->addSelect(DB::raw('COALESCE(frl.reorder_level, 0) as reorder_level'))
             // Restrict to eligible items for this facility type
-            ->whereIn('products.id', EligibleItem::select('product_id')->where('facility_type', $facilityType));
+            ->whereIn('products.id', EligibleItem::select('eligible_items.product_id')->where('eligible_items.facility_type', $facilityType));
 
         if ($request->filled('search')) {   
             $search = $request->search;
             $productQuery->where(function($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
-                  ->orWhereExists(function($sub) use ($search) {
-                      $sub->from('facility_inventories')
-                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
-                          ->whereColumn('facility_inventories.product_id', 'products.id')
+                                    ->orWhereExists(function($sub) use ($search) {
+                      $sub->from('inventories')
+                          ->join('inventory_items', 'inventories.id', '=', 'inventory_items.inventory_id')
+                          ->whereColumn('inventories.product_id', 'products.id')
                           ->where(function($w) use ($search){
-                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
-                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
+                              $w->where('inventory_items.barcode', 'like', "%{$search}%")
+                                ->orWhere('inventory_items.batch_number', 'like', "%{$search}%");
                           });
-                });
+                  });
             });
         }
 
@@ -101,17 +98,16 @@ class InventoryController extends Controller
         $productIds = collect($productsPaginator->items())->pluck('id')->all();
 
         // Existing facility inventories for those products
-        $existingInventories = FacilityInventory::query()
-            ->where('facility_inventories.facility_id', $facilityId)
+        $existingInventories = Inventory::query()
             ->with([
                 'product:id,name,category_id,dosage_id',
                 'product.category:id,name',
                 'product.dosage:id,name',
                 'items'
             ])
-            ->whereIn('facility_inventories.product_id', $productIds)
+            ->whereIn('inventories.product_id', $productIds)
             ->get()
-            ->groupBy('facility_inventories.product_id');
+            ->groupBy('inventories.product_id');
 
         // Merge and ensure placeholder for products without inventory
         $merged = collect();
@@ -126,16 +122,15 @@ class InventoryController extends Controller
                 $inventory->setRelation('product', $inventory->product->loadMissing('category:id,name', 'dosage:id,name'));
                 $merged->push($inventory);
             } else {
-                $placeholder = new FacilityInventory();
+                $placeholder = new Inventory();
                 $placeholder->setAttribute('id', -$product->id);
-                $placeholder->setAttribute('facility_id', $facilityId);
                 $placeholder->setAttribute('product_id', $product->id);
                 $placeholder->setAttribute('amc', $amc);
                 $placeholder->setAttribute('reorder_level', $reorderLevel);
                 $placeholder->setRelation('product', $product);
 
                 // Synthetic zero-quantity item
-                $item = new \App\Models\FacilityInventoryItem();
+                $item = new \App\Models\InventoryItem();
                 $item->setAttribute('id', -$product->id);
                 $item->setAttribute('product_id', $product->id);
                 $item->setAttribute('quantity', 0);
@@ -259,30 +254,18 @@ class InventoryController extends Controller
         $facility = Facility::find($facilityId);
         $facilityType = $facility?->facility_type;
 
-        // AMC based on last 3 months issuance (excluding current)
-        $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
-        $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
-        $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->where('facility_inventory_movements.facility_id', $facilityId)
-            ->select('facility_inventory_movements.product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
-            ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('facility_inventory_movements.product_id');
-
         // Product-first query to include products with no inventory
         $query = Product::query()
             ->select('products.id', 'products.name', 'products.category_id', 'products.dosage_id')
             ->with(['category:id,name', 'dosage:id,name'])
-            ->leftJoinSub($amcSubquery, 'amc_data', function ($join) {
-                $join->on('products.id', '=', 'amc_data.product_id');
-            })
             ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
                 $join->on('products.id', '=', 'frl.product_id')
                      ->where('frl.facility_id', '=', $facilityId);
             })
-            ->addSelect(DB::raw('COALESCE(frl.amc, COALESCE(amc_data.amc, 0)) as amc'))
-            ->addSelect(DB::raw('COALESCE(frl.reorder_level, ROUND(COALESCE(amc_data.amc, 0) * 6)) as reorder_level'))
+            ->addSelect(DB::raw('COALESCE(frl.amc, 0) as amc'))
+            ->addSelect(DB::raw('COALESCE(frl.reorder_level, 0) as reorder_level'))
             // Restrict to eligible items for this facility type
-            ->whereIn('products.id', EligibleItem::select('product_id')->where('facility_type', $facilityType));
+            ->whereIn('products.id', EligibleItem::select('eligible_items.product_id')->where('eligible_items.facility_type', $facilityType));
 
         // Apply the same filters as the main query
         if ($request->filled('search')) {
@@ -290,12 +273,12 @@ class InventoryController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
                   ->orWhereExists(function($sub) use ($search) {
-                      $sub->from('facility_inventories')
-                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
-                          ->whereColumn('facility_inventories.product_id', 'products.id')
+                      $sub->from('inventories')
+                          ->join('inventory_items', 'inventories.id', '=', 'inventory_items.inventory_id')
+                          ->whereColumn('inventories.product_id', 'products.id')
                           ->where(function($w) use ($search){
-                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
-                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
+                              $w->where('inventory_items.barcode', 'like', "%{$search}%")
+                                ->orWhere('inventory_items.batch_number', 'like', "%{$search}%");
                           });
                   });
             });
