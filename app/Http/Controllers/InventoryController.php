@@ -67,12 +67,12 @@ class InventoryController extends Controller
             $productQuery->where(function($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
                                     ->orWhereExists(function($sub) use ($search) {
-                      $sub->from('inventories')
-                          ->join('inventory_items', 'inventories.id', '=', 'inventory_items.inventory_id')
-                          ->whereColumn('inventories.product_id', 'products.id')
+                      $sub->from('facility_inventories')
+                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
+                          ->whereColumn('facility_inventories.product_id', 'products.id')
                           ->where(function($w) use ($search){
-                              $w->where('inventory_items.barcode', 'like', "%{$search}%")
-                                ->orWhere('inventory_items.batch_number', 'like', "%{$search}%");
+                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
+                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
                           });
                   });
             });
@@ -105,9 +105,9 @@ class InventoryController extends Controller
                 'product.dosage:id,name',
                 'items'
             ])
-            ->whereIn('inventories.product_id', $productIds)
+            ->whereIn('facility_inventories.product_id', $productIds)
             ->get()
-            ->groupBy('inventories.product_id');
+            ->groupBy('facility_inventories.product_id');
 
         // Merge and ensure placeholder for products without inventory
         $merged = collect();
@@ -130,14 +130,16 @@ class InventoryController extends Controller
                 $placeholder->setRelation('product', $product);
 
                 // Synthetic zero-quantity item
-                $item = new \App\Models\InventoryItem();
+                $item = new \App\Models\FacilityInventoryItem();
                 $item->setAttribute('id', -$product->id);
                 $item->setAttribute('product_id', $product->id);
                 $item->setAttribute('quantity', 0);
-                $item->setAttribute('batch_number', null);
                 $item->setAttribute('barcode', null);
-                $item->setAttribute('location', null);
+                $item->setAttribute('batch_number', null);
                 $item->setAttribute('expiry_date', null);
+                $item->setAttribute('uom', null);
+                $item->setAttribute('unit_cost', 0);
+                $item->setAttribute('total_cost', 0);
                 $placeholder->setRelation('items', collect([$item]));
 
                 $merged->push($placeholder);
@@ -273,12 +275,12 @@ class InventoryController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
                   ->orWhereExists(function($sub) use ($search) {
-                      $sub->from('inventories')
-                          ->join('inventory_items', 'inventories.id', '=', 'inventory_items.inventory_id')
-                          ->whereColumn('inventories.product_id', 'products.id')
+                      $sub->from('facility_inventories')
+                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
+                          ->whereColumn('facility_inventories.product_id', 'products.id')
                           ->where(function($w) use ($search){
-                              $w->where('inventory_items.barcode', 'like', "%{$search}%")
-                                ->orWhere('inventory_items.batch_number', 'like', "%{$search}%");
+                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
+                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
                           });
                   });
             });
@@ -315,7 +317,7 @@ class InventoryController extends Controller
             // Get total quantity for this product from facility inventory
             $totalQuantity = FacilityInventory::where('facility_inventories.facility_id', $facilityId)
                 ->where('facility_inventories.product_id', $product->id)
-                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
+                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
                 ->sum('facility_inventory_items.quantity') ?? 0.0;
 
             // Product-level status for in-stock/low-stock
@@ -335,7 +337,7 @@ class InventoryController extends Controller
         if ($filteredProductIds->isNotEmpty()) {
             // Count products with positive total quantity
             $positiveTotals = FacilityInventory::query()
-                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.inventory_id')
+                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
                 ->whereIn('facility_inventories.product_id', $filteredProductIds)
                 ->where('facility_inventories.facility_id', $facilityId)
                 ->select('facility_inventories.product_id')
