@@ -64,12 +64,13 @@ class InventoryController extends Controller
 
             if ($request->filled('search')) {   
                 $search = $request->search;
-                $productQuery->where(function($q) use ($search) {
+                $productQuery->where(function($q) use ($search, $facilityId) {
                     $q->where('products.name', 'like', "%{$search}%")
-                      ->orWhereExists(function($sub) use ($search) {
+                      ->orWhereExists(function($sub) use ($search, $facilityId) {
                           $sub->from('facility_inventories')
                               ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
                               ->whereColumn('facility_inventories.product_id', 'products.id')
+                              ->where('facility_inventories.facility_id', $facilityId)
                               ->where(function($w) use ($search){
                                   $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
                                     ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
@@ -131,7 +132,20 @@ class InventoryController extends Controller
                     $placeholder->setAttribute('amc', $amc);
                     $placeholder->setAttribute('reorder_level', $reorderLevel);
                     $placeholder->setRelation('product', $product);
-                    $placeholder->setRelation('items', collect([]));
+                    
+                    // Create a synthetic item to ensure the product shows up in the table
+                    $syntheticItem = new \App\Models\FacilityInventoryItem();
+                    $syntheticItem->setAttribute('id', -$product->id);
+                    $syntheticItem->setAttribute('product_id', $product->id);
+                    $syntheticItem->setAttribute('quantity', 0);
+                    $syntheticItem->setAttribute('barcode', null);
+                    $syntheticItem->setAttribute('batch_number', null);
+                    $syntheticItem->setAttribute('expiry_date', null);
+                    $syntheticItem->setAttribute('uom', null);
+                    $syntheticItem->setAttribute('unit_cost', 0);
+                    $syntheticItem->setAttribute('total_cost', 0);
+                    $placeholder->setRelation('items', collect([$syntheticItem]));
+                    
                     $inventories->push($placeholder);
                 }
             }
@@ -161,7 +175,7 @@ class InventoryController extends Controller
                 });
             }
 
-            // Build paginator
+            // Build paginator with proper structure
             $filteredCount = $inventories->count();
             $inventoriesPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
                 $inventories->values(),
@@ -226,12 +240,13 @@ class InventoryController extends Controller
         // Apply the same filters as the main query
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function($q) use ($search, $facilityId) {
                 $q->where('products.name', 'like', "%{$search}%")
-                  ->orWhereExists(function($sub) use ($search) {
+                  ->orWhereExists(function($sub) use ($search, $facilityId) {
                       $sub->from('facility_inventories')
                           ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
                           ->whereColumn('facility_inventories.product_id', 'products.id')
+                          ->where('facility_inventories.facility_id', $facilityId)
                           ->where(function($w) use ($search){
                               $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
                                 ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");

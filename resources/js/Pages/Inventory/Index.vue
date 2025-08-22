@@ -382,8 +382,8 @@ function needsReorder(inventory) {
 }
 
 // Check if inventory is out of stock
-const isOutOfStock = (inventory) => {
-    return inventory.quantity <= 0;
+const isOutOfStock = (item) => {
+    return (item.quantity || 0) <= 0;
 };
 
 // Computed properties for inventory status counts
@@ -416,7 +416,10 @@ const outOfStockCount = computed(() => {
 });
 
 function getResults(page = 1) {
-    props.filters.page = page;
+    if (props.filters) {
+        props.filters.page = page;
+    }
+    applyFilters();
 }
 
 const clearFilters = () => {
@@ -503,7 +506,7 @@ const hasActiveFilters = computed(() => {
                         </svg>
                         {{ isLoading ? 'Clearing...' : 'Clear Filters' }}
                     </button>
-                    <select v-model="per_page" :disabled="isLoading" class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px] mb-3" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" @change="() => { if (props.filters) props.filters.page = 1; }">
+                    <select v-model="per_page" :disabled="isLoading" class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px] mb-3" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" @change="() => { if (props.filters) props.filters.page = 1; applyFilters(); }">
                         <option value="25">25 per page</option>
                         <option value="50">50 per page</option>
                         <option value="100">100 per page</option>
@@ -585,7 +588,7 @@ const hasActiveFilters = computed(() => {
                                 <tr v-for="(item, itemIndex) in inventory.items" :key="`${inventory.id}-${item.id}`" class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #B7C6E6;">
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs font-medium text-gray-800 align-top">{{ inventory.product.name }}</td>
                                     <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.product.category.name }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.items[0].uom }}</td>
+                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.items && inventory.items.length > 0 ? inventory.items[0].uom : '-' }}</td>
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.quantity }}</td>
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.batch_number }}</td>
                                     <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ formatDate(item.expiry_date) }}</td>
@@ -603,7 +606,7 @@ const hasActiveFilters = computed(() => {
                                             </div>
                                             <Link
                                                 :href="route('orders.create')"
-                                                v-if="inventory.quantity > inventory.reorder_level"
+                                                v-if="getTotalQuantity(inventory) > inventory.reorder_level"
                                                 class="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
                                             >
                                                 <svg
