@@ -40,195 +40,149 @@ class InventoryController extends Controller
             $facility = Facility::find($facilityId);
             $facilityType = $facility?->facility_type;
 
-        // AMC based on last 3 months issuance (excluding current)
-        $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
-        $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
-        $amcSubquery = FacilityInventoryMovement::facilityIssued()
-            ->where('facility_inventory_movements.facility_id', $facilityId)
-            ->select('facility_inventory_movements.product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
-            ->whereBetween('movement_date', [$startDate, $endDate])
-            ->groupBy('facility_inventory_movements.product_id');
+            // AMC based on last 3 months issuance (excluding current)
+            $startDate = Carbon::now()->subMonths(3)->startOfMonth()->format('Y-m-d');
+            $endDate   = Carbon::now()->subMonths(1)->endOfMonth()->format('Y-m-d');
+            $amcSubquery = FacilityInventoryMovement::facilityIssued()
+                ->where('facility_inventory_movements.facility_id', $facilityId)
+                ->select('facility_inventory_movements.product_id', DB::raw('SUM(facility_issued_quantity) / 3 as amc'))
+                ->whereBetween('movement_date', [$startDate, $endDate])
+                ->groupBy('facility_inventory_movements.product_id');
 
-        // Product-first list to include products with no inventory
-        $productQuery = Product::query()
-            ->select('products.id', 'products.name', 'products.category_id', 'products.dosage_id')
-            ->with(['category:id,name', 'dosage:id,name'])
-            ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
-                $join->on('products.id', '=', 'frl.product_id')
-                     ->where('frl.facility_id', '=', $facilityId);
-            })
-            ->addSelect(DB::raw('COALESCE(frl.amc, 0) as amc'))
-            ->addSelect(DB::raw('COALESCE(frl.reorder_level, 0) as reorder_level'))
-            // Restrict to eligible items for this facility type
-            ->whereIn('products.id', EligibleItem::select('eligible_items.product_id')->where('eligible_items.facility_type', $facilityType));
+            // Product-first list to include products with no inventory
+            $productQuery = Product::query()
+                ->select('products.id', 'products.name', 'products.category_id', 'products.dosage_id')
+                ->with(['category:id,name', 'dosage:id,name'])
+                ->leftJoin('facility_reorder_levels as frl', function ($join) use ($facilityId) {
+                    $join->on('products.id', '=', 'frl.product_id')
+                         ->where('frl.facility_id', '=', $facilityId);
+                })
+                ->addSelect(DB::raw('COALESCE(frl.amc, 0) as amc'))
+                ->addSelect(DB::raw('COALESCE(frl.reorder_level, 0) as reorder_level'))
+                // Restrict to eligible items for this facility type
+                ->whereIn('products.id', EligibleItem::select('eligible_items.product_id')->where('eligible_items.facility_type', $facilityType));
 
-        if ($request->filled('search')) {   
-            $search = $request->search;
-            $productQuery->where(function($q) use ($search) {
-                $q->where('products.name', 'like', "%{$search}%")
-                                    ->orWhereExists(function($sub) use ($search) {
-                      $sub->from('facility_inventories')
-                          ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
-                          ->whereColumn('facility_inventories.product_id', 'products.id')
-                          ->where(function($w) use ($search){
-                              $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
-                                ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
-                          });
-                  });
-            });
-        }
-
-        if ($request->filled('product_id')) {
-            $productQuery->where('products.id', $request->product_id);
-        }
-
-        if ($request->filled('category')) {
-            $productQuery->whereHas('category', fn($q) => $q->where('name', $request->category));
-        }
-
-        if ($request->filled('dosage')) {
-            $productQuery->whereHas('dosage', fn($q) => $q->where('name', $request->dosage));
-        }
-
-        $perPage = $request->input('per_page', 25);
-        $page = $request->input('page', 1);
-        $productsPaginator = $productQuery->paginate($perPage, ['products.*'], 'page', $page)->withQueryString();
-        $productsPaginator->setPath(url()->current());
-
-        $productIds = collect($productsPaginator->items())->pluck('id')->all();
-
-        // Existing facility inventories for those products
-        $existingInventories = FacilityInventory::query()
-            ->with([
-                'product:id,name,category_id,dosage_id',
-                'product.category:id,name',
-                'product.dosage:id,name',
-                'items'
-            ])
-            ->whereIn('facility_inventories.product_id', $productIds)
-            ->get()
-            ->groupBy('facility_inventories.product_id');
-
-        // Merge and ensure placeholder for products without inventory
-        $merged = collect();
-        foreach ($productsPaginator->items() as $product) {
-            $amc = (float) ($product->amc ?? 0);
-            $reorderLevel = (float) ($product->reorder_level ?? round($amc * 6));
-
-            if (isset($existingInventories[$product->id]) && $existingInventories[$product->id]->isNotEmpty()) {
-                $inventory = $existingInventories[$product->id]->first();
-                $inventory->setAttribute('amc', $amc);
-                $inventory->setAttribute('reorder_level', $reorderLevel);
-                $inventory->setRelation('product', $inventory->product->loadMissing('category:id,name', 'dosage:id,name'));
-                $merged->push($inventory);
-            } else {
-                $placeholder = new FacilityInventory();
-                $placeholder->setAttribute('id', -$product->id);
-                $placeholder->setAttribute('product_id', $product->id);
-                $placeholder->setAttribute('amc', $amc);
-                $placeholder->setAttribute('reorder_level', $reorderLevel);
-                $placeholder->setRelation('product', $product);
-
-                // Synthetic zero-quantity item
-                $item = new \App\Models\FacilityInventoryItem();
-                $item->setAttribute('id', -$product->id);
-                $item->setAttribute('product_id', $product->id);
-                $item->setAttribute('quantity', 0);
-                $item->setAttribute('barcode', null);
-                $item->setAttribute('batch_number', null);
-                $item->setAttribute('expiry_date', null);
-                $item->setAttribute('uom', null);
-                $item->setAttribute('unit_cost', 0);
-                $item->setAttribute('total_cost', 0);
-                $placeholder->setRelation('items', collect([$item]));
-
-                $merged->push($placeholder);
+            if ($request->filled('search')) {   
+                $search = $request->search;
+                $productQuery->where(function($q) use ($search) {
+                    $q->where('products.name', 'like', "%{$search}%")
+                      ->orWhereExists(function($sub) use ($search) {
+                          $sub->from('facility_inventories')
+                              ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
+                              ->whereColumn('facility_inventories.product_id', 'products.id')
+                              ->where(function($w) use ($search){
+                                  $w->where('facility_inventory_items.barcode', 'like', "%{$search}%")
+                                    ->orWhere('facility_inventory_items.batch_number', 'like', "%{$search}%");
+                              });
+                      });
+                });
             }
-        }
 
-        // Apply status filters to the merged data
-        if ($request->filled('status')) {
-            try {
-                logger()->info('Applying status filter: ' . $request->status . ' to ' . $merged->count() . ' items');
-                
-                $merged = $merged->filter(function ($inventory) use ($request) {
-                    try {
-                        $totalQuantity = $inventory->items->sum('quantity');
-                        $reorderLevel = (float) ($inventory->reorder_level ?? 0);
+            if ($request->filled('product_id')) {
+                $productQuery->where('products.id', $request->product_id);
+            }
+
+            if ($request->filled('category')) {
+                $productQuery->whereHas('category', fn($q) => $q->where('name', $request->category));
+            }
+
+            if ($request->filled('dosage')) {
+                $productQuery->whereHas('dosage', fn($q) => $q->where('name', $request->dosage));
+            }
+
+            $perPage = $request->input('per_page', 25);
+            $page = $request->input('page', 1);
+            $productsPaginator = $productQuery->paginate($perPage, ['products.*'], 'page', $page)->withQueryString();
+            $productsPaginator->setPath(url()->current());
+
+            $productIds = collect($productsPaginator->items())->pluck('id')->all();
+
+            // Get facility inventories with items for those products
+            $facilityInventories = FacilityInventory::query()
+                ->with([
+                    'product:id,name,category_id,dosage_id',
+                    'product.category:id,name',
+                    'product.dosage:id,name',
+                    'items'
+                ])
+                ->where('facility_id', $facilityId)
+                ->whereIn('product_id', $productIds)
+                ->get()
+                ->keyBy('product_id');
+
+            // Build the final inventory list
+            $inventories = collect();
+            foreach ($productsPaginator->items() as $product) {
+                $amc = (float) ($product->amc ?? 0);
+                $reorderLevel = (float) ($product->reorder_level ?? round($amc * 6));
+
+                if (isset($facilityInventories[$product->id])) {
+                    $inventory = $facilityInventories[$product->id];
+                    $inventory->setAttribute('amc', $amc);
+                    $inventory->setAttribute('reorder_level', $reorderLevel);
+                    $inventories->push($inventory);
+                } else {
+                    // Create placeholder for products without inventory
+                    $placeholder = new FacilityInventory();
+                    $placeholder->setAttribute('id', -$product->id);
+                    $placeholder->setAttribute('product_id', $product->id);
+                    $placeholder->setAttribute('facility_id', $facilityId);
+                    $placeholder->setAttribute('quantity', 0);
+                    $placeholder->setAttribute('amc', $amc);
+                    $placeholder->setAttribute('reorder_level', $reorderLevel);
+                    $placeholder->setRelation('product', $product);
+                    $placeholder->setRelation('items', collect([]));
+                    $inventories->push($placeholder);
+                }
+            }
+
+            // Apply status filters
+            if ($request->filled('status')) {
+                $inventories = $inventories->filter(function ($inventory) use ($request) {
+                    $totalQuantity = $inventory->quantity ?? 0;
+                    $reorderLevel = (float) ($inventory->reorder_level ?? 0);
+                    
+                    switch ($request->status) {
+                        case 'reorder_level':
+                            // Items that need reorder (total quantity <= 70% of reorder level)
+                            return $reorderLevel > 0 && $totalQuantity <= ($reorderLevel * 0.7);
                         
-                        switch ($request->status) {
-                            case 'reorder_level':
-                                // Items that need reorder (total quantity <= 70% of reorder level)
-                                $result = $reorderLevel > 0 && $totalQuantity <= ($reorderLevel * 0.7);
-                                logger()->info("Product {$inventory->product->name}: Qty={$totalQuantity}, ReorderLevel={$reorderLevel}, NeedsReorder={$result}");
-                                return $result;
-                            
-                            case 'low_stock':
-                                // Items that are low stock (total quantity > 0 but <= reorder level)
-                                $result = $totalQuantity > 0 && $totalQuantity <= $reorderLevel;
-                                logger()->info("Product {$inventory->product->name}: Qty={$totalQuantity}, ReorderLevel={$reorderLevel}, LowStock={$result}");
-                                return $result;
-                            
-                            case 'out_of_stock':
-                                // Items that are out of stock (total quantity = 0)
-                                $result = $totalQuantity === 0;
-                                logger()->info("Product {$inventory->product->name}: Qty={$totalQuantity}, OutOfStock={$result}");
-                                return $result;
-                            
-                            default:
-                                return true;
-                        }
-                    } catch (\Exception $e) {
-                        logger()->error('Error filtering inventory item: ' . $e->getMessage());
-                        return false;
+                        case 'low_stock':
+                            // Items that are low stock (total quantity > 0 but <= reorder level)
+                            return $totalQuantity > 0 && $totalQuantity <= $reorderLevel;
+                        
+                        case 'out_of_stock':
+                            // Items that are out of stock (total quantity = 0)
+                            return $totalQuantity === 0;
+                        
+                        default:
+                            return true;
                     }
                 });
-                
-                logger()->info('After status filtering: ' . $merged->count() . ' items remain');
-            } catch (\Exception $e) {
-                logger()->error('Error applying status filter: ' . $e->getMessage());
-                // If filtering fails, return all items
-                $merged = $merged;
             }
-        }
 
-        // Build paginator compatible with frontend
-        $filteredCount = $merged->count();
-        
-        // Ensure we always have a valid response structure
-        if ($filteredCount === 0) {
-            // Create an empty paginator when no results
-            $inventories = new \Illuminate\Pagination\LengthAwarePaginator(
-                collect([]),
-                0,
+            // Build paginator
+            $filteredCount = $inventories->count();
+            $inventoriesPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
+                $inventories->values(),
+                $filteredCount,
                 $perPage,
                 $page,
                 ['path' => $productsPaginator->path(), 'pageName' => $productsPaginator->getPageName()]
             );
-        } else {
-            $inventories = new \Illuminate\Pagination\LengthAwarePaginator(
-                $merged->values(),
-                $filteredCount,
-                $productsPaginator->perPage(),
-                $productsPaginator->currentPage(),
-                ['path' => $productsPaginator->path(), 'pageName' => $productsPaginator->getPageName()]
-            );
-        }
 
-        // Calculate status counts independently of pagination
-        $statusCounts = $this->calculateInventoryStatusCounts($request);
+            // Calculate status counts
+            $statusCounts = $this->calculateInventoryStatusCounts($request);
 
-        logger()->info('Final response - inventories count: ' . $inventories->count() . ', total: ' . $inventories->total() . ', status filter: ' . ($request->status ?? 'none'));
-
-        return Inertia::render('Inventory/Index', [
-            'inventories' => InventoryResource::collection($inventories),
-            'inventoryStatusCounts' => collect($statusCounts)->map(fn($count, $status) => ['status' => $status, 'count' => $count]),
-            'products'   => Product::select('id', 'name')->get(),
-            'warehouses' => Warehouse::pluck('name')->toArray(),
-            'filters'    => $request->only(['search', 'product_id', 'category', 'dosage', 'per_page', 'page', 'status']),
-            'category'   => Category::pluck('name')->toArray(),
-            'dosage'     => Dosage::pluck('name')->toArray(),
-        ]);
+            return Inertia::render('Inventory/Index', [
+                'inventories' => InventoryResource::collection($inventoriesPaginator),
+                'inventoryStatusCounts' => collect($statusCounts)->map(fn($count, $status) => ['status' => $status, 'count' => $count]),
+                'products'   => Product::select('id', 'name')->get(),
+                'warehouses' => Warehouse::pluck('name')->toArray(),
+                'filters'    => $request->only(['search', 'product_id', 'category', 'dosage', 'per_page', 'page', 'status']),
+                'category'   => Category::pluck('name')->toArray(),
+                'dosage'     => Dosage::pluck('name')->toArray(),
+            ]);
         } catch (\Throwable $th) {
             logger()->error('[INVENTORY-ERROR] Error in index method: ' . $th->getMessage());
             logger()->error('[INVENTORY-ERROR] Stack trace: ' . $th->getTraceAsString());
@@ -315,10 +269,9 @@ class InventoryController extends Controller
             $reorderLevel = (float) ($product->reorder_level ?? round($amc * 6));
 
             // Get total quantity for this product from facility inventory
-            $totalQuantity = FacilityInventory::where('facility_inventories.facility_id', $facilityId)
-                ->where('facility_inventories.product_id', $product->id)
-                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
-                ->sum('facility_inventory_items.quantity') ?? 0.0;
+            $totalQuantity = FacilityInventory::where('facility_id', $facilityId)
+                ->where('product_id', $product->id)
+                ->value('quantity') ?? 0.0;
 
             // Product-level status for in-stock/low-stock
             if ($reorderLevel > 0 && $totalQuantity <= (0.7 * $reorderLevel)) {
@@ -337,13 +290,9 @@ class InventoryController extends Controller
         if ($filteredProductIds->isNotEmpty()) {
             // Count products with positive total quantity
             $positiveTotals = FacilityInventory::query()
-                ->join('facility_inventory_items', 'facility_inventories.id', '=', 'facility_inventory_items.facility_inventory_id')
-                ->whereIn('facility_inventories.product_id', $filteredProductIds)
-                ->where('facility_inventories.facility_id', $facilityId)
-                ->select('facility_inventories.product_id')
-                ->groupBy('facility_inventories.product_id')
-                ->havingRaw('COALESCE(SUM(COALESCE(facility_inventory_items.quantity,0)),0) > 0')
-                ->get()
+                ->whereIn('product_id', $filteredProductIds)
+                ->where('facility_id', $facilityId)
+                ->where('quantity', '>', 0)
                 ->count();
 
             $statusCounts['out_of_stock'] = $filteredProductIds->count() - $positiveTotals;
