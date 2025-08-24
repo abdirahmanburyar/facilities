@@ -989,8 +989,6 @@ onUnmounted(() => {
                                                 <span class="text-gray-400">No Expiry</span>
                                             </td>
 
-
-
                                             <!-- Total QTY on Hand -->
                                             <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex items-center justify-center">
