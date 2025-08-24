@@ -3,12 +3,10 @@ import {
     ref,
     watch,
     computed,
-    onMounted,
-    onBeforeUnmount,
+    onUnmounted
 } from "vue";
 import { Head, router, Link } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue";
 import Modal from "@/Components/Modal.vue";
 import { useToast } from "vue-toastification";
 import axios from "axios";
@@ -18,32 +16,28 @@ import "@/Components/multiselect.css";
 import moment from "moment";
 import { TailwindPagination } from "laravel-vue-pagination";
 
+const toast = useToast();
+
 const props = defineProps({
     inventories: Object,
-    products: Array,
-    dosage: Array,
     category: Array,
-    warehouses: Array,
     filters: Object,
     inventoryStatusCounts: Object,
 });
 
-const toast = useToast();
-
 // Search and filter states
-const search = ref(props.filters.search);
-const location = ref(props.filters.location);
-const dosage = ref(props.filters.dosage);
-const category = ref(props.filters.category);
-const warehouse = ref(props.filters.warehouse);
+const search = ref(props.filters?.search || '');
+
+const category = ref(props.filters?.category || '');
+
 const status = ref(props.filters?.status || '');
-const per_page = ref(props.filters.per_page || 25);
-const loadedLocation = ref([]);
-const isSubmitting = ref(false);
+const per_page = ref(props.filters?.per_page || 25);
+
 const isLoading = ref(false);
+const filterTimeout = ref(null);
+const showDebug = ref(false); // Toggle for debug information
 
 // Modal states
-const showAddModal = ref(false);
 const showLegend = ref(false);
 
 // Upload states
@@ -55,90 +49,159 @@ const uploadProgress = ref(0);
 const uploadResults = ref(null);
 const importId = ref(null);
 
-async function loadLocations() {
-    if (!warehouse.value) {
-        loadedLocation.value = [];
-        location.value = '';
-        return;
-    };
-    await axios
-        .post(route("invetnories.getLocations"), {
-            warehouse: warehouse.value,
-        })
-        .then((response) => {
-            loadedLocation.value = response.data;
-        })
-        .catch((error) => {
-            toast.error(error.response.data);
+// Apply filters with debouncing
+const applyFilters = () => {
+    // Clear any existing timeout
+    if (filterTimeout.value) {
+        clearTimeout(filterTimeout.value);
+    }
+
+    // Set a new timeout to debounce the filter application
+    filterTimeout.value = setTimeout(() => {
+        const query = {};
+
+        // Only add non-empty filter values to query object
+        if (search.value && search.value.trim()) query.search = search.value.trim();
+
+
+        if (category.value && category.value !== '') query.category = category.value;
+        if (status.value && status.value !== '') query.status = status.value;
+
+        // Always include per_page in query if it exists
+        if (per_page.value) query.per_page = per_page.value;
+        if (props.filters?.page) query.page = props.filters.page;
+
+        console.log('🔍 Applying filters:', query);
+        console.log('📊 Current filter values:', {
+            search: search.value,
+
+            category: category.value,
+            status: status.value,
+            per_page: per_page.value,
+            page: props.filters?.page
         });
-}
 
-// Form states
-const form = ref({
-    product_id: null,
-    product: null,
-    warehouse: "",
-    quantity: 0,
-    manufacturing_date: "",
-    batch_number: "",
-    location: "",
-    notes: "",
-    is_active: true,
-});
+        isLoading.value = true;
 
-// Set up real-time inventory updates
-let echoChannel = null;
+        router.get(route("inventories.index"), query, {
+            preserveState: true,
+            preserveScroll: true,
+            only: [
+                "inventories",
+                "products",
+                "inventoryStatusCounts",
+                "category",
+            ],
+            onFinish: () => {
+                isLoading.value = false;
+                console.log('✅ Filters applied successfully');
+            },
+            onError: (errors) => {
+                isLoading.value = false;
+                console.error('❌ Filter error:', errors);
 
-onMounted(() => {
-    // Listen for inventory updates
-    echoChannel = window.Echo.channel("inventory").listen(
-        ".refresh",
-        (data) => {
-            console.log("[PUSHER-DEBUG] Received inventory update:", data);
+                // Provide more specific error messages
+                if (errors && typeof errors === 'object') {
+                    const errorMessages = Object.values(errors).flat();
+                    if (errorMessages.length > 0) {
+                        toast.error(`Filter error: ${errorMessages[0]}`);
+                    } else {
+                        toast.error('Failed to apply filters - please try again');
+                    }
+                } else if (typeof errors === 'string') {
+                    toast.error(`Filter error: ${errors}`);
+                } else {
+                    toast.error('Failed to apply filters - please try again');
+                }
+            }
+        });
+    }, 300); // 300ms debounce delay
+};
+
+// Watch for filter changes with debouncing
+watch(
+    [
+        search,
+        category,
+        status,
+        per_page
+    ],
+    (newValues, oldValues) => {
+        // Skip if this is the initial load
+        if (oldValues && oldValues.length > 0) {
+            // Reset page to 1 when filters change (except per_page)
+            if (newValues[0] !== oldValues[0] || // search
+                newValues[1] !== oldValues[1] || // category
+                newValues[2] !== oldValues[2]) { // status
+                props.filters.page = 1;
+            }
             applyFilters();
         }
-    );
+    },
+    { deep: true }
+);
 
-    // Listen for import progress updates
-    if (importId.value) {
-        Echo.private(`import-progress.${importId.value}`)
-            .listen('.ImportProgressUpdated', (e) => {
-                console.log('Import progress:', e);
-                uploadProgress.value = e.progress || 0;
-                if (e.completed) {
-                    isUploading.value = false;
-                    uploadResults.value = e;
-                    toast.success('Import completed successfully!');
-                    applyFilters();
-                }
-            });
+function formatQty(qty) {
+    // Ensure qty is a valid number for proper sorting
+    const num = Number(qty);
+
+    // Handle edge cases for sorting
+    if (qty === null || qty === undefined) {
+        return '0';
     }
+
+    if (isNaN(num) || !isFinite(num)) {
+        console.warn(`Invalid quantity value: ${qty}, defaulting to 0`);
+        return '0';
+    }
+
+    // Ensure negative quantities are handled properly
+    if (num < 0) {
+        console.warn(`Negative quantity detected: ${num}, treating as 0`);
+        return '0';
+    }
+
+    // Format with proper number formatting
+    return Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(num);
+}
+
+
+
+
+
+// Update hasActiveFilters to remove sorting
+const hasActiveFilters = computed(() => {
+    return search.value || category.value ||
+        status.value; // Remove sorting checks
 });
 
-onBeforeUnmount(() => {
-    // Clean up Echo listeners when component is unmounted
-    if (echoChannel) {
-        echoChannel.stopListening(".refresh");
-    }
+// Computed property for total products
+const totalProducts = computed(() => {
+    if (!props.inventories || !props.inventories.meta) return 0;
+    return props.inventories.meta.total || 0;
 });
 
-// Apply filters
-const applyFilters = () => {
-    const query = {};
-    // Add all filter values to query object
-    if (search.value) query.search = search.value;
-    if (location.value) query.location = location.value;
-    if (warehouse.value) query.warehouse = warehouse.value;
-    if (dosage.value) query.dosage = dosage.value;
-    if (category.value) query.category = category.value;
-    if (status.value) query.status = status.value;
+// Update clearFilters to remove sorting reset
+const clearFilters = () => {
+    // Clear all filter values
+    search.value = "";
 
-    // Always include per_page in query if it exists
-    if (per_page.value) query.per_page = per_page.value;
-    if (props.filters?.page) query.page = props.filters.page;
 
-    console.log('Applying filters:', query);
-    
+    category.value = "";
+    status.value = "";
+
+    // Reset pagination
+    if (props.filters) {
+        props.filters.page = 1;
+    }
+    per_page.value = 25; // Reset per_page to default
+
+    // Apply filters immediately without debouncing
+    const query = { per_page: per_page.value, page: 1 };
+
     isLoading.value = true;
 
     router.get(route("inventories.index"), query, {
@@ -147,39 +210,22 @@ const applyFilters = () => {
         only: [
             "inventories",
             "products",
-            "warehouses",
             "inventoryStatusCounts",
-            "locations",
-            "dosage",
             "category",
         ],
         onFinish: () => {
             isLoading.value = false;
+            console.log('✅ Filters cleared successfully');
         },
         onError: (errors) => {
             isLoading.value = false;
-            console.error('Filter error:', errors);
-            toast.error('Failed to apply filters');
+            console.error('❌ Error clearing filters:', errors);
+            toast.error('Failed to clear filters - please try again');
         }
     });
-};
 
-// Watch for changes in search input
-watch(
-    [
-        () => search.value,
-        () => location.value,
-        () => per_page.value,
-        () => warehouse.value,
-        () => dosage.value,
-        () => category.value,
-        () => status.value,
-        () => props.filters.page,
-    ],
-    () => {
-        applyFilters();
-    }
-);
+    toast.success("Filters cleared!");
+};
 
 // Upload modal functions
 const openUploadModal = () => {
@@ -268,151 +314,197 @@ const uploadFile = async () => {
             },
         }
     )
-    .then(response => {
-        isUploading.value = false;
-        importId.value = response.data.import_id;
-        uploadResults.value = response.data;
-        console.log('Upload response:', response.data);
-        toast.dismiss(loadingToast);
-        toast.success(response.data.message || "File uploaded successfully!");
-        
-        // Refresh inventory data
-        applyFilters();
-    })
-    .catch(error => {
-        isUploading.value = false;
-        console.error('Upload error:', error);
-        closeUploadModal();
-        toast.dismiss(loadingToast);
-        toast.error(error.response?.data?.message || "Failed to upload file");
-    });
+        .then(response => {
+            isUploading.value = false;
+            uploadResults.value = response.data;
+            toast.dismiss(loadingToast);
+            toast.success(response.data.message || "File uploaded successfully!");
+
+            // Refresh inventory data
+            applyFilters();
+        })
+        .catch(error => {
+            isUploading.value = false;
+            console.error('Upload error:', error);
+            closeUploadModal();
+            toast.dismiss(loadingToast);
+            toast.error(error.response?.data?.message || "Failed to upload file");
+        });
 };
 
 // Download template function
-const downloadTemplate = async () => {
-    try {
-        const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
-        const headerRow = headers.join(',');
+const downloadTemplate = () => {
+    // Create a CSV format that Excel can open properly
+    const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
 
-        // Fetch eligible items for current facility
-        const { data } = await axios.get(route('inventories.templateItems'));
-        const items = data?.items || [];
+    // Create CSV content with headers
+    const csvContent = headers.join(',') + '\n';
 
-        // Build CSV rows
-        const rows = items.map(i => [
-            // Escape commas and quotes for CSV safety
-            '"' + String(i.item ?? '').replace(/"/g, '""') + '"',
-            '"' + String(i.category ?? '').replace(/"/g, '""') + '"',
-            '"' + String(i.uom ?? '').replace(/"/g, '""') + '"',
-            '', // Quantity placeholder
-            '', // Batch No placeholder
-            ''  // Expiry Date placeholder
-        ].join(','));
+    // Create blob with CSV MIME type
+    const blob = new Blob([csvContent], {
+        type: 'text/csv;charset=utf-8;'
+    });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
 
-        const csvContent = [headerRow, ...rows].join('\n') + '\n';
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'inventory_import_template.csv');
+    link.style.visibility = 'hidden';
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'inventory_import_template.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-        toast.success('Template downloaded with eligible items for your facility.');
-    } catch (error) {
-        console.error('Template download error:', error);
-        toast.error('Failed to download template.');
-    }
-};
+    // Clean up the URL object
+    URL.revokeObjectURL(url);
 
-// Submit form
-const submitForm = async () => {
-    isSubmitting.value = true;
-
-    await axios
-        .post(route("inventories.store"), form.value)
-        .then(() => {
-            showAddModal.value = false;
-            toast("Inventory item added successfully", "success");
-            isSubmitting.value = false;
-            applyFilters();
-        })
-        .catch((errors) => {
-            console.log(errors);
-            formErrors.value = errors;
-            isSubmitting.value = false;
-            toast.error(errors.response.data);
-        });
+    toast.success('Template downloaded successfully! Open with Excel to use.');
 };
 
 // Format date
 const formatDate = (date) => {
-    if (!date) return "N/A";
-    return moment(date).format("DD/MM/YYYY");
-};
+    // Handle null/undefined dates for proper sorting
+    if (!date || date === null || date === undefined) {
+        return "";
+    }
 
-// Helpers for totals and statuses per inventory group (item-based)
-function getTotalQuantity(inventory) {
+    // Handle empty string dates
+    if (date === '') {
+        return "";
+    }
+
     try {
-        return Array.isArray(inventory.items)
-            ? inventory.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0)
-            : 0;
-    } catch (e) { return 0; }
-}
+        // Ensure proper date parsing for sorting
+        const parsedDate = moment(date);
 
-// Low stock rule: (total - reorder) <= 30% of total, and total > 0
-function isLowStockGroup(inventory) {
-    const total = getTotalQuantity(inventory);
-    const reorder = Number(inventory.reorder_level) || 0;
-    if (total <= 0 || reorder <= 0) return false;
-    // Low stock = total_on_hand <= (reorder_level - 30% of reorder_level)
-    return total <= (reorder * 0.7);
-}
+        // Validate the parsed date
+        if (!parsedDate.isValid()) {
+            console.warn(`Invalid date value: ${date}, returning empty string`);
+            return "";
+        }
 
-// Needs reorder (item-based): total <= reorder_level
-function needsReorder(inventory) {
-    const total = getTotalQuantity(inventory);
-    const reorder = Number(inventory.reorder_level) || 0;
-    // Align with low stock formula: needs reorder when total <= 70% of reorder level
-    return reorder > 0 && total <= (reorder * 0.7);
-}
-
-// Check if inventory is out of stock
-const isOutOfStock = (item) => {
-    return (item.quantity || 0) <= 0;
+        // Return formatted date for display
+        return parsedDate.format("DD/MM/YYYY");
+    } catch (error) {
+        console.error(`Error formatting date: ${date}`, error);
+        return "";
+    }
 };
+
+// Helpers
+function getTotalQuantity(inventory) {
+    if (!inventory?.items || !Array.isArray(inventory.items)) {
+        return 0;
+    }
+
+    const total = inventory.items.reduce((sum, item) => {
+        // Ensure proper numeric conversion for sorting
+        let quantity = 0;
+
+        if (item.quantity !== null && item.quantity !== undefined) {
+            const num = Number(item.quantity);
+
+            // Handle invalid numbers
+            if (isNaN(num) || !isFinite(num)) {
+                console.warn(`Invalid quantity for item ${item.id}: ${item.quantity}, treating as 0`);
+                quantity = 0;
+            } else if (num < 0) {
+                console.warn(`Negative quantity for item ${item.id}: ${num}, treating as 0`);
+                quantity = 0;
+            } else {
+                quantity = num;
+            }
+        }
+
+        return sum + quantity;
+    }, 0);
+
+    // Final validation
+    if (isNaN(total) || !isFinite(total)) {
+        console.warn(`Invalid total quantity calculated: ${total}, returning 0`);
+        return 0;
+    }
+
+    return total;
+}
+
+// Low stock calculation using existing AMC and reorder_level data
+const isLowStock = (inventory) => {
+    const totalQuantity = getTotalQuantity(inventory);
+    const reorderLevel = Number(inventory.reorder_level) || 0;
+    const amc = Number(inventory.amc) || 0;
+
+    // If no reorder level is set, use AMC-based calculation
+    if (reorderLevel <= 0) {
+        if (amc <= 0) return false;
+        // Low stock if quantity is less than 2 months of AMC
+        return totalQuantity <= (amc * 2);
+    }
+
+    // Use reorder level: low stock if quantity is between reorder level and reorder level + 30%
+    return totalQuantity > reorderLevel && totalQuantity <= (reorderLevel * 1.3);
+};
+
+// Check if individual inventory item is out of stock
+const isItemOutOfStock = (item) => {
+    return (item.quantity || 0) === 0;
+};
+
+// Check if inventory is out of stock (sum of items.quantity is 0)
+const isOutOfStock = (inventory) => {
+    const totalQuantity = getTotalQuantity(inventory);
+    return totalQuantity === 0;
+};
+
+// Needs reorder: use existing AMC and reorder_level data
+function needsReorder(inventory) {
+    const totalQuantity = getTotalQuantity(inventory);
+    const reorderLevel = Number(inventory.reorder_level) || 0;
+    const amc = Number(inventory.amc) || 0;
+
+    // If reorder level is set, check if quantity is at or below it
+    if (reorderLevel > 0) {
+        return totalQuantity <= reorderLevel;
+    }
+
+    // If no reorder level but AMC exists, check if quantity is below 2 months of AMC
+    if (amc > 0) {
+        return totalQuantity <= (amc * 2);
+    }
+
+    // Fallback to backend status
+    return inventory.status === 'reorder_level' || inventory.status === 'low_stock';
+}
 
 // Computed properties for inventory status counts
 const inStockCount = computed(() => {
-    const stat = Object.values(props.inventoryStatusCounts).find(
-        (s) => s.status === "in_stock"
-    );
-    return stat.count;
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'in_stock');
+    return stat ? stat.count : 0;
 });
 
 const lowStockCount = computed(() => {
-    // Recompute low stock using new 30% margin rule across groups
-    try {
-        return (props.inventories?.data || []).filter((inv) => isLowStockGroup(inv)).length;
-    } catch { return 0; }
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock');
+    return stat ? stat.count : 0;
 });
 
-// Count of items that need reorder (item-based)
-const reorderItemsCount = computed(() => {
-    try {
-        return (props.inventories?.data || []).filter((inv) => needsReorder(inv)).length;
-    } catch { return 0; }
+const reorderLevelCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level');
+    return stat ? stat.count : 0;
+});
+
+const reorderLevelOnlyCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'reorder_level');
+    return stat ? stat.count : 0;
 });
 
 const outOfStockCount = computed(() => {
-    const stat = Object.values(props.inventoryStatusCounts).find(
-        (s) => s.status === "out_of_stock"
-    );
-    return stat.count;
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'out_of_stock');
+    return stat ? stat.count : 0;
 });
 
 function getResults(page = 1) {
@@ -422,55 +514,54 @@ function getResults(page = 1) {
     applyFilters();
 }
 
-const clearFilters = () => {
-    search.value = "";
-    location.value = "";
-    warehouse.value = "";
-    dosage.value = "";
-    category.value = "";
-    status.value = "";
-    per_page.value = 25; // Reset per_page to default
-    applyFilters();
-    toast.success("Filters cleared!");
-};
-
-const hasActiveFilters = computed(() => {
-    return search.value || location.value || warehouse.value || dosage.value || category.value || status.value;
+// Cleanup function to clear timeout when component unmounts
+onUnmounted(() => {
+    if (filterTimeout.value) {
+        clearTimeout(filterTimeout.value);
+    }
 });
+
 </script>
 
 <template>
+
     <Head title="Inventory Management" />
 
-    <AuthenticatedLayout
-        img="/assets/images/inventory.png"
-        title="Management Your Inventory"
-        description="Keeping Essentials Ready, Every Time"
-    >
+    <AuthenticatedLayout img="/assets/images/inventory.png" title="Management Your Inventory"
+        description="Keeping Essentials Ready, Every Time">
         <div class="mb-[100px]">
             <!-- Header & Actions -->
             <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
-                <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Warehouse Inventory</h1>
+                <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Facility Inventory</h1>
                 <div class="flex flex-wrap gap-2 md:gap-4 items-center">
-                    <button
-                        @click="openUploadModal"
+                    <button @click="openUploadModal"
                         class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 border border-transparent rounded-lg font-medium text-sm text-white hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200 shadow-sm"
-                        :disabled="isUploading"
-                    >
-                        <svg v-if="!isUploading" class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        :disabled="isUploading">
+                        <svg v-if="!isUploading" class="h-4 w-4 mr-2" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
                         </svg>
                         <svg v-else class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                         {{ isUploading ? 'Uploading...' : 'Upload Excel' }}
                     </button>
-                    <Link :href="route('inventories.facility-reorder-levels.index')" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg font-medium text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm">
-                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8M5 12a7 7 0 1114 0A7 7 0 015 12z" />
-                        </svg>
-                        Reorder Levels
+
+
+                    <Link :href="route('facilities.index')"
+                        class="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-lg font-semibold text-xs text-blue-700 uppercase tracking-widest hover:bg-blue-200 focus:bg-blue-200 active:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Facilities List
                     </Link>
                 </div>
             </div>
@@ -478,194 +569,586 @@ const hasActiveFilters = computed(() => {
             <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200">
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                     <div class="col-span-1 md:col-span-2 min-w-0">
-                        <input v-model="search" type="text" :disabled="isLoading" class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" placeholder="Search by item name, barcode, batch number, uom" />
+                        <input v-model="search" type="text"
+                            class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
+                            placeholder="Search by item name, barcode, batch number, uom" />
                     </div>
+
                     <div class="col-span-1 min-w-0">
-                        <Multiselect v-model="category" :options="props.category" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a category" :allow-empty="true" :disabled="isLoading" class="multiselect--with-icon w-full" />
+                        <Multiselect v-model="category" :options="props.category || []" :searchable="true"
+                            :close-on-select="true" :show-labels="false" placeholder="Select a category"
+                            :allow-empty="true" class="multiselect--with-icon w-full" />
                     </div>
+
                     <div class="col-span-1 min-w-0">
-                        <Multiselect v-model="dosage" :options="props.dosage" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a dosage form" :allow-empty="true" :disabled="isLoading" class="multiselect--with-icon w-full" />
-                    </div>
-                    <div class="col-span-1 min-w-0">
-                        <select v-model="status" :disabled="isLoading" class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2" :class="{ 'opacity-50 cursor-not-allowed': isLoading }">
-                            <option value="">All Status</option>
-                            <option value="reorder_level">Reorder Level</option>
+                        <select v-model="status"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="">All Statuses</option>
+                            <option value="in_stock">In Stock</option>
                             <option value="low_stock">Low Stock</option>
+                            <option value="low_stock_reorder_level">Low Stock + Reorder Level</option>
                             <option value="out_of_stock">Out of Stock</option>
                         </select>
                     </div>
                 </div>
-                <div class="flex justify-end items-center gap-4 mt-3">
-                    <button @click="clearFilters" :disabled="isLoading" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300" :class="{ 'opacity-50 cursor-not-allowed': isLoading }">
-                        <svg v-if="!isLoading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <svg v-else class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {{ isLoading ? 'Clearing...' : 'Clear Filters' }}
-                    </button>
-                    <select v-model="per_page" :disabled="isLoading" class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px] mb-3" :class="{ 'opacity-50 cursor-not-allowed': isLoading }" @change="() => { if (props.filters) props.filters.page = 1; applyFilters(); }">
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                        <option value="100">100 per page</option>
-                        <option value="200">200 per page</option>
-                    </select>
-                    <button @click="showLegend = true" class="px-2 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200 mb-3" title="Icon Legend">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+
+                <!-- Remove debug info for sorting since sorting is removed -->
+
+                <!-- Active Filters Display -->
+                <div v-if="hasActiveFilters" class="mt-4 flex flex-wrap gap-2 items-center">
+                    <span class="text-sm font-medium text-gray-700">Active Filters:</span>
+                    <span v-if="search"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Search: {{ search }}
+                        <button @click="search = ''" class="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                    </span>
+
+
+                    <span v-if="category"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Category: {{ category }}
+                        <button @click="category = ''" class="ml-1 text-yellow-600 hover:text-yellow-800">×</button>
+                    </span>
+                    <span v-if="status"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span class="text-sm text-gray-600">
+                            Status: {{
+                                status === 'in_stock' ? 'In Stock' :
+                                    status === 'low_stock' ? 'Low Stock' :
+                                        status === 'low_stock_reorder_level' ? 'Low Stock + Reorder Level' :
+                                            status === 'out_of_stock' ? 'Out of Stock' :
+                                                status
+                            }}
+                        </span>
+                        <button @click="status = ''" class="ml-1 text-red-600 hover:text-red-800">×</button>
+                    </span>
+                    <button @click="clearFilters"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        Clear All
                     </button>
                 </div>
-                <!-- Filter Summary -->
-                <div v-if="hasActiveFilters" class="mt-3 pt-3 border-t border-gray-200">
+
+                <!-- Controls Row -->
+                <div class="flex justify-between items-center gap-4 mt-4">
+                    <!-- Filter Status -->
                     <div class="flex items-center gap-2 text-sm text-gray-600">
-                        <span class="font-medium">Active Filters:</span>
-                        <span v-if="search" class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                            Search: {{ search }}
-                            <button @click="search = ''" class="ml-1 text-blue-600 hover:text-blue-800">×</button>
-                        </span>
-                        <span v-if="category" class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                            Category: {{ category }}
-                            <button @click="category = null" class="ml-1 text-green-600 hover:text-green-800">×</button>
-                        </span>
-                        <span v-if="dosage" class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                            Dosage: {{ dosage }}
-                            <button @click="dosage = null" class="ml-1 text-purple-600 hover:text-purple-800">×</button>
-                        </span>
-                        <span v-if="status" class="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                            Status: {{ status === 'reorder_level' ? 'Reorder Level' : status === 'low_stock' ? 'Low Stock' : 'Out of Stock' }}
-                            <button @click="status = ''" class="ml-1 text-orange-600 hover:text-orange-800">×</button>
-                        </span>
+                        <div v-if="isLoading" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span>Applying filters...</span>
+                        </div>
+                        <div v-else-if="hasActiveFilters" class="flex items-center gap-2 text-green-600">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Filters active</span>
+                        </div>
+                    </div>
+
+                    <!-- Right side controls -->
+                    <div class="flex items-center gap-4">
+                        <select v-model="per_page" @change="() => {
+                            if (props.filters) props.filters.page = 1;
+                            applyFilters();
+                        }"
+                            class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px]">
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
+                            <option value="200">200 per page</option>
+                        </select>
+                        <button @click="showDebug = !showDebug"
+                            class="px-2 py-2 bg-gray-100 text-gray-700 rounded-full flex items-center gap-2 hover:bg-gray-200 transition-colors border border-gray-200"
+                            title="Toggle Debug Info">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Debug
+                        </button>
+                        <button @click="showLegend = true"
+                            class="px-2 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200"
+                            title="Icon Legend">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Debug Information -->
+                <div v-if="showDebug" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div>
+                            <span class="font-medium text-gray-600">Search:</span>
+                            <span class="ml-2 text-gray-800">{{ search || 'None' }}</span>
+                        </div>
+                        <div>
+
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600">Category:</span>
+                            <span class="ml-2 text-gray-800">{{ category || 'None' }}</span>
+                        </div>
+
+                        <div>
+                            <span class="font-medium text-gray-600">Status:</span>
+                            <span class="ml-2 text-gray-800">{{ status || 'None' }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600">Per Page:</span>
+                            <span class="ml-2 text-gray-800">{{ per_page }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600">Current Page:</span>
+                            <span class="ml-2 text-gray-800">{{ props.filters?.page || 1 }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        <span class="font-medium">Active Filters:</span> {{ hasActiveFilters ? 'Yes' : 'No' }} |
+                        <span class="font-medium">Loading:</span> {{ isLoading ? 'Yes' : 'No' }} |
+                        <span class="font-medium">Timeout:</span> {{ filterTimeout ? 'Active' : 'None' }}
                     </div>
                 </div>
             </div>
-            <!-- Table and Sidebar (do not change table markup) -->
-            <div class="lg:grid lg:grid-cols-8 lg:gap-2">
-                <div class="lg:col-span-7 overflow-auto w-full">
-                    <!-- Inventory Table -->
-                    <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
-                        <thead>
-                            <tr style="background-color: #F4F7FB;">
-                                <th class="px-3 py-2 text-xs font-bold rounded-tl-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Item</th>
-                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Category</th>
-                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">UoM</th>
-                                <th class="px-3 py-2 text-xs font-bold text-center" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="3">Item Details</th>
-                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Total QTY on Hand</th>
-                                <th class="px-3 py-2 text-xs font-bold" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Reorder Level</th>
-                                <th class="px-3 py-2 text-xs font-bold rounded-tr-lg" style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Actions</th>
-                            </tr>
-                            <tr style="background-color: #F4F7FB;">
-                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">QTY</th>
-                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Batch Number</th>
-                                <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center" style="color: #4F6FCB;">Expiry Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-if="isLoading">
-                                <tr>
-                                    <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
-                                        <div class="flex flex-col items-center justify-center gap-2">
-                                            <svg class="animate-spin h-10 w-10 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            <span>Applying filters...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                            <template v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
-                                <tr>
-                                    <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
-                                        <div class="flex flex-col items-center justify-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 118 0v2m-4 4a4 4 0 01-4-4H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2a4 4 0 01-4 4z" /></svg>
-                                            <span>{{ !props.inventories ? 'Loading...' : 'No inventory data found.' }}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                            <template v-else v-for="inventory in props.inventories.data" :key="inventory.id">
-                                <tr v-for="(item, itemIndex) in inventory.items" :key="`${inventory.id}-${item.id}`" class="hover:bg-gray-50 transition-colors duration-150 border-b" style="border-bottom: 1px solid #B7C6E6;">
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs font-medium text-gray-800 align-top">{{ inventory.product.name }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.product.category.name }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-700 align-top">{{ inventory.items && inventory.items.length > 0 ? inventory.items[0].uom : '-' }}</td>
-                                    <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.quantity }}</td>
-                                    <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ item.batch_number }}</td>
-                                    <td class="px-2 py-1 text-xs border-b border-[#B7C6E6] text-center" :class="isOutOfStock(item) ? 'text-red-600 font-medium' : 'text-gray-900'">{{ formatDate(item.expiry_date) }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.items.reduce((sum, item) => sum + item.quantity, 0) }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-2 text-xs text-gray-800 align-top">{{ inventory.reorder_level }}</td>
-                                    <td v-if="itemIndex === 0" :rowspan="inventory.items.length" class="px-3 py-4 whitespace-nowrap text-xs font-medium align-top">
-                                        <div class="flex items-center space-x-3">
-                                            <div v-if="needsReorder(inventory)">
-                                                <img
-                                                    src="/assets/images/reorder_status.png"
-                                                    alt="Reorder Status"
-                                                    class="w-6 h-6"
-                                                    title="Reorder Status"
-                                                />
-                                            </div>
-                                            <Link
-                                                :href="route('orders.create')"
-                                                v-if="getTotalQuantity(inventory) > inventory.reorder_level"
-                                                class="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-5 w-5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                    />
-                                                </svg>
-                                            </Link>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
 
-                    <div class="mt-2 flex justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm text-gray-500">Showing {{ props.inventories.meta.from }} to {{ props.inventories.meta.to }} of {{ props.inventories.meta.total }} items</span>
+            <!-- Table and Sidebar -->
+            <div class="grid grid-cols-1 lg:grid-cols-8 gap-6">
+                <!-- Main Table -->
+                <div class="lg:col-span-7">
+
+                    <div class="bg-white rounded-xl overflow-hidden">
+                        <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                            <thead>
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="px-3 py-2 text-xs font-bold rounded-tl-lg w-48"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
+                                        <div class="flex items-center justify-between">
+                                            <span>Item</span>
+                                        </div>
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Category
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">UoM</th>
+                                    <th class="px-3 py-2 text-xs font-bold text-center"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="3">Item
+                                        Details</th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Total QTY
+                                        on Hand</th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Status
+                                    </th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Reorder
+                                        Level</th>
+                                    <th class="px-3 py-2 text-xs font-bold"
+                                        style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Actions
+                                    </th>
+                                </tr>
+                                <tr style="background-color: #F4F7FB;">
+                                    <th class="px-2 py-2 text-xs font-bold border border-[#B7C6E6] text-center"
+                                        style="color: #4F6FCB;">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span>QTY</span>
+                                        </div>
+                                    </th>
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center"
+                                        style="color: #4F6FCB;">Batch Number</th>
+                                    <th class="px-2 py-1 text-xs font-bold border border-[#B7C6E6] text-center"
+                                        style="color: #4F6FCB;">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span>Expiry Date</span>
+                                        </div>
+                                    </th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template v-if="isLoading">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
+                                            <div class="flex flex-col items-center justify-center gap-2">
+                                                <svg class="animate-spin h-10 w-10 text-gray-300"
+                                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                        stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                    </path>
+                                                </svg>
+                                                <span class="text-sm font-medium text-gray-600">
+                                                    {{ isLoading ? 'Applying filters...' : 'Loading inventory data...'
+                                                    }}
+                                                </span>
+                                                <span class="text-xs text-gray-400">Please wait...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template
+                                    v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
+                                            <div class="flex flex-col items-center justify-center gap-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 17v-2a4 4 0 118 0v2m-4 4a4 4 0 01-4-4H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2a4 4 0 01-4 4z" />
+                                                </svg>
+                                                <span>{{ !props.inventories ? 'Loading...' : 'No inventory data found.'
+                                                    }}</span>
+                                                <div class="text-xs text-gray-400 mt-2">
+                                                    {{ totalProducts > 0 ? `Total products: ${totalProducts}` : 'No products available' }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template v-else v-for="inventory in props.inventories.data" :key="inventory.id">
+                                    <!-- Show all products, but handle 0-quantity items differently -->
+                                    <template v-if="inventory.items && inventory.items.length > 0">
+                                        <!-- Show items with quantity > 0 -->
+                                        <tr v-for="(item, itemIndex) in inventory.items.filter(item => (item.quantity || 0) > 0)"
+                                            :key="`${inventory.id}-${item.id}`"
+                                            class="hover:bg-gray-50 transition-colors duration-150 border-b items-center"
+                                            style="border-bottom: 1px solid #B7C6E6;">
+                                            <!-- Item Name - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs font-medium text-gray-800 align-middle items-center">
+                                                {{ inventory.product?.name || inventory.name }}</td>
+
+                                            <!-- Category - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
+                                                    inventory.product?.category?.name || inventory.category?.name }}</td>
+
+                                            <!-- UoM - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
+                                                    inventory.items[0].uom }}</td>
+
+                                            <!-- QTY -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
+                                                {{ formatQty(item.quantity || 0) }}</td>
+
+                                            <!-- Batch Number -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
+                                                {{ item.batch_number }}</td>
+
+                                            <!-- Expiry Date -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
+                                                {{ formatDate(item.expiry_date) }}</td>
+
+
+
+                                            <!-- Total QTY on Hand - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex items-center justify-center">
+                                                    <span class="font-medium text-lg">{{
+                                                        formatQty(getTotalQuantity(inventory)) }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Status - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-800 text-center align-middle">
+                                                <div class="flex flex-col items-center justify-center space-y-2 w-full">
+                                                    <!-- First Row: Icons in specific order from left to right -->
+                                                    <div
+                                                        class="flex items-center justify-center space-x-2 w-full justify-center">
+                                                        <!-- Low Stock Icon (Left) -->
+                                                        <div v-if="inventory.status === 'low_stock'"
+                                                            class="flex items-center justify-center" title="Low Stock">
+                                                            <img src="/assets/images/low_stock.png" alt="Low Stock"
+                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else-if="inventory.status === 'in_stock'"
+                                                            class="flex items-center justify-center" title="In Stock">
+                                                            <img src="/assets/images/in_stock.png" alt="In Stock"
+                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else class="w-8 h-8"></div>
+
+                                                        <!-- Reorder Level Icon (Middle) -->
+                                                        <div v-if="needsReorder(inventory) && inventory.status !== 'in_stock'"
+                                                            class="flex items-center justify-center"
+                                                            title="Reorder Level">
+                                                            <img src="/assets/images/reorder_level.png"
+                                                                alt="Reorder Level" class="w-10 h-10"
+                                                                title="Reorder Level" />
+                                                        </div>
+                                                        <div v-else class="w-10 h-10"></div>
+
+                                                        <!-- Out of Stock Icon (Right) -->
+                                                        <div v-if="inventory.status === 'out_of_stock'"
+                                                            class="flex items-center justify-center"
+                                                            title="Out of Stock">
+                                                            <img src="/assets/images/out_stock_alert.png"
+                                                                alt="Out of Stock" class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else class="w-8 h-8"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Reorder Level - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex flex-col items-center space-y-1">
+                                                    <div class="font-medium">Reorder: {{
+                                                        formatQty(inventory.reorder_level || 0) }}</div>
+                                                    <div class="text-gray-600">AMC: {{ formatQty(inventory.amc || 0) }}
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Actions - only on first row for this inventory -->
+                                            <td v-if="itemIndex === 0"
+                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex flex-col items-center justify-center space-y-2">
+                                                    <!-- Reorder Button for Out of Stock Items -->
+                                                    <div v-if="inventory.status === 'out_of_stock'"
+                                                        class="flex flex-col items-center">
+                                                        <button
+                                                            class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hover:bg-blue-200 transition-colors"
+                                                            title="Reorder - Out of Stock">
+                                                            <svg class="w-4 h-4 text-blue-600" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Future actions can be added here -->
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+
+                                    <!-- Show products with only 0-quantity items as a single row -->
+                                    <template v-else>
+                                        <tr class="hover:bg-gray-50 transition-colors duration-150 border-b items-center"
+                                            style="border-bottom: 1px solid #B7C6E6;">
+                                            <!-- Item Name -->
+                                            <td
+                                                class="px-3 py-2 text-xs font-medium text-gray-800 align-middle items-center">
+                                                {{ inventory.product?.name || inventory.name }}</td>
+
+                                            <!-- Category -->
+                                            <td class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
+                                                inventory.product?.category?.name || inventory.category?.name }}</td>
+
+                                            <!-- UoM -->
+                                            <td class="px-3 py-2 text-xs text-gray-700 align-middle items-center">
+                                                <span class="text-gray-400">No UoM</span>
+                                            </td>
+
+                                            <!-- QTY -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-400">
+                                                <span class="text-gray-400">No Items</span>
+                                            </td>
+
+                                            <!-- Batch Number -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-400">
+                                                <span class="text-gray-400">No Batch</span>
+                                            </td>
+
+                                            <!-- Expiry Date -->
+                                            <td
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-400">
+                                                <span class="text-gray-400">No Expiry</span>
+                                            </td>
+
+
+
+                                            <!-- Total QTY on Hand -->
+                                            <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex items-center justify-center">
+                                                    <span class="font-medium text-lg text-gray-400">{{
+                                                        formatQty(getTotalQuantity(inventory)) }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Status -->
+                                            <td class="px-2 py-1 text-xs text-gray-800 text-center align-middle">
+                                                <div class="flex flex-col items-center justify-center space-y-2 w-full">
+                                                    <!-- First Row: Icons in specific order from left to right -->
+                                                    <div
+                                                        class="flex items-center justify-center space-x-2 w-full justify-center">
+                                                        <!-- Low Stock Icon (Left) - Not applicable for 0-quantity items -->
+                                                        <div v-if="inventory.status === 'low_stock'"
+                                                            class="flex items-center justify-center" title="Low Stock">
+                                                            <img src="/assets/images/low_stock.png" alt="Low Stock"
+                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else-if="inventory.status === 'in_stock'"
+                                                            class="flex items-center justify-center" title="In Stock">
+                                                            <img src="/assets/images/in_stock.png" alt="In Stock"
+                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else class="w-8 h-8"></div>
+
+                                                        <!-- Reorder Level Icon (Middle) -->
+                                                        <div v-if="needsReorder(inventory) && inventory.status !== 'in_stock'"
+                                                            class="flex items-center justify-center"
+                                                            title="Reorder Level">
+                                                            <img src="/assets/images/reorder_level.png"
+                                                                alt="Reorder Level" class="w-10 h-10"
+                                                                title="Reorder Level" />
+                                                        </div>
+                                                        <div v-else class="w-10 h-10"></div>
+
+                                                        <!-- Out of Stock Icon (Right) -->
+                                                        <div v-if="inventory.status === 'out_of_stock'"
+                                                            class="flex items-center justify-center"
+                                                            title="Out of Stock">
+                                                            <img src="/assets/images/out_stock_alert.png"
+                                                                alt="Out of Stock" class="w-8 h-8 drop-shadow-sm" />
+                                                        </div>
+                                                        <div v-else class="flex items-center justify-center"
+                                                            title="No Items">
+                                                            <img src="/assets/images/out_stock_alert.png" alt="No Items"
+                                                                class="w-8 h-8 drop-shadow-sm opacity-50" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Reorder Level -->
+                                            <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex flex-col items-center space-y-1">
+                                                    <div class="font-medium">Reorder: {{
+                                                        formatQty(inventory.reorder_level || 0) }}</div>
+                                                    <div class="text-gray-600">AMC: {{ formatQty(inventory.amc || 0) }}
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Actions -->
+                                            <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
+                                                <div class="flex flex-col items-center justify-center space-y-2">
+                                                    <!-- Reorder Button for Out of Stock Items -->
+                                                    <div v-if="inventory.status === 'out_of_stock'"
+                                                        class="flex flex-col items-center">
+                                                        <button
+                                                            class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hover:bg-blue-200 transition-colors"
+                                                            title="Reorder - Out of Stock">
+                                                            <svg class="w-4 h-4 text-blue-600" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Future actions can be added here -->
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+                            </tbody>
+                        </table>
+
+                        <div class="mt-2 flex justify-between">
+                            <div class="text-xs text-gray-400">
+                                <span v-if="props.inventories && props.inventories.meta.total > 0">
+                                    Showing {{ props.inventories.meta.from }} to {{ props.inventories.meta.to }} of {{
+                                    props.inventories.meta.total }} products
+                                </span>
+                                <span v-else>No products to display</span>
+                            </div>
+
+                            <TailwindPagination :data="props.inventories" @pagination-change-page="getResults"
+                                :limit="2" />
                         </div>
-                        <TailwindPagination
-                            :data="props.inventories"
-                            @pagination-change-page="getResults"
-                            :limit="2"
-                        />
                     </div>
                 </div>
 
                 <!-- Sidebar -->
                 <div class="lg:col-span-1">
                     <div class="sticky top-0 z-10 shadow-sm">
-                        <div class="space-y-4">
-                            <div class="flex items-center rounded-xl bg-blue-50 p-1 shadow">
-                                <img src="/assets/images/reorder_status.png" class="w-[40px] h-[40px]" alt="Reorder Items" />
-                                <div class="ml-4 flex flex-col">
-                                    <span class="text-sm font-bold text-blue-600">{{ reorderItemsCount }}</span>
-                                    <span class="ml-2 text-xs text-blue-600">Reorder Items</span>
+                        <div class="space-y-3">
+                            <!-- In Stock Card -->
+                            <div
+                                class="flex items-center rounded-lg bg-gradient-to-r from-green-50 to-green-100 p-3 shadow-md border border-green-200">
+                                <div class="flex-shrink-0">
+                                    <img src="/assets/images/in_stock.png" class="w-8 h-8 drop-shadow-sm"
+                                        alt="In Stock" />
+                                </div>
+                                <div class="ml-3 flex flex-col flex-1">
+                                    <span class="text-lg font-bold text-green-700">{{ inStockCount }}</span>
+                                    <span class="text-xs font-medium text-green-600">In Stock</span>
                                 </div>
                             </div>
-                            <div class="flex items-center rounded-xl bg-orange-50 p-1 shadow">
-                                <img src="/assets/images/low_stock.png" class="w-[40px] h-[40px]" alt="Low Stock" />
-                                <div class="ml-4 flex flex-col">
-                                    <span class="text-sm font-bold text-orange-600">{{ lowStockCount }}</span>
-                                    <span class="ml-2 text-xs text-orange-600">Low Stock</span>
+
+                            <!-- Low Stock Card -->
+                            <div
+                                class="flex items-center rounded-lg bg-gradient-to-r from-orange-50 to-orange-100 p-3 shadow-md border border-orange-200">
+                                <div class="flex-shrink-0">
+                                    <img src="/assets/images/low_stock.png" class="w-8 h-8" alt="Low Stock" />
+                                </div>
+                                <div class="ml-3 flex flex-col flex-1">
+                                    <span class="text-lg font-bold text-orange-700">{{ lowStockCount }}</span>
+                                    <span class="text-xs font-medium text-orange-600">Low Stock</span>
                                 </div>
                             </div>
-                            <div class="flex items-center rounded-xl bg-red-50 p-1 shadow">
-                                <img src="/assets/images/out_stock.png" class="w-[40px] h-[40px]" alt="Out of Stock" />
-                                <div class="ml-4 flex flex-col">
-                                    <span class="text-sm font-bold text-red-600">{{ outOfStockCount }}</span>
-                                    <span class="ml-2 text-xs text-red-600">Out of Stock</span>
+
+                            <!-- Reorder Items Card -->
+                            <div
+                                class="flex items-center rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 p-3 shadow-md border border-blue-200">
+                                <div class="flex-shrink-0">
+                                    <img src="/assets/images/reorder_status.png" class="w-8 h-8 drop-shadow-sm"
+                                        alt="Reorder Items" />
+                                </div>
+                                <div class="ml-3 flex flex-col flex-1">
+                                    <span class="text-lg font-bold text-blue-700">{{ reorderLevelCount }}</span>
+                                    <span class="text-xs font-medium text-blue-600">Low Stock + Reorder Level</span>
+                                </div>
+                            </div>
+
+                            <!-- Out of Stock Card -->
+                            <div
+                                class="flex items-center rounded-lg bg-gradient-to-r from-red-50 to-red-100 p-3 shadow-md border border-red-200">
+                                <div class="flex-shrink-0">
+                                    <img src="/assets/images/out_stock.png" class="w-8 h-8 drop-shadow-sm"
+                                        alt="Out of Stock" />
+                                </div>
+                                <div class="ml-3 flex flex-col flex-1">
+                                    <span class="text-lg font-bold text-red-700">{{ outOfStockCount }}</span>
+                                    <span class="text-xs font-medium text-red-600">Out of Stock</span>
                                 </div>
                             </div>
                         </div>
@@ -675,69 +1158,37 @@ const hasActiveFilters = computed(() => {
         </div>
 
         <!-- Modals: Add Inventory, Upload Progress, Icon Legend -->
-        <!-- Add Inventory Modal -->
-        <Modal :show="showAddModal" @close="showAddModal = false">
-            <div class="p-8 rounded-xl shadow-xl bg-white">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Add New Inventory Item</h2>
-                <form @submit.prevent="submitForm">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Product</label>
-                            <Multiselect v-model="form.product" :options="props.products" :searchable="true" :close-on-select="true" :show-labels="false" placeholder="Select a product" track-by="id" label="name" class="multiselect--with-icon w-full" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                            <input v-model="form.quantity" type="number" min="0" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
-                            <input v-model="form.batch_number" type="text" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Manufacturing Date</label>
-                            <input v-model="form.manufacturing_date" type="date" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                            <textarea v-model="form.notes" rows="3" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                        </div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <SecondaryButton @click="showAddModal = false">Cancel</SecondaryButton>
-                        <button type="submit" :disabled="isSubmitting" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">{{ isSubmitting ? 'Adding...' : 'Add Item' }}</button>
-                    </div>
-                </form>
-            </div>
-        </Modal>
+
         <!-- Excel Upload Modal -->
-        <div
-            v-if="showUploadModal"
+        <div v-if="showUploadModal"
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            @click="closeUploadModal"
-        >
+            @click="closeUploadModal">
             <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Upload Inventory</h3>
                         <p class="text-sm text-gray-500 mt-1">Import inventory items from Excel file</p>
                     </div>
-                    <button
-                        @click="closeUploadModal"
-                        class="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                    >
+                    <button @click="closeUploadModal"
+                        class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12">
+                            </path>
                         </svg>
                     </button>
                 </div>
 
                 <div class="p-6">
                     <!-- Download Template Section -->
-                    <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <div
+                        class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                         <div class="flex items-start">
                             <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                             </div>
                             <div class="ml-3">
@@ -745,12 +1196,12 @@ const hasActiveFilters = computed(() => {
                                 <p class="text-sm text-green-700 mt-1">
                                     Download our template to see the correct format for uploading inventory items.
                                 </p>
-                                <button
-                                    @click="downloadTemplate"
-                                    class="mt-3 inline-flex items-center px-3 py-2 bg-green-600 border border-transparent rounded-md font-medium text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                >
+                                <button @click="downloadTemplate"
+                                    class="mt-3 inline-flex items-center px-3 py-2 bg-green-600 border border-transparent rounded-md font-medium text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
                                     </svg>
                                     Download Template
                                 </button>
@@ -761,35 +1212,56 @@ const hasActiveFilters = computed(() => {
                     <div class="mb-6">
                         <h4 class="text-sm font-medium text-gray-900 mb-3">Required Columns</h4>
                         <div class="bg-gray-50 rounded-lg p-4">
-                            <table class="w-full">
-                                <thead>
-                                    <tr>
-                                        <th class="text-left">Item</th>
-                                        <th class="text-left">Category</th>
-                                        <th class="text-left">UoM</th>
-                                        <th class="text-left">Quantity</th>
-                                        <th class="text-left">Batch No</th>
-                                        <th class="text-left">Expiry Date</th>
-                                    </tr>
-                                </thead>
-                            </table>
+                            <ul class="space-y-2 text-sm text-gray-600">
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Item</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Category</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">UoM</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Quantity</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Batch No</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Expiry Date</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                                    <span class="font-medium">Location</span>
+                                    <span class="text-gray-400 ml-2">(required)</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
 
                     <div class="mb-6">
-                        <div
-                            class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
-                            @click="triggerFileInput"
-                        >
-                            <input
-                                type="file"
-                                ref="fileInput"
-                                class="hidden"
-                                @change="handleFileUpload"
-                                accept=".xlsx,.xls,.csv"
-                            />
-                            <svg class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
+                            @click="triggerFileInput">
+                            <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload"
+                                accept=".xlsx,.xls,.csv" />
+                            <svg class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                </path>
                             </svg>
                             <p class="text-lg font-medium text-gray-900 mb-2">
                                 {{ selectedFile ? 'File Selected' : 'Choose File' }}
@@ -802,25 +1274,26 @@ const hasActiveFilters = computed(() => {
                             </p>
                         </div>
 
-                        <div
-                            v-if="selectedFile"
-                            class="mt-4 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200"
-                        >
+                        <div v-if="selectedFile"
+                            class="mt-4 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <div class="flex items-center">
-                                <svg class="h-5 w-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                <svg class="h-5 w-5 text-blue-500 mr-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                                 <div>
                                     <p class="text-sm font-medium text-blue-900">{{ selectedFile.name }}</p>
-                                    <p class="text-xs text-blue-700">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</p>
+                                    <p class="text-xs text-blue-700">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }}
+                                        MB</p>
                                 </div>
                             </div>
-                            <button
-                                @click.stop="removeSelectedFile"
-                                class="text-red-500 hover:text-red-700 transition-colors duration-200"
-                            >
+                            <button @click.stop="removeSelectedFile"
+                                class="text-red-500 hover:text-red-700 transition-colors duration-200">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                             </button>
                         </div>
@@ -830,7 +1303,8 @@ const hasActiveFilters = computed(() => {
                     <div v-if="isUploading" class="mb-6">
                         <h4 class="text-sm font-medium text-gray-900 mb-3">Upload Progress</h4>
                         <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: uploadProgress + '%' }"></div>
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                :style="{ width: uploadProgress + '%' }"></div>
                         </div>
                         <p class="text-sm text-gray-600 mt-2">{{ uploadProgress }}% complete</p>
                     </div>
@@ -843,30 +1317,34 @@ const hasActiveFilters = computed(() => {
                             <div v-if="uploadResults.import_id" class="mt-2 text-xs text-gray-600">
                                 <p>Import ID: {{ uploadResults.import_id }}</p>
                                 <p v-if="uploadResults.status">Status: {{ uploadResults.status }}</p>
-                                <p v-if="uploadResults.completed_at">Completed at: {{ formatDate(uploadResults.completed_at) }}</p>
+                                <p v-if="uploadResults.completed_at">Completed at: {{
+                                    formatDate(uploadResults.completed_at) }}
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-                    <button
-                        @click="closeUploadModal"
-                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-                    >
+                    <button @click="closeUploadModal"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200">
                         Cancel
                     </button>
-                    <button
-                        @click="uploadFile"
+                    <button @click="uploadFile"
                         class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 border border-transparent rounded-lg font-medium text-sm text-white hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200"
-                        :disabled="!selectedFile || isUploading"
-                    >
-                        <svg v-if="isUploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        :disabled="!selectedFile || isUploading">
+                        <svg v-if="isUploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none"
+                            viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                         <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
                         </svg>
                         {{ isUploading ? 'Uploading...' : 'Upload File' }}
                     </button>
@@ -875,57 +1353,94 @@ const hasActiveFilters = computed(() => {
         </div>
         <!-- Slideover for Icon Legend -->
         <transition name="slide">
-          <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
-            <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
-            <div class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto rounded-l-xl">
-              <button @click="showLegend = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-              <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
-              <ul class="space-y-5">
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/in_stock.png" class="w-10 h-10" alt="In Stock" />
-                  <div>
-                    <div class="font-semibold text-green-700">In Stock</div>
-                    <div class="text-xs text-gray-500">Indicates items that are sufficiently stocked.</div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/low_stock.png" class="w-10 h-10" alt="Low Stock" />
-                  <div>
-                    <div class="font-semibold text-orange-600">Low Stock</div>
-                    <div class="text-xs text-gray-500">Indicates items that are below the reorder level.</div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/out_stock.png" class="w-10 h-10" alt="Out of Stock" />
-                  <div>
-                    <div class="font-semibold text-red-600">Out of Stock</div>
-                    <div class="text-xs text-gray-500">Indicates items that are completely out of stock.</div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Reorder Status" />
-                  <div>
-                    <div class="font-semibold text-blue-600">Reorder Status</div>
-                    <div class="text-xs text-gray-500">Indicates that a reorder is recommended for this item.</div>
-                  </div>
-                </li>
-              </ul>
+            <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
+                <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
+                <div
+                    class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto rounded-l-xl">
+                    <button @click="showLegend = false"
+                        class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
+                    <ul class="space-y-5">
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/in_stock.png" class="w-10 h-10" alt="In Stock" />
+                            <div>
+                                <div class="font-semibold text-green-700">In Stock</div>
+                                <div class="text-xs text-gray-500">Indicates items that are sufficiently stocked.</div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/low_stock.png" class="w-10 h-10" alt="Low Stock" />
+                            <div>
+                                <div class="font-semibold text-orange-600">Low Stock</div>
+                                <div class="text-xs text-gray-500">Indicates items that are below the reorder level.
+                                </div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/out_stock.png" class="w-10 h-10" alt="Out of Stock" />
+                            <div>
+                                <div class="font-semibold text-red-600">Out of Stock</div>
+                                <div class="text-xs text-gray-500">Indicates items that are completely out of stock.
+                                </div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Reorder Status" />
+                            <div>
+                                <div class="font-semibold text-blue-600">Reorder Status</div>
+                                <div class="text-xs text-gray-500">Indicates that a reorder is recommended for this
+                                    item.</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
             </div>
-          </div>
         </transition>
+
+
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-.slide-enter-active, .slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.slide-enter-active,
+.slide-leave-active {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.slide-enter-from, .slide-leave-to {
-  transform: translateX(100%);
+
+.slide-enter-from,
+.slide-leave-to {
+    transform: translateX(100%);
 }
-.slide-enter-to, .slide-leave-from {
-  transform: translateX(0);
+
+.slide-enter-to,
+.slide-leave-from {
+    transform: translateX(0);
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.sortable-header:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-icon {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+    opacity: 0.7;
+}
+
+.sort-icon.active {
+    opacity: 1;
+    color: #4F6FCB;
 }
 </style>
