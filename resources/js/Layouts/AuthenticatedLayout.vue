@@ -94,7 +94,7 @@
                                 class="dispence-icon" style="height: 24px" />
                             <img v-else src="/assets/images/dispense-w.png" class="dispence-icon" style="height: 24px" />
                         </div>
-                        <span class="menu-text">Dispence</span>
+                        <span class="menu-text">Dispense</span>
                     </div>
                 </Link>
                 <Link :href="route('backorders.index')" class="menu-item"
