@@ -35,7 +35,6 @@ const per_page = ref(props.filters?.per_page || 25);
 
 const isLoading = ref(false);
 const filterTimeout = ref(null);
-const showDebug = ref(false); // Toggle for debug information
 
 // Modal states
 const showLegend = ref(false);
@@ -59,45 +58,37 @@ const applyFilters = () => {
     // Set a new timeout to debounce the filter application
     filterTimeout.value = setTimeout(() => {
         const query = {};
-
+        
         // Only add non-empty filter values to query object
         if (search.value && search.value.trim()) query.search = search.value.trim();
         if (category.value && category.value !== '') query.category = category.value;
         if (dosage.value && dosage.value !== '') query.dosage = dosage.value;
         if (status.value && status.value !== '') query.status = status.value;
 
-    // Always include per_page in query if it exists
-    if (per_page.value) query.per_page = per_page.value;
-    if (props.filters?.page) query.page = props.filters.page;
+        // Always include per_page in query if it exists
+        if (per_page.value) query.per_page = per_page.value;
+        if (props.filters?.page) query.page = props.filters.page;
 
-        console.log('🔍 Applying filters:', query);
-        console.log('📊 Current filter values:', {
-            search: search.value,
-            category: category.value,
-            dosage: dosage.value,
-            status: status.value,
-            per_page: per_page.value,
-            page: props.filters?.page
-        });
-    
-    isLoading.value = true;
 
-    router.get(route("inventories.index"), query, {
-        preserveState: true,
-        preserveScroll: true,
-        only: [
-            "inventories",
-            "products",
-            "inventoryStatusCounts",
-            "category",
-            "dosage",
-        ],
-        onFinish: () => {
-            isLoading.value = false;
-                console.log('✅ Filters applied successfully');
-        },
-        onError: (errors) => {
-            isLoading.value = false;
+
+        isLoading.value = true;
+
+        router.get(route("inventories.index"), query, {
+            preserveState: true,
+            preserveScroll: true,
+            only: [
+                "inventories",
+                "products",
+                "warehouses",
+                "inventoryStatusCounts",
+                "locations",
+                "category",
+            ],
+            onFinish: () => {
+                isLoading.value = false;
+            },
+            onError: (errors) => {
+                isLoading.value = false;
                 console.error('❌ Filter error:', errors);
 
                 // Provide more specific error messages
@@ -121,10 +112,10 @@ const applyFilters = () => {
 // Watch for filter changes with debouncing
 watch(
     [
-        search,
-        category,
-        dosage,
-        status,
+        search, 
+        category, 
+        dosage, 
+        status, 
         per_page
     ],
     (newValues, oldValues) => {
@@ -137,8 +128,8 @@ watch(
                 newValues[3] !== oldValues[3]) { // status
                 props.filters.page = 1;
             }
-        applyFilters();
-    }
+            applyFilters();
+        }
     },
     { deep: true }
 );
@@ -153,13 +144,11 @@ function formatQty(qty) {
     }
 
     if (isNaN(num) || !isFinite(num)) {
-        console.warn(`Invalid quantity value: ${qty}, defaulting to 0`);
         return '0';
     }
 
     // Ensure negative quantities are handled properly
     if (num < 0) {
-        console.warn(`Negative quantity detected: ${num}, treating as 0`);
         return '0';
     }
 
@@ -174,77 +163,10 @@ function formatQty(qty) {
 
 
 
-// Status calculation based on reorder level logic
-const getInventoryStatus = (inventory) => {
-    const totalQuantity = getTotalQuantity(inventory);
-    const reorderLevel = Number(inventory.reorder_level) || 0;
-    
-    // Check if completely out of stock first
-    if (totalQuantity === 0) {
-        return 'out_of_stock';
-    }
-    
-    if (reorderLevel <= 0) {
-        // No reorder level set, default to in stock
-        return 'in_stock';
-    }
-    
-    // Calculate the low stock threshold (reorder level + 30%)
-    const lowStockThreshold = reorderLevel * 1.3;
-    
-    if (totalQuantity > 1 && totalQuantity <= reorderLevel) {
-        // Items at or below reorder level but more than 1 (2 to 9,000 in your example)
-        return 'low_stock_reorder_level';
-    } else if (totalQuantity <= lowStockThreshold) {
-        // Items between reorder level and reorder level + 30% (9,001 to 11,700 in your example)
-        return 'low_stock';
-    } else {
-        // Items above reorder level + 30% (above 11,700 in your example)
-        return 'in_stock';
-    }
-};
-
 // Update hasActiveFilters to remove sorting
 const hasActiveFilters = computed(() => {
     return search.value || category.value || dosage.value ||
         status.value; // Remove sorting checks
-});
-
-// Computed property for total products
-const totalProducts = computed(() => {
-    if (!props.inventories || !props.inventories.meta) return 0;
-    return props.inventories.meta.total || 0;
-});
-
-// Computed properties for inventory status counts - from backend data (not paginated)
-const inStockCount = computed(() => {
-    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
-    const stat = props.inventoryStatusCounts.find(s => s.status === 'in_stock');
-    return stat ? stat.count : 0;
-});
-
-const lowStockCount = computed(() => {
-    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
-    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock');
-    return stat ? stat.count : 0;
-});
-
-const lowStockReorderLevelCount = computed(() => {
-    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
-    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level');
-    return stat ? stat.count : 0;
-});
-
-const outOfStockCount = computed(() => {
-    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
-    const stat = props.inventoryStatusCounts.find(s => s.status === 'out_of_stock');
-    return stat ? stat.count : 0;
-});
-
-const reorderLevelCount = computed(() => {
-    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
-    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level');
-    return stat ? stat.count : 0;
 });
 
 // Update clearFilters to remove sorting reset
@@ -254,18 +176,18 @@ const clearFilters = () => {
     category.value = "";
     dosage.value = "";
     status.value = "";
-
+    
     // Reset pagination
     if (props.filters) {
         props.filters.page = 1;
     }
     per_page.value = 25; // Reset per_page to default
-
+    
     // Apply filters immediately without debouncing
     const query = { per_page: per_page.value, page: 1 };
-
+    
     isLoading.value = true;
-
+    
     router.get(route("inventories.index"), query, {
         preserveState: true,
         preserveScroll: true,
@@ -278,7 +200,6 @@ const clearFilters = () => {
         ],
         onFinish: () => {
             isLoading.value = false;
-            console.log('✅ Filters cleared successfully');
         },
         onError: (errors) => {
             isLoading.value = false;
@@ -286,7 +207,7 @@ const clearFilters = () => {
             toast.error('Failed to clear filters - please try again');
         }
     });
-
+    
     toast.success("Filters cleared!");
 };
 
@@ -377,27 +298,27 @@ const uploadFile = async () => {
             },
         }
     )
-    .then(response => {
-        isUploading.value = false;
-        uploadResults.value = response.data;
-        toast.dismiss(loadingToast);
-        toast.success(response.data.message || "File uploaded successfully!");
-        
-        // Refresh inventory data
-        applyFilters();
-    })
-    .catch(error => {
-        isUploading.value = false;
-        console.error('Upload error:', error);
-        closeUploadModal();
-        toast.dismiss(loadingToast);
-        toast.error(error.response?.data?.message || "Failed to upload file");
-    });
+        .then(response => {
+            isUploading.value = false;
+            uploadResults.value = response.data;
+            toast.dismiss(loadingToast);
+            toast.success(response.data.message || "File uploaded successfully!");
+
+            // Refresh inventory data
+            applyFilters();
+        })
+        .catch(error => {
+            isUploading.value = false;
+            console.error('Upload error:', error);
+            closeUploadModal();
+            toast.dismiss(loadingToast);
+            toast.error(error.response?.data?.message || "Failed to upload file");
+        });
 };
 
 // Download template function
 const downloadTemplate = () => {
-    // Create a CSV format that Excel can open properly
+        // Create a CSV format that Excel can open properly
         const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
 
     // Create CSV content with headers
@@ -407,19 +328,19 @@ const downloadTemplate = () => {
     const blob = new Blob([csvContent], {
         type: 'text/csv;charset=utf-8;'
     });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
 
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'inventory_import_template.csv');
-        link.style.visibility = 'hidden';
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'inventory_import_template.csv');
+    link.style.visibility = 'hidden';
 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     // Clean up the URL object
-        URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
 
     toast.success('Template downloaded successfully! Open with Excel to use.');
 };
@@ -491,19 +412,49 @@ function getTotalQuantity(inventory) {
     return total;
 }
 
+// Status calculation based on reorder level logic
+const getInventoryStatus = (inventory) => {
+    const totalQuantity = getTotalQuantity(inventory);
+    const reorderLevel = Number(inventory.reorder_level) || 0;
+    
+    // Check if completely out of stock first
+    if (totalQuantity === 0) {
+        return 'out_of_stock';
+    }
+    
+    if (reorderLevel <= 0) {
+        // No reorder level set, default to in stock
+        return 'in_stock';
+    }
+    
+    // Calculate the low stock threshold (reorder level + 30%)
+    const lowStockThreshold = reorderLevel * 1.3;
+    
+    if (totalQuantity > 1 && totalQuantity <= reorderLevel) {
+        // Items at or below reorder level but more than 1 (2 to 9,000 in your example)
+        return 'low_stock_reorder_level';
+    } else if (totalQuantity <= lowStockThreshold) {
+        // Items between reorder level and reorder level + 30% (9,001 to 11,700 in your example)
+        return 'low_stock';
+    } else {
+        // Items above reorder level + 30% (above 11,700 in your example)
+        return 'in_stock';
+    }
+};
+
 // Low stock calculation using existing AMC and reorder_level data
 const isLowStock = (inventory) => {
     const totalQuantity = getTotalQuantity(inventory);
     const reorderLevel = Number(inventory.reorder_level) || 0;
     const amc = Number(inventory.amc) || 0;
-
+    
     // If no reorder level is set, use AMC-based calculation
     if (reorderLevel <= 0) {
         if (amc <= 0) return false;
         // Low stock if quantity is less than 2 months of AMC
         return totalQuantity <= (amc * 2);
     }
-
+    
     // Use reorder level: low stock if quantity is between reorder level and reorder level + 30%
     return totalQuantity > reorderLevel && totalQuantity <= (reorderLevel * 1.3);
 };
@@ -519,27 +470,83 @@ const isOutOfStock = (inventory) => {
     return totalQuantity === 0;
 };
 
-// Needs reorder: use existing AMC and reorder_level data
+// Needs reorder: use new status logic
 function needsReorder(inventory) {
-    const totalQuantity = getTotalQuantity(inventory);
-    const reorderLevel = Number(inventory.reorder_level) || 0;
-    const amc = Number(inventory.amc) || 0;
-
-    // If reorder level is set, check if quantity is at or below it
-    if (reorderLevel > 0) {
-        return totalQuantity <= reorderLevel;
-    }
-
-    // If no reorder level but AMC exists, check if quantity is below 2 months of AMC
-    if (amc > 0) {
-        return totalQuantity <= (amc * 2);
-    }
-
-    // Fallback to backend status
-    return inventory.status === 'reorder_level' || inventory.status === 'low_stock';
+    const status = getInventoryStatus(inventory);
+    return status === 'low_stock_reorder_level' || status === 'low_stock' || status === 'out_of_stock';
 }
 
 
+
+// Computed properties for inventory status counts - from backend data (not paginated)
+const inStockCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'in_stock');
+    return stat ? stat.count : 0;
+});
+
+const lowStockCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock');
+    return stat ? stat.count : 0;
+});
+
+const lowStockReorderLevelCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level');
+    return stat ? stat.count : 0;
+});
+
+
+
+
+
+
+
+const outOfStockCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const stat = props.inventoryStatusCounts.find(s => s.status === 'out_of_stock');
+    return stat ? stat.count : 0;
+});
+
+// Combined count for debugging - shows both old and new status names
+const combinedReorderLevelCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    const reorderLevel = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level')?.count || 0;
+    const lowStockReorderLevel = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level')?.count || 0;
+    return reorderLevel + lowStockReorderLevel;
+});
+
+// Calculate counts directly from inventory data for accuracy
+const calculatedInStockCount = computed(() => {
+    if (!props.inventories?.data || !Array.isArray(props.inventories.data)) return 0;
+    return props.inventories.data.filter(inventory => getInventoryStatus(inventory) === 'in_stock').length;
+});
+
+const calculatedLowStockCount = computed(() => {
+    if (!props.inventories?.data || !Array.isArray(props.inventories.data)) return 0;
+    return props.inventories.data.filter(inventory => getInventoryStatus(inventory) === 'low_stock').length;
+});
+
+const calculatedReorderLevelCount = computed(() => {
+    if (!props.inventories?.data || !Array.isArray(props.inventories.data)) return 0;
+    return props.inventories.data.filter(inventory => getInventoryStatus(inventory) === 'low_stock_reorder_level').length;
+});
+
+const calculatedOutOfStockCount = computed(() => {
+    if (!props.inventories?.data || !Array.isArray(props.inventories.data)) return 0;
+    return props.inventories.data.filter(inventory => getInventoryStatus(inventory) === 'out_of_stock').length;
+});
+
+// Total count of all items that need reordering - from backend data
+const totalNeedsReorderCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    // Sum of low_stock, low_stock_reorder_level, and out_of_stock
+    const lowStockCount = props.inventoryStatusCounts.find(s => s.status === 'low_stock')?.count || 0;
+    const lowStockReorderLevelCount = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level')?.count || 0;
+    const outOfStockCount = props.inventoryStatusCounts.find(s => s.status === 'out_of_stock')?.count || 0;
+    return lowStockCount + lowStockReorderLevelCount + outOfStockCount;
+});
 
 function getResults(page = 1) {
     if (props.filters) {
@@ -588,20 +595,12 @@ onUnmounted(() => {
                     </button>
 
 
-                    <Link :href="route('facilities.index')"
-                        class="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-lg font-semibold text-xs text-blue-700 uppercase tracking-widest hover:bg-blue-200 focus:bg-blue-200 active:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    Facilities List
-                    </Link>
+
                 </div>
             </div>
             <!-- Filters Card -->
             <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200">
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-4 items-end">
                     <div class="col-span-1 md:col-span-2 min-w-0">
                         <input v-model="search" type="text"
                             class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
@@ -615,19 +614,14 @@ onUnmounted(() => {
                     </div>
 
                     <div class="col-span-1 min-w-0">
-                        <Multiselect v-model="dosage" :options="props.dosage || []" :searchable="true"
-                            :close-on-select="true" :show-labels="false" placeholder="Select a dosage"
-                            :allow-empty="true" class="multiselect--with-icon w-full" />
-                    </div>
-
-                    <div class="col-span-1 min-w-0">
                         <select v-model="status"
+                            @change="applyFilters"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="">All Statuses</option>
-                            <option value="in_stock">In Stock</option>
-                            <option value="low_stock">Low Stock</option>
-                            <option value="low_stock_reorder_level">Low Stock + Reorder Level</option>
-                            <option value="out_of_stock">Out of Stock</option>
+                            <option value="">All Statuses ({{ props.inventories?.data?.length || 0 }})</option>
+                            <option value="in_stock">In Stock ({{ inStockCount }})</option>
+                            <option value="low_stock">Low Stock ({{ lowStockCount }})</option>
+                            <option value="low_stock_reorder_level">Low Stock + Reorder Level ({{ lowStockReorderLevelCount }})</option>
+                            <option value="out_of_stock">Out of Stock ({{ outOfStockCount }})</option>
                         </select>
                     </div>
                 </div>
@@ -648,11 +642,6 @@ onUnmounted(() => {
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                         Category: {{ category }}
                         <button @click="category = ''" class="ml-1 text-yellow-600 hover:text-yellow-800">×</button>
-                    </span>
-                    <span v-if="dosage"
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Dosage: {{ dosage }}
-                        <button @click="dosage = ''" class="ml-1 text-green-600 hover:text-green-800">×</button>
                     </span>
                     <span v-if="status"
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -679,45 +668,32 @@ onUnmounted(() => {
                     <div class="flex items-center gap-2 text-sm text-gray-600">
                         <div v-if="isLoading" class="flex items-center gap-2">
                             <svg class="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
-                        </svg>
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                             <span>Applying filters...</span>
                         </div>
                         <div v-else-if="hasActiveFilters" class="flex items-center gap-2 text-green-600">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                        </svg>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
                             <span>Filters active</span>
                         </div>
                     </div>
-
+                    
                     <!-- Right side controls -->
                     <div class="flex items-center gap-4">
-                        <select v-model="per_page" @change="() => {
-                            if (props.filters) props.filters.page = 1;
-                            applyFilters();
-                        }"
+                        <select v-model="per_page"
+                            @change="() => { 
+                                if (props.filters) props.filters.page = 1; 
+                                applyFilters(); 
+                            }"
                             class="rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 w-[200px]">
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                        <option value="100">100 per page</option>
-                        <option value="200">200 per page</option>
-                    </select>
-                        <button @click="showDebug = !showDebug"
-                            class="px-2 py-2 bg-gray-100 text-gray-700 rounded-full flex items-center gap-2 hover:bg-gray-200 transition-colors border border-gray-200"
-                            title="Toggle Debug Info">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Debug
-                        </button>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
+                            <option value="200">200 per page</option>
+                        </select>
                         <button @click="showLegend = true"
                             class="px-2 py-2 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2 hover:bg-blue-200 transition-colors border border-blue-200"
                             title="Icon Legend">
@@ -726,46 +702,12 @@ onUnmounted(() => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
                             </svg>
-                    </button>
-                </div>
-                    </div>
-
-                <!-- Debug Information -->
-                <div v-if="showDebug" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Debug Information</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                        <div>
-                            <span class="font-medium text-gray-600">Search:</span>
-                            <span class="ml-2 text-gray-800">{{ search || 'None' }}</span>
-                </div>
-                        <div>
-
-            </div>
-                        <div>
-                            <span class="font-medium text-gray-600">Category:</span>
-                            <span class="ml-2 text-gray-800">{{ category || 'None' }}</span>
-                        </div>
-
-                        <div>
-                            <span class="font-medium text-gray-600">Status:</span>
-                            <span class="ml-2 text-gray-800">{{ status || 'None' }}</span>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-600">Per Page:</span>
-                            <span class="ml-2 text-gray-800">{{ per_page }}</span>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-600">Current Page:</span>
-                            <span class="ml-2 text-gray-800">{{ props.filters?.page || 1 }}</span>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-xs text-gray-500">
-                        <span class="font-medium">Active Filters:</span> {{ hasActiveFilters ? 'Yes' : 'No' }} |
-                        <span class="font-medium">Loading:</span> {{ isLoading ? 'Yes' : 'No' }} |
-                        <span class="font-medium">Timeout:</span> {{ filterTimeout ? 'Active' : 'None' }}
+                        </button>
                     </div>
                 </div>
             </div>
+
+
 
             <!-- Table and Sidebar -->
             <div class="grid grid-cols-1 lg:grid-cols-8 gap-6">
@@ -773,9 +715,9 @@ onUnmounted(() => {
                 <div class="lg:col-span-7">
 
                     <div class="bg-white rounded-xl overflow-hidden">
-                    <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
-                        <thead>
-                            <tr style="background-color: #F4F7FB;">
+                        <table class="w-full overflow-hidden text-sm text-left table-sm rounded-t-lg">
+                            <thead>
+                                <tr style="background-color: #F4F7FB;">
                                     <th class="px-3 py-2 text-xs font-bold rounded-tl-lg w-48"
                                         style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">
                                         <div class="flex items-center justify-between">
@@ -790,10 +732,10 @@ onUnmounted(() => {
                                     <th class="px-3 py-2 text-xs font-bold text-center"
                                         style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" colspan="3">Item
                                         Details</th>
-                                    <th class="px-3 py-2 text-xs font-bold"
+                                    <th class="px-3 py-2 text-xs font-bold text-center"
                                         style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Total QTY
                                         on Hand</th>
-                                    <th class="px-3 py-2 text-xs font-bold"
+                                    <th class="px-3 py-2 text-xs font-bold text-center"
                                         style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Status
                                     </th>
                                     <th class="px-3 py-2 text-xs font-bold"
@@ -802,8 +744,8 @@ onUnmounted(() => {
                                     <th class="px-3 py-2 text-xs font-bold"
                                         style="color: #4F6FCB; border-bottom: 2px solid #B7C6E6;" rowspan="2">Actions
                                     </th>
-                            </tr>
-                            <tr style="background-color: #F4F7FB;">
+                                </tr>
+                                <tr style="background-color: #F4F7FB;">
                                     <th class="px-2 py-2 text-xs font-bold border border-[#B7C6E6] text-center"
                                         style="color: #4F6FCB;">
                                         <div class="flex items-center justify-center gap-1">
@@ -818,13 +760,14 @@ onUnmounted(() => {
                                             <span>Expiry Date</span>
                                         </div>
                                     </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-if="isLoading">
-                                <tr>
-                                    <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
-                                        <div class="flex flex-col items-center justify-center gap-2">
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template v-if="isLoading">
+                                    <tr>
+                                        <td colspan="10" class="text-center py-8 text-gray-500 bg-gray-50">
+                                            <div class="flex flex-col items-center justify-center gap-2">
                                                 <svg class="animate-spin h-10 w-10 text-gray-300"
                                                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                     <circle class="opacity-25" cx="12" cy="12" r="10"
@@ -832,169 +775,172 @@ onUnmounted(() => {
                                                     <path class="opacity-75" fill="currentColor"
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                                     </path>
-                                            </svg>
+                                                </svg>
                                                 <span class="text-sm font-medium text-gray-600">
-                                                    {{ isLoading ? 'Applying filters...' : 'Loading inventory data...'
-                                                    }}
+                                                    {{ isLoading ? 'Applying filters...' : 'Loading inventory data...' }}
                                                 </span>
                                                 <span class="text-xs text-gray-400">Please wait...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                                <template
-                                    v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                                                <template v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
                                 <tr>
-                                    <td colspan="9" class="text-center py-8 text-gray-500 bg-gray-50">
-                                        <div class="flex flex-col items-center justify-center gap-2">
+                                    <td colspan="10" class="text-center py-8 text-gray-500 bg-gray-50">
+                                            <div class="flex flex-col items-center justify-center gap-2">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2"
                                                         d="M9 17v-2a4 4 0 118 0v2m-4 4a4 4 0 01-4-4H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2a4 4 0 01-4 4z" />
                                                 </svg>
-                                                <span>{{ !props.inventories ? 'Loading...' : 'No inventory data found.'
-                                                    }}</span>
+                                                <span>{{ !props.inventories ? 'Loading...' : 'No inventory data found.' }}</span>
                                                 <div class="text-xs text-gray-400 mt-2">
                                                     {{ totalProducts > 0 ? `Total products: ${totalProducts}` : 'No products available' }}
                                                 </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                            <template v-else v-for="inventory in props.inventories.data" :key="inventory.id">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template v-else v-for="inventory in props.inventories.data" :key="inventory.id">
                                     <!-- Show all products, but handle 0-quantity items differently -->
                                     <template v-if="inventory.items && inventory.items.length > 0">
-                                        <!-- Show items with quantity > 0 -->
-                                        <tr v-for="(item, itemIndex) in inventory.items.filter(item => (item.quantity || 0) > 0)"
+                                        <!-- Show all items including 0 quantity -->
+                                        <tr v-for="(item, itemIndex) in inventory.items"
                                             :key="`${inventory.id}-${item.id}`"
                                             class="hover:bg-gray-50 transition-colors duration-150 border-b items-center"
                                             style="border-bottom: 1px solid #B7C6E6;">
                                             <!-- Item Name - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs font-medium text-gray-800 align-middle items-center">
-                                                {{ inventory.product?.name || inventory.name }}</td>
+                                                {{ inventory.name }}</td>
 
                                             <!-- Category - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
-                                                    inventory.product?.category?.name || inventory.category?.name }}</td>
+                                                    inventory.category?.name }}</td>
 
                                             <!-- UoM - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
-                                                    inventory.items[0].uom }}</td>
+                                                inventory.items[0]?.uom || 'No UoM' }}</td>
 
                                             <!-- QTY -->
                                             <td
-                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle"
+                                                :class="(item.quantity || 0) > 0 ? 'text-gray-900' : 'text-gray-400'">
                                                 {{ formatQty(item.quantity || 0) }}</td>
 
                                             <!-- Batch Number -->
                                             <td
-                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
-                                                {{ item.batch_number }}</td>
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle"
+                                                :class="(item.quantity || 0) > 0 ? 'text-gray-900' : 'text-gray-400'">
+                                                {{ item.batch_number || 'No Batch' }}</td>
 
                                             <!-- Expiry Date -->
                                             <td
-                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-900">
-                                                {{ formatDate(item.expiry_date) }}</td>
+                                                class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle"
+                                                :class="(item.quantity || 0) > 0 ? 'text-gray-900' : 'text-gray-400'">
+                                                {{ formatDate(item.expiry_date) || 'No Expiry' }}</td>
 
 
 
                                             <!-- Total QTY on Hand - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex items-center justify-center">
                                                     <span class="font-medium text-lg">{{
                                                         formatQty(getTotalQuantity(inventory)) }}</span>
-                                            </div>
+                                                </div>
                                             </td>
 
                                             <!-- Status - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-800 text-center align-middle">
-                                                <div class="flex flex-col items-center justify-center space-y-2 w-full">
-                                                    <!-- First Row: Icons in specific order from left to right -->
-                                                    <div
-                                                        class="flex items-center justify-center space-x-2 w-full justify-center">
-                                                        <!-- Low Stock Icon (Left) -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'low_stock'"
-                                                            class="flex items-center justify-center" title="Low Stock">
-                                                            <img src="/assets/images/low_stock.png" alt="Low Stock"
-                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                <div class="flex items-center justify-center space-x-2 w-full">
+                                                    <!-- Main status icon -->
+                                                    <div v-if="getInventoryStatus(inventory) === 'in_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="In Stock - No reorder needed">
+                                                        <img src="/assets/images/in_stock.png" 
+                                                             alt="In Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'low_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="Low Stock - Reorder recommended">
+                                                        <img src="/assets/images/low_stock.png" 
+                                                             alt="Low Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
+                                                        class="flex items-center justify-center"
+                                                        title="Low Stock + Reorder Level - Immediate reorder needed">
+                                                        <img src="/assets/images/low_stock.png"
+                                                             alt="Low Stock + Reorder Level" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'out_of_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="Out of Stock - Immediate reorder needed">
+                                                        <img src="/assets/images/out_stock_alert.png" 
+                                                             alt="Out of Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else
+                                                        class="flex items-center justify-center"
+                                                        title="Status Unknown">
+                                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                                            <span class="text-xs text-gray-500">?</span>
                                                         </div>
-                                                        <div v-else-if="getInventoryStatus(inventory) === 'in_stock'"
-                                                            class="flex items-center justify-center" title="In Stock">
-                                                            <img src="/assets/images/in_stock.png" alt="In Stock"
-                                                                class="w-8 h-8 drop-shadow-sm" />
-                                                        </div>
-                                                        <div v-else class="w-8 h-8"></div>
-
-                                                        <!-- Reorder Level Icon (Middle) -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
-                                                            class="flex items-center justify-center"
-                                                            title="Low Stock + Reorder Level">
-                                                            <img src="/assets/images/reorder_status.png"
-                                                                alt="Reorder Level" class="w-8 h-8 drop-shadow-sm"
-                                                                title="Low Stock + Reorder Level" />
-                                                        </div>
-                                                        <div v-else class="w-8 h-8"></div>
-
-                                                        <!-- Out of Stock Icon (Right) -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'out_of_stock'"
-                                                            class="flex items-center justify-center"
-                                                            title="Out of Stock">
-                                                            <img src="/assets/images/out_stock_alert.png"
-                                                                alt="Out of Stock" class="w-8 h-8 drop-shadow-sm" />
-                                                        </div>
-                                                        <div v-else class="w-8 h-8"></div>
+                                                    </div>
+                                                    
+                                                    <!-- Reorder Level Icon (shows for all items that need reordering) -->
+                                                    <div v-if="needsReorder(inventory)"
+                                                        class="flex items-center justify-center"
+                                                        title="Reorder Action Required">
+                                                        <img src="/assets/images/reorder_level.png"
+                                                             alt="Reorder Required" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
                                                     </div>
                                                 </div>
                                             </td>
 
                                             <!-- Reorder Level - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex flex-col items-center space-y-1">
-                                                    <div class="font-medium">Reorder: {{
-                                                        formatQty(inventory.reorder_level || 0) }}</div>
-                                                    <div class="text-gray-600">AMC: {{ formatQty(inventory.amc || 0) }}
-                                                    </div>
+                                                    <div class="font-medium">{{ formatQty(inventory.reorder_level || 0) }}</div>
                                                 </div>
                                             </td>
 
                                             <!-- Actions - only on first row for this inventory -->
                                             <td v-if="itemIndex === 0"
-                                                :rowspan="inventory.items.filter(item => (item.quantity || 0) > 0).length"
+                                                :rowspan="inventory.items.length"
                                                 class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex flex-col items-center justify-center space-y-2">
-                                                    <!-- Reorder Button for Out of Stock Items -->
-                                                    <div v-if="getInventoryStatus(inventory) === 'out_of_stock'"
+                                                    <!-- Reorder Button for Low Stock, Reorder Level, and Out of Stock Items -->
+                                                    <div v-if="needsReorder(inventory)"
                                                         class="flex flex-col items-center">
                                                         <button
                                                             class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hover:bg-blue-200 transition-colors"
-                                                            title="Reorder - Out of Stock">
-                                                            <svg class="w-4 h-4 text-blue-600" fill="none"
-                                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                                                </path>
-                                                </svg>
+                                                            title="Reorder - {{ getInventoryStatus(inventory) === 'low_stock' ? 'Low Stock' : getInventoryStatus(inventory) === 'low_stock_reorder_level' ? 'Low Stock + Reorder Level' : 'Out of Stock' }}">
+                                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                            </svg>
                                                         </button>
                                                     </div>
-
+                                                    
                                                     <!-- Future actions can be added here -->
-                                        </div>
-                                    </td>
-                                </tr>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     </template>
 
                                     <!-- Show products with only 0-quantity items as a single row -->
@@ -1004,11 +950,11 @@ onUnmounted(() => {
                                             <!-- Item Name -->
                                             <td
                                                 class="px-3 py-2 text-xs font-medium text-gray-800 align-middle items-center">
-                                                {{ inventory.product?.name || inventory.name }}</td>
+                                                {{ inventory.name }}</td>
 
                                             <!-- Category -->
                                             <td class="px-3 py-2 text-xs text-gray-700 align-middle items-center">{{
-                                                inventory.product?.category?.name || inventory.category?.name }}</td>
+                                                inventory.category?.name }}</td>
 
                                             <!-- UoM -->
                                             <td class="px-3 py-2 text-xs text-gray-700 align-middle items-center">
@@ -1033,6 +979,8 @@ onUnmounted(() => {
                                                 <span class="text-gray-400">No Expiry</span>
                                             </td>
 
+
+
                                             <!-- Total QTY on Hand -->
                                             <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex items-center justify-center">
@@ -1043,45 +991,51 @@ onUnmounted(() => {
 
                                             <!-- Status -->
                                             <td class="px-2 py-1 text-xs text-gray-800 text-center align-middle">
-                                                <div class="flex flex-col items-center justify-center space-y-2 w-full">
-                                                    <!-- First Row: Icons in specific order from left to right -->
-                                                    <div
-                                                        class="flex items-center justify-center space-x-2 w-full justify-center">
-                                                        <!-- Low Stock Icon (Left) - Not applicable for 0-quantity items -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'low_stock'"
-                                                            class="flex items-center justify-center" title="Low Stock">
-                                                            <img src="/assets/images/low_stock.png" alt="Low Stock"
-                                                                class="w-8 h-8 drop-shadow-sm" />
+                                                <div class="flex items-center justify-center space-x-2 w-full">
+                                                    <!-- Main status icon -->
+                                                    <div v-if="getInventoryStatus(inventory) === 'in_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="In Stock - No reorder needed">
+                                                        <img src="/assets/images/in_stock.png" 
+                                                             alt="In Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'low_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="Low Stock - Reorder recommended">
+                                                        <img src="/assets/images/low_stock.png" 
+                                                             alt="Low Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
+                                                        class="flex items-center justify-center"
+                                                        title="Low Stock + Reorder Level - Immediate reorder needed">
+                                                        <img src="/assets/images/low_stock.png"
+                                                             alt="Low Stock + Reorder Level" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else-if="getInventoryStatus(inventory) === 'out_of_stock'"
+                                                        class="flex items-center justify-center"
+                                                        title="Out of Stock - Immediate reorder needed">
+                                                        <img src="/assets/images/out_stock_alert.png" 
+                                                             alt="Out of Stock" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
+                                                    </div>
+                                                    <div v-else
+                                                        class="flex items-center justify-center"
+                                                        title="Status Unknown">
+                                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                                            <span class="text-xs text-gray-500">?</span>
                                                         </div>
-                                                        <div v-else-if="getInventoryStatus(inventory) === 'in_stock'"
-                                                            class="flex items-center justify-center" title="In Stock">
-                                                            <img src="/assets/images/in_stock.png" alt="In Stock"
-                                                                class="w-8 h-8 drop-shadow-sm" />
-                                                        </div>
-                                                        <div v-else class="w-8 h-8"></div>
-
-                                                        <!-- Reorder Level Icon (Middle) -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
-                                                            class="flex items-center justify-center"
-                                                            title="Low Stock + Reorder Level">
-                                                            <img src="/assets/images/reorder_status.png"
-                                                                alt="Reorder Level" class="w-8 h-8 drop-shadow-sm"
-                                                                title="Low Stock + Reorder Level" />
-                                                        </div>
-                                                        <div v-else class="w-8 h-8"></div>
-
-                                                        <!-- Out of Stock Icon (Right) -->
-                                                        <div v-if="getInventoryStatus(inventory) === 'out_of_stock'"
-                                                            class="flex items-center justify-center"
-                                                            title="Out of Stock">
-                                                            <img src="/assets/images/out_stock_alert.png"
-                                                                alt="Out of Stock" class="w-8 h-8 drop-shadow-sm" />
-                                                        </div>
-                                                        <div v-else class="flex items-center justify-center"
-                                                            title="No Items">
-                                                            <img src="/assets/images/out_stock_alert.png" alt="No Items"
-                                                                class="w-8 h-8 drop-shadow-sm opacity-50" />
-                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Reorder Level Icon (shows for all items that need reordering) -->
+                                                    <div v-if="needsReorder(inventory)"
+                                                        class="flex items-center justify-center"
+                                                        title="Reorder Action Required">
+                                                        <img src="/assets/images/reorder_level.png"
+                                                             alt="Reorder Required" 
+                                                             class="w-8 h-8 drop-shadow-sm" />
                                                     </div>
                                                 </div>
                                             </td>
@@ -1089,52 +1043,43 @@ onUnmounted(() => {
                                             <!-- Reorder Level -->
                                             <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex flex-col items-center space-y-1">
-                                                    <div class="font-medium">Reorder: {{
-                                                        formatQty(inventory.reorder_level || 0) }}</div>
-                                                    <div class="text-gray-600">AMC: {{ formatQty(inventory.amc || 0) }}
-                                                    </div>
+                                                    <div class="font-medium">{{ formatQty(inventory.reorder_level || 0) }}</div>
                                                 </div>
                                             </td>
 
                                             <!-- Actions -->
                                             <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
                                                 <div class="flex flex-col items-center justify-center space-y-2">
-                                                    <!-- Reorder Button for Out of Stock Items -->
-                                                    <div v-if="getInventoryStatus(inventory) === 'out_of_stock'"
+                                                    <!-- Reorder Button for Low Stock, Reorder Level, and Out of Stock Items -->
+                                                    <div v-if="needsReorder(inventory)"
                                                         class="flex flex-col items-center">
-                                                        <button
-                                                            class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hover:bg-blue-200 transition-colors"
-                                                            title="Reorder - Out of Stock">
-                                                            <svg class="w-4 h-4 text-blue-600" fill="none"
-                                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2"
-                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                                                </path>
+                                                        <Link
+                                                            :href="route('orders.create')"
+                                                            class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hover:bg-blue-200 transition-colors">
+                                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                                             </svg>
-                                                        </button>
+                                                        </Link>
                                                     </div>
-
+                                                    
                                                     <!-- Future actions can be added here -->
                                                 </div>
                                             </td>
                                         </tr>
                                     </template>
-                            </template>
-                        </tbody>
-                    </table>
+                                </template>
+                            </tbody>
+                        </table>
 
-                    <div class="mt-2 flex justify-between">
+                        <div class="mt-2 flex justify-between">
                             <div class="text-xs text-gray-400">
                                 <span v-if="props.inventories && props.inventories.meta.total > 0">
-                                    Showing {{ props.inventories.meta.from }} to {{ props.inventories.meta.to }} of {{
-                                    props.inventories.meta.total }} products
+                                    Showing {{ props.inventories.meta.from }} to {{ props.inventories.meta.to }} of {{ props.inventories.meta.total }} products
                                 </span>
                                 <span v-else>No products to display</span>
-                        </div>
+                            </div>
 
-                            <TailwindPagination :data="props.inventories" @pagination-change-page="getResults"
-                                :limit="2" />
+                            <TailwindPagination :data="props.inventories" @pagination-change-page="getResults" :limit="2" />
                         </div>
                     </div>
                 </div>
@@ -1153,51 +1098,51 @@ onUnmounted(() => {
                                 <div class="ml-3 flex flex-col flex-1">
                                     <span class="text-lg font-bold text-green-700">{{ inStockCount }}</span>
                                     <span class="text-xs font-medium text-green-600">In Stock</span>
-                            </div>
                                 </div>
+                            </div>
 
                             <!-- Low Stock Card -->
                             <div
                                 class="flex items-center rounded-lg bg-gradient-to-r from-orange-50 to-orange-100 p-3 shadow-md border border-orange-200">
                                 <div class="flex-shrink-0">
                                     <img src="/assets/images/low_stock.png" class="w-8 h-8" alt="Low Stock" />
-                            </div>
+                                </div>
                                 <div class="ml-3 flex flex-col flex-1">
                                     <span class="text-lg font-bold text-orange-700">{{ lowStockCount }}</span>
                                     <span class="text-xs font-medium text-orange-600">Low Stock</span>
                                 </div>
                             </div>
 
-                            <!-- Reorder Items Card -->
+                            <!-- Reorder Level Card -->
                             <div
                                 class="flex items-center rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 p-3 shadow-md border border-blue-200">
                                 <div class="flex-shrink-0">
-                                    <img src="/assets/images/reorder_status.png" class="w-8 h-8 drop-shadow-sm"
-                                        alt="Reorder Items" />
-                        </div>
+                                    <img src="/assets/images/reorder_level.png" class="w-8 h-8 drop-shadow-sm"
+                                        alt="Reorder Level" />
+                                </div>
                                 <div class="ml-3 flex flex-col flex-1">
-                                    <span class="text-lg font-bold text-blue-700">{{ reorderLevelCount }}</span>
+                                    <span class="text-lg font-bold text-blue-700">{{ lowStockReorderLevelCount }}</span>
                                     <span class="text-xs font-medium text-blue-600">Low Stock + Reorder Level</span>
-            </div>
-        </div>
+                                </div>
+                            </div>
 
                             <!-- Out of Stock Card -->
                             <div
                                 class="flex items-center rounded-lg bg-gradient-to-r from-red-50 to-red-100 p-3 shadow-md border border-red-200">
                                 <div class="flex-shrink-0">
-                                    <img src="/assets/images/out_stock.png" class="w-8 h-8 drop-shadow-sm"
+                                    <img src="/assets/images/out_of_stock.png" class="w-8 h-8 drop-shadow-sm"
                                         alt="Out of Stock" />
-                        </div>
+                                </div>
                                 <div class="ml-3 flex flex-col flex-1">
                                     <span class="text-lg font-bold text-red-700">{{ outOfStockCount }}</span>
                                     <span class="text-xs font-medium text-red-600">Out of Stock</span>
-                        </div>
-                        </div>
-                        </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    </div>
+                </div>
             </div>
+        </div>
 
         <!-- Modals: Add Inventory, Upload Progress, Icon Legend -->
 
@@ -1285,11 +1230,7 @@ onUnmounted(() => {
                                     <span class="font-medium">Expiry Date</span>
                                     <span class="text-gray-400 ml-2">(required)</span>
                                 </li>
-                                <li class="flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
-                                    <span class="font-medium">Location</span>
-                                    <span class="text-gray-400 ml-2">(required)</span>
-                                </li>
+
                             </ul>
                         </div>
                     </div>
@@ -1395,8 +1336,8 @@ onUnmounted(() => {
         </div>
         <!-- Slideover for Icon Legend -->
         <transition name="slide">
-          <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
-            <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
+            <div v-if="showLegend" class="fixed inset-0 z-50 flex justify-end">
+                <div class="fixed inset-0 bg-black bg-opacity-30 transition-opacity" @click="showLegend = false"></div>
                 <div
                     class="relative w-full max-w-sm bg-white shadow-xl h-full flex flex-col p-6 overflow-y-auto rounded-l-xl">
                     <button @click="showLegend = false"
@@ -1406,43 +1347,43 @@ onUnmounted(() => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
-              </button>
-              <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
-              <ul class="space-y-5">
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/in_stock.png" class="w-10 h-10" alt="In Stock" />
-                  <div>
-                    <div class="font-semibold text-green-700">In Stock</div>
-                    <div class="text-xs text-gray-500">Indicates items that are sufficiently stocked.</div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/low_stock.png" class="w-10 h-10" alt="Low Stock" />
-                  <div>
-                    <div class="font-semibold text-orange-600">Low Stock</div>
+                    </button>
+                    <h2 class="text-lg font-bold text-blue-700 mb-6 mt-2">Icon Legend</h2>
+                    <ul class="space-y-5">
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/in_stock.png" class="w-10 h-10" alt="In Stock" />
+                            <div>
+                                <div class="font-semibold text-green-700">In Stock</div>
+                                <div class="text-xs text-gray-500">Indicates items that are sufficiently stocked.</div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/low_stock.png" class="w-10 h-10" alt="Low Stock" />
+                            <div>
+                                <div class="font-semibold text-orange-600">Low Stock</div>
                                 <div class="text-xs text-gray-500">Indicates items that are below the reorder level.
                                 </div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/out_stock.png" class="w-10 h-10" alt="Out of Stock" />
-                  <div>
-                    <div class="font-semibold text-red-600">Out of Stock</div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/out_stock.png" class="w-10 h-10" alt="Out of Stock" />
+                            <div>
+                                <div class="font-semibold text-red-600">Out of Stock</div>
                                 <div class="text-xs text-gray-500">Indicates items that are completely out of stock.
                                 </div>
-                  </div>
-                </li>
-                <li class="flex items-center gap-4">
-                  <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Reorder Status" />
-                  <div>
-                    <div class="font-semibold text-blue-600">Reorder Status</div>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-4">
+                            <img src="/assets/images/reorder_status.png" class="w-10 h-10" alt="Reorder Status" />
+                            <div>
+                                <div class="font-semibold text-blue-600">Reorder Status</div>
                                 <div class="text-xs text-gray-500">Indicates that a reorder is recommended for this
                                     item.</div>
-                  </div>
-                </li>
-              </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
             </div>
-          </div>
         </transition>
 
 
@@ -1452,17 +1393,17 @@ onUnmounted(() => {
 <style scoped>
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-enter-from,
 .slide-leave-to {
-  transform: translateX(100%);
+    transform: translateX(100%);
 }
 
 .slide-enter-to,
 .slide-leave-from {
-  transform: translateX(0);
+    transform: translateX(0);
 }
 
 .sortable-header {
