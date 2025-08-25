@@ -178,7 +178,7 @@ class Product extends Model
                 'id' => $this->id,
                 'name' => $this->name,
                 'product' => $this,
-                'items' => [],
+                'items' => collect([]), // Always return a collection
                 'status' => 'out_of_stock',
                 'amc' => 0,
                 'reorder_level' => 0
