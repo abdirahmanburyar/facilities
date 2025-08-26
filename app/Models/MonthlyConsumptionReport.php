@@ -11,7 +11,7 @@ class MonthlyConsumptionReport extends Model
 {
     use HasFactory;
 
-    protected $table = 'facility_monthly_reports';
+    protected $table = 'monthly_consumption_reports';
 
     protected $fillable = [
         'facility_id',

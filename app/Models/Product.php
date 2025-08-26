@@ -211,10 +211,9 @@ class Product extends Model
         try {
             // Check if this product has ANY consumption data for the facility
             $hasAnyConsumption = $this->monthlyConsumptionItems()
-                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
-                ->where('facility_monthly_reports.status', 'approved')
-                ->where('facility_monthly_reports.facility_id', $facilityId)
-                ->where('facility_monthly_report_items.stock_issued', '>', 0)
+                ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
+                ->where('monthly_consumption_reports.facility_id', $facilityId)
+                ->where('monthly_consumption_items.quantity', '>', 0)
                 ->exists();
             
             // If no consumption data exists at all, return 0 (not a static value)
@@ -241,21 +240,20 @@ class Product extends Model
     public function calculateAMC($facilityId = null)
     {
         try {
-            // Get all consumption values for the product from monthly consumption reports
+                        // Get all consumption values for the product from monthly consumption reports
             $query = $this->monthlyConsumptionItems()
-                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
-                ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
-                ->where('facility_monthly_report_items.stock_issued', '>', 0); // Use stock_issued as consumption
+                ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
+                ->where('monthly_consumption_items.quantity', '>', 0); // Use quantity as consumption
             
             // Filter by facility if specified
             if ($facilityId) {
-                $query->where('facility_monthly_reports.facility_id', $facilityId);
+                $query->where('monthly_consumption_reports.facility_id', $facilityId);
             }
             
             $consumptionsWithMonth = $query
-                ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->orderBy('monthly_consumption_reports.month_year', 'desc') // Most recent first
                 ->limit(6) // Limit to last 6 months for performance
-                ->get(['facility_monthly_reports.report_period as month_year', 'facility_monthly_report_items.stock_issued as quantity']);
+                ->get(['monthly_consumption_reports.month_year as month_year', 'monthly_consumption_items.quantity as quantity']);
 
             // If we have less than 3 values, return 0
             if ($consumptionsWithMonth->count() < 3) {
@@ -534,21 +532,20 @@ class Product extends Model
     public function calculateInventoryMetrics($facilityId = null)
     {
         try {
-            // Get all consumption values for the product from monthly consumption reports
+                        // Get all consumption values for the product from monthly consumption reports
             $query = $this->monthlyConsumptionItems()
-                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
-                ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
-                ->where('facility_monthly_report_items.stock_issued', '>', 0); // Use stock_issued as consumption
+                ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
+                ->where('monthly_consumption_items.quantity', '>', 0); // Use quantity as consumption
             
             // Filter by facility if specified
             if ($facilityId) {
-                $query->where('facility_monthly_reports.facility_id', $facilityId);
+                $query->where('monthly_consumption_reports.facility_id', $facilityId);
             }
             
             $consumptionsWithMonth = $query
-                ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->orderBy('monthly_consumption_reports.month_year', 'desc') // Most recent first
                 ->limit(12) // Limit to last 12 months for performance
-                ->get(['facility_monthly_reports.report_period as month_year', 'facility_monthly_report_items.stock_issued as quantity']);
+                ->get(['monthly_consumption_reports.month_year as month_year', 'monthly_consumption_items.quantity as quantity']);
 
             // Debug logging
             \Log::info("Product {$this->id} ({$this->name}) consumption data:", [

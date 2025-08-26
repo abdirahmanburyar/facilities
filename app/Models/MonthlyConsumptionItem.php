@@ -10,7 +10,7 @@ class MonthlyConsumptionItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'facility_monthly_report_items';
+    protected $table = 'monthly_consumption_items';
 
     protected $fillable = [
         'parent_id',
