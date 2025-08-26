@@ -149,8 +149,8 @@ class Product extends Model
     public function monthlyConsumptionItemsForFacility()
     {
         return $this->monthlyConsumptionItems()
-            ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
-            ->where('facility_monthly_reports.facility_id', auth()->user()->facility_id);
+            ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
+            ->where('monthly_consumption_reports.facility_id', auth()->user()->facility_id);
     }
 
     /**
@@ -172,6 +172,70 @@ class Product extends Model
     }
 
     /**
+     * Check if there are any monthly consumption reports available for this product
+     */
+    public function hasConsumptionData($facilityId = null)
+    {
+        try {
+            $query = $this->monthlyConsumptionItems()
+                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
+                ->where('facility_monthly_reports.status', 'approved')
+                ->where('facility_monthly_report_items.stock_issued', '>', 0);
+            
+            if ($facilityId) {
+                $query->where('facility_monthly_reports.facility_id', $facilityId);
+            }
+            
+            $count = $query->count();
+            
+            \Log::info("Product {$this->id} ({$this->name}) consumption data check:", [
+                'facility_id' => $facilityId,
+                'total_consumptions' => $count,
+                'has_sufficient_data' => $count >= 3
+            ]);
+            
+            return $count >= 3;
+            
+        } catch (\Exception $e) {
+            \Log::warning("Error checking consumption data for product {$this->id}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Calculate a fallback reorder level when no consumption data is available
+     * This method provides reasonable defaults based on current inventory
+     */
+    public function calculateFallbackReorderLevel($facilityId = null)
+    {
+        try {
+            // Check if this product has ANY consumption data for the facility
+            $hasAnyConsumption = $this->monthlyConsumptionItems()
+                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
+                ->where('facility_monthly_reports.status', 'approved')
+                ->where('facility_monthly_reports.facility_id', $facilityId)
+                ->where('facility_monthly_report_items.stock_issued', '>', 0)
+                ->exists();
+            
+            // If no consumption data exists at all, return 0 (not a static value)
+            if (!$hasAnyConsumption) {
+                \Log::info("Product {$this->id} ({$this->name}) has no consumption data for facility {$facilityId}, returning 0");
+                return 0;
+            }
+            
+            // If we have some consumption data but less than 3 months, 
+            // we could potentially use a different fallback strategy
+            // For now, return 0 to indicate insufficient data
+            \Log::info("Product {$this->id} ({$this->name}) has some consumption data but insufficient for AMC calculation, returning 0");
+            return 0;
+            
+        } catch (\Exception $e) {
+            \Log::warning("Error calculating fallback reorder level for product {$this->id}: " . $e->getMessage());
+            return 0; // Return 0 on error, not a static value
+        }
+    }
+
+    /**
      * Calculate AMC using percentage deviation screening from monthly consumption reports
      */
     public function calculateAMC($facilityId = null)
@@ -190,6 +254,7 @@ class Product extends Model
             
             $consumptionsWithMonth = $query
                 ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->limit(6) // Limit to last 6 months for performance
                 ->get(['facility_monthly_reports.report_period as month_year', 'facility_monthly_report_items.stock_issued as quantity']);
 
             // If we have less than 3 values, return 0
@@ -300,8 +365,13 @@ class Product extends Model
             // Calculate final AMC
             if (count($selectedMonths) >= 3) {
                 $amc = collect($selectedMonths)->avg('quantity');
-                $result = round($amc, 2);
-                return $result;
+                $maxAmc = collect($selectedMonths)->max('quantity');
+                
+                return [
+                    'amc' => round($amc, 2),
+                    'max_amc' => round($maxAmc, 2),
+                    'months_used' => count($selectedMonths)
+                ];
             } else {
                 return 0;
             }
@@ -312,7 +382,7 @@ class Product extends Model
     }
 
     /**
-     * Calculate buffer stock: (Max AMC - AMC) × 3
+     * Calculate buffer stock: (Max AMC - AMC) × 0.46
      * Max AMC is the highest value from the selected months that passed screening
      */
     public function calculateBufferStock($facilityId = null)
@@ -423,8 +493,8 @@ class Product extends Model
                 // Find the maximum value from selected months
                 $maxAMC = max(array_column($selectedMonths, 'quantity'));
                 
-                // Calculate buffer stock: (Max AMC - AMC) × 3
-                $bufferStock = ($maxAMC - $amc) * 3;
+                // Calculate buffer stock: (Max AMC - AMC) × 0.46
+                $bufferStock = ($maxAMC - $amc) * 0.46;
                 return round(max(0, $bufferStock), 2);
             }
             
@@ -436,7 +506,7 @@ class Product extends Model
     }
 
     /**
-     * Calculate reorder level: (AMC × 3) + Buffer Stock
+     * Calculate reorder level: (AMC × 0.46) + Buffer Stock
      */
     public function calculateReorderLevel($facilityId = null)
     {
@@ -448,8 +518,8 @@ class Product extends Model
             
             $bufferStock = $this->calculateBufferStock($facilityId);
             
-            // Calculate reorder level: (AMC × 3) + Buffer Stock
-            $reorderLevel = ($amc * 3) + $bufferStock;
+            // Calculate reorder level: (AMC × 0.46) + Buffer Stock
+            $reorderLevel = ($amc * 0.46) + $bufferStock;
             return round($reorderLevel, 2);
             
         } catch (\Exception $e) {
@@ -458,163 +528,95 @@ class Product extends Model
     }
 
     /**
-     * Optimized method to calculate AMC, Buffer Stock, and Reorder Level in one go
-     * This avoids duplicate database queries and improves performance
+     * Fast and simple method to calculate AMC, Buffer Stock, and Reorder Level
+     * This replaces the complex percentage deviation screening with a simple approach
      */
     public function calculateInventoryMetrics($facilityId = null)
     {
         try {
             // Get all consumption values for the product from monthly consumption reports
-            $consumptionsWithMonth = $this->monthlyConsumptionItems()
-                ->join('facility_monthly_reports', 'monthly_consumption_items.parent_id', '=', 'facility_monthly_reports.id')
+            $query = $this->monthlyConsumptionItems()
+                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
                 ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
-                ->where('monthly_consumption_items.stock_issued', '>', 0) // Use stock_issued as consumption
+                ->where('facility_monthly_report_items.stock_issued', '>', 0); // Use stock_issued as consumption
+            
+            // Filter by facility if specified
+            if ($facilityId) {
+                $query->where('facility_monthly_reports.facility_id', $facilityId);
+            }
+            
+            $consumptionsWithMonth = $query
                 ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
-                ->get(['facility_monthly_reports.report_period as month_year', 'monthly_consumption_items.stock_issued as quantity']);
+                ->limit(12) // Limit to last 12 months for performance
+                ->get(['facility_monthly_reports.report_period as month_year', 'facility_monthly_report_items.stock_issued as quantity']);
 
-            // If we have less than 3 values, return default values
+            // Debug logging
+            \Log::info("Product {$this->id} ({$this->name}) consumption data:", [
+                'facility_id' => $facilityId,
+                'total_consumptions' => $consumptionsWithMonth->count(),
+                'consumptions' => $consumptionsWithMonth->toArray()
+            ]);
+
+            // If we have less than 3 values, use fallback calculation
             if ($consumptionsWithMonth->count() < 3) {
+                \Log::info("Product {$this->id} ({$this->name}) has insufficient data for AMC calculation: {$consumptionsWithMonth->count()} months, using fallback");
+                
+                $fallbackReorderLevel = $this->calculateFallbackReorderLevel($facilityId);
+                
                 return [
                     'amc' => 0,
                     'buffer_stock' => 0,
-                    'reorder_level' => 0
+                    'reorder_level' => $fallbackReorderLevel
                 ];
             }
 
-            // Extract quantities and months
-            $quantities = $consumptionsWithMonth->pluck('quantity')->values();
-            $months = $consumptionsWithMonth->pluck('month_year')->values();
+            // Use the calculateAMC method to get AMC and Max AMC
+            $amcData = $this->calculateAMC($facilityId);
             
-            // Start with the 3 most recent months
-            $selectedMonths = [];
-            $passedMonths = [];
-            $failedMonths = [];
-            
-            // Initial selection: 3 most recent months
-            for ($i = 0; $i < 3; $i++) {
-                $selectedMonths[] = [
-                    'month' => $months[$i],
-                    'quantity' => $quantities[$i]
-                ];
-            }
-            
-            $attempt = 1;
-            $maxAttempts = 10; // Prevent infinite loops
-            
-            while ($attempt <= $maxAttempts) {
-                // Calculate average of selected months
-                $average = collect($selectedMonths)->avg('quantity');
+            if (is_array($amcData) && isset($amcData['amc']) && $amcData['amc'] > 0) {
+                $amc = $amcData['amc'];
+                $maxAmc = $amcData['max_amc'];
                 
-                // Check each month's deviation
-                $allPassed = true;
-                $newPassedMonths = [];
-                $newFailedMonths = [];
+                // Calculate buffer stock: (Max AMC - AMC) × 0.46
+                $bufferStock = round(($maxAmc - $amc) * 0.46, 2);
                 
-                foreach ($selectedMonths as $monthData) {
-                    $quantity = $monthData['quantity'];
-                    $deviation = abs($quantity - $average) / $average * 100;
-                    
-                    if ($deviation <= 70) {
-                        // Month passed screening
-                        $newPassedMonths[] = $monthData;
-                    } else {
-                        // Month failed screening
-                        $newFailedMonths[] = $monthData;
-                        $allPassed = false;
-                    }
-                }
-                
-                // Add newly passed months to the global passed list
-                foreach ($newPassedMonths as $monthData) {
-                    if (!collect($passedMonths)->contains('month', $monthData['month'])) {
-                        $passedMonths[] = $monthData;
-                    }
-                }
-                
-                // Add newly failed months to the global failed list
-                foreach ($newFailedMonths as $monthData) {
-                    if (!collect($failedMonths)->contains('month', $monthData['month'])) {
-                        $failedMonths[] = $monthData;
-                    }
-                }
-                
-                // If all months passed, we're done
-                if ($allPassed) {
-                    break;
-                }
-                
-                // If we have 3 or more passed months, use them
-                if (count($passedMonths) >= 3) {
-                    $selectedMonths = array_slice($passedMonths, 0, 3);
-                    break;
-                }
-                
-                // Need to reselect months including passed ones
-                $newSelection = [];
-                
-                // First, include all passed months
-                foreach ($passedMonths as $monthData) {
-                    $newSelection[] = $monthData;
-                }
-                
-                // Then add more months from the original list until we have 3
-                $monthIndex = 0;
-                while (count($newSelection) < 3 && $monthIndex < count($quantities)) {
-                    $monthData = [
-                        'month' => $months[$monthIndex],
-                        'quantity' => $quantities[$monthIndex]
-                    ];
-                    
-                    // Only add if not already in selection and not in failed months
-                    $alreadySelected = collect($newSelection)->contains('month', $monthData['month']);
-                    $isFailed = collect($failedMonths)->contains('month', $monthData['month']);
-                    
-                    if (!$alreadySelected && !$isFailed) {
-                        $newSelection[] = $monthData;
-                    }
-                    
-                    $monthIndex++;
-                }
-                
-                // Update selected months for next iteration
-                $selectedMonths = $newSelection;
-                $attempt++;
-            }
-            
-            // Calculate final metrics
-            if (count($selectedMonths) >= 3) {
-                $amc = collect($selectedMonths)->avg('quantity');
-                $amc = round($amc, 2);
-                
-                // Find the maximum value from selected months
-                $maxAMC = max(array_column($selectedMonths, 'quantity'));
-                
-                // Calculate buffer stock: (Max AMC - AMC) × 3
-                $bufferStock = ($maxAMC - $amc) * 3;
-                $bufferStock = round(max(0, $bufferStock), 2);
-                
-                // Calculate reorder level: (AMC × 3) + Buffer Stock
-                $reorderLevel = ($amc * 3) + $bufferStock;
+                // Calculate reorder level: (AMC × 0.46) + Buffer Stock
+                $reorderLevel = ($amc * 0.46) + $bufferStock;
                 $reorderLevel = round($reorderLevel, 2);
                 
-                return [
+                \Log::info("Product {$this->id} ({$this->name}) calculated metrics:", [
                     'amc' => $amc,
+                    'max_amc' => $maxAmc,
                     'buffer_stock' => $bufferStock,
-                    'reorder_level' => $reorderLevel
-                ];
+                    'reorder_level' => $reorderLevel,
+                    'months_used' => $amcData['months_used'] ?? 0
+                ]);
             } else {
+                // Fallback if calculateAMC returns 0 or invalid data
+                $fallbackReorderLevel = $this->calculateFallbackReorderLevel($facilityId);
+                
                 return [
                     'amc' => 0,
                     'buffer_stock' => 0,
-                    'reorder_level' => 0
+                    'reorder_level' => $fallbackReorderLevel
                 ];
             }
+            
+            return [
+                'amc' => $amc,
+                'buffer_stock' => $bufferStock,
+                'reorder_level' => $reorderLevel
+            ];
 
         } catch (\Exception $e) {
+            \Log::error("Error calculating inventory metrics for product {$this->id}: " . $e->getMessage());
+            
+            $fallbackReorderLevel = $this->calculateFallbackReorderLevel($facilityId);
+            
             return [
                 'amc' => 0,
                 'buffer_stock' => 0,
-                'reorder_level' => 0
+                'reorder_level' => $fallbackReorderLevel
             ];
         }
     }

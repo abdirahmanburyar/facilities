@@ -94,9 +94,30 @@ class InventoryController extends Controller
 			
 			// Add reorder_level and amc to each product using the Product model methods
 			$products->getCollection()->transform(function ($product) use ($facility) {
-				$metrics = $product->calculateInventoryMetrics($facility->id);
-				$product->reorder_level = $metrics['reorder_level'];
-				$product->amc = $metrics['amc'];
+				try {
+					// Set a timeout for each product calculation to prevent hanging
+					set_time_limit(10); // 10 seconds per product
+					
+					$metrics = $product->calculateInventoryMetrics($facility->id);
+					
+					// Debug logging
+					Log::info("Product {$product->id} ({$product->name}) metrics:", [
+						'facility_id' => $facility->id,
+						'metrics' => $metrics,
+						'has_inventories' => $product->inventories ? $product->inventories->count() : 0,
+						'total_items' => $product->inventories ? $product->inventories->flatMap->items->count() : 0
+					]);
+					
+					$product->reorder_level = $metrics['reorder_level'];
+					$product->amc = $metrics['amc'];
+					
+				} catch (\Exception $e) {
+					Log::error("Error calculating metrics for product {$product->id}: " . $e->getMessage());
+					// Use fallback values if calculation fails
+					$product->reorder_level = $product->calculateFallbackReorderLevel($facility->id);
+					$product->amc = 0;
+				}
+				
 				return $product;
 			});
 			
@@ -171,6 +192,9 @@ class InventoryController extends Controller
 			// Calculate status counts using the Product model methods
 			foreach ($allProducts as $product) {
 				try {
+					// Set a timeout for each product calculation
+					set_time_limit(10); // 10 seconds per product
+					
 					$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
 					$metrics = $product->calculateInventoryMetrics($facility->id);
 					$reorderLevel = $metrics['reorder_level'];
@@ -197,7 +221,14 @@ class InventoryController extends Controller
 					}
 				} catch (\Exception $e) {
 					Log::warning('[INVENTORY-COUNT] Error counting status for product ' . ($product->id ?? 'unknown') . ': ' . $e->getMessage());
-					// Skip problematic products in counting
+					// Use fallback reorder level if calculation fails
+					try {
+						$reorderLevel = $product->calculateFallbackReorderLevel($facility->id);
+					} catch (\Exception $fallbackError) {
+						Log::error('[INVENTORY-COUNT] Fallback calculation also failed for product ' . ($product->id ?? 'unknown') . ': ' . $fallbackError->getMessage());
+						$reorderLevel = 10; // Default minimum
+					}
+					// Continue with the product using fallback values
 				}
 			}
 	

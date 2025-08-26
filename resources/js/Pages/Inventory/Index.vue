@@ -692,6 +692,7 @@ onUnmounted(() => {
                 </div>
             </div>
 
+            {{ props.inventories }}
             <!-- Table and Sidebar -->
             <div class="grid grid-cols-1 lg:grid-cols-8 gap-6">
                 <!-- Main Table -->
