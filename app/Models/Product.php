@@ -260,11 +260,11 @@ class Product extends Model
                 return 0;
             }
 
-            // Extract quantities and months
+            // Extract quantities and months (right to left - most recent first)
             $quantities = $consumptionsWithMonth->pluck('quantity')->values();
             $months = $consumptionsWithMonth->pluck('month_year')->values();
             
-            // Start with the 3 most recent months
+            // Start with the 3 most recent months (right to left)
             $selectedMonths = [];
             $passedMonths = [];
             $failedMonths = [];
@@ -284,14 +284,15 @@ class Product extends Model
                 // Calculate average of selected months
                 $average = collect($selectedMonths)->avg('quantity');
                 
-                // Check each month's deviation
+                // Check each month's deviation using the correct formula
                 $allPassed = true;
                 $newPassedMonths = [];
                 $newFailedMonths = [];
                 
                 foreach ($selectedMonths as $monthData) {
                     $quantity = $monthData['quantity'];
-                    $deviation = abs($quantity - $average) / $average * 100;
+                    // Correct formula: |average - month_value| / month_value × 100
+                    $deviation = abs($average - $quantity) / $quantity * 100;
                     
                     if ($deviation <= 70) {
                         // Month passed screening
@@ -331,7 +332,7 @@ class Product extends Model
                 // Need to reselect months including passed ones
                 $newSelection = [];
                 
-                // First, include all passed months
+                // First, include all passed months (they don't get screened again)
                 foreach ($passedMonths as $monthData) {
                     $newSelection[] = $monthData;
                 }
