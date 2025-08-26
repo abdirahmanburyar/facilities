@@ -21,15 +21,14 @@ const toast = useToast();
 const props = defineProps({
     inventories: Object,
     category: Array,
-    dosage: Array,
     filters: Object,
     inventoryStatusCounts: Object,
 });
 
 // Search and filter states
 const search = ref(props.filters?.search || '');
+
 const category = ref(props.filters?.category || '');
-const dosage = ref(props.filters?.dosage || '');
 const status = ref(props.filters?.status || '');
 const per_page = ref(props.filters?.per_page || 25);
 
@@ -61,15 +60,13 @@ const applyFilters = () => {
         
         // Only add non-empty filter values to query object
         if (search.value && search.value.trim()) query.search = search.value.trim();
+    
         if (category.value && category.value !== '') query.category = category.value;
-        if (dosage.value && dosage.value !== '') query.dosage = dosage.value;
         if (status.value && status.value !== '') query.status = status.value;
 
         // Always include per_page in query if it exists
         if (per_page.value) query.per_page = per_page.value;
         if (props.filters?.page) query.page = props.filters.page;
-
-
 
         isLoading.value = true;
 
@@ -79,9 +76,7 @@ const applyFilters = () => {
             only: [
                 "inventories",
                 "products",
-                "warehouses",
                 "inventoryStatusCounts",
-                "locations",
                 "category",
             ],
             onFinish: () => {
@@ -89,7 +84,6 @@ const applyFilters = () => {
             },
             onError: (errors) => {
                 isLoading.value = false;
-                console.error('❌ Filter error:', errors);
 
                 // Provide more specific error messages
                 if (errors && typeof errors === 'object') {
@@ -114,7 +108,6 @@ watch(
     [
         search, 
         category, 
-        dosage, 
         status, 
         per_page
     ],
@@ -124,8 +117,8 @@ watch(
             // Reset page to 1 when filters change (except per_page)
             if (newValues[0] !== oldValues[0] || // search
                 newValues[1] !== oldValues[1] || // category
-                newValues[2] !== oldValues[2] || // dosage
-                newValues[3] !== oldValues[3]) { // status
+                newValues[2] !== oldValues[2] || // status
+                newValues[3] !== oldValues[3]) { // per_page
                 props.filters.page = 1;
             }
             applyFilters();
@@ -159,22 +152,17 @@ function formatQty(qty) {
     }).format(num);
 }
 
-
-
-
-
 // Update hasActiveFilters to remove sorting
 const hasActiveFilters = computed(() => {
-    return search.value || category.value || dosage.value ||
-        status.value; // Remove sorting checks
+    return search.value || category.value || status.value; // Remove sorting checks
 });
 
 // Update clearFilters to remove sorting reset
 const clearFilters = () => {
     // Clear all filter values
     search.value = "";
+    
     category.value = "";
-    dosage.value = "";
     status.value = "";
     
     // Reset pagination
@@ -196,7 +184,6 @@ const clearFilters = () => {
             "products",
             "inventoryStatusCounts",
             "category",
-            "dosage",
         ],
         onFinish: () => {
             isLoading.value = false;
@@ -318,8 +305,8 @@ const uploadFile = async () => {
 
 // Download template function
 const downloadTemplate = () => {
-        // Create a CSV format that Excel can open properly
-        const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
+    // Create a CSV format that Excel can open properly
+    const headers = ['Item', 'Category', 'UoM', 'Quantity', 'Batch No', 'Expiry Date'];
 
     // Create CSV content with headers
     const csvContent = headers.join(',') + '\n';
@@ -497,12 +484,6 @@ const lowStockReorderLevelCount = computed(() => {
     return stat ? stat.count : 0;
 });
 
-
-
-
-
-
-
 const outOfStockCount = computed(() => {
     if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
     const stat = props.inventoryStatusCounts.find(s => s.status === 'out_of_stock');
@@ -573,7 +554,7 @@ onUnmounted(() => {
         <div class="mb-[100px]">
             <!-- Header & Actions -->
             <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
-                <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Facility Inventory</h1>
+                <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Warehouse Inventory</h1>
                 <div class="flex flex-wrap gap-2 md:gap-4 items-center">
                     <button @click="openUploadModal"
                         class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 border border-transparent rounded-lg font-medium text-sm text-white hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200 shadow-sm"
@@ -594,8 +575,6 @@ onUnmounted(() => {
                         {{ isUploading ? 'Uploading...' : 'Upload Excel' }}
                     </button>
 
-
-
                 </div>
             </div>
             <!-- Filters Card -->
@@ -606,7 +585,6 @@ onUnmounted(() => {
                             class="w-full rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                             placeholder="Search by item name, barcode, batch number, uom" />
                     </div>
-
                     <div class="col-span-1 min-w-0">
                         <Multiselect v-model="category" :options="props.category || []" :searchable="true"
                             :close-on-select="true" :show-labels="false" placeholder="Select a category"
@@ -636,7 +614,6 @@ onUnmounted(() => {
                         Search: {{ search }}
                         <button @click="search = ''" class="ml-1 text-blue-600 hover:text-blue-800">×</button>
                     </span>
-
 
                     <span v-if="category"
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -707,8 +684,6 @@ onUnmounted(() => {
                 </div>
             </div>
 
-
-
             <!-- Table and Sidebar -->
             <div class="grid grid-cols-1 lg:grid-cols-8 gap-6">
                 <!-- Main Table -->
@@ -760,13 +735,12 @@ onUnmounted(() => {
                                             <span>Expiry Date</span>
                                         </div>
                                     </th>
-
                                 </tr>
                             </thead>
                             <tbody>
                                 <template v-if="isLoading">
                                     <tr>
-                                        <td colspan="10" class="text-center py-8 text-gray-500 bg-gray-50">
+                                        <td colspan="11" class="text-center py-8 text-gray-500 bg-gray-50">
                                             <div class="flex flex-col items-center justify-center gap-2">
                                                 <svg class="animate-spin h-10 w-10 text-gray-300"
                                                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -784,9 +758,9 @@ onUnmounted(() => {
                                         </td>
                                     </tr>
                                 </template>
-                                                                <template v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
-                                <tr>
-                                    <td colspan="10" class="text-center py-8 text-gray-500 bg-gray-50">
+                                <template v-else-if="!props.inventories || !props.inventories.data || props.inventories.data.length === 0">
+                                    <tr>
+                                        <td colspan="11" class="text-center py-8 text-gray-500 bg-gray-50">
                                             <div class="flex flex-col items-center justify-center gap-2">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -845,7 +819,6 @@ onUnmounted(() => {
                                                 class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle"
                                                 :class="(item.quantity || 0) > 0 ? 'text-gray-900' : 'text-gray-400'">
                                                 {{ formatDate(item.expiry_date) || 'No Expiry' }}</td>
-
 
 
                                             <!-- Total QTY on Hand - only on first row for this inventory -->
@@ -978,8 +951,6 @@ onUnmounted(() => {
                                                 class="px-2 py-1 text-xs border-b border-[#B7C6E6] items-center align-middle text-gray-400">
                                                 <span class="text-gray-400">No Expiry</span>
                                             </td>
-
-
 
                                             <!-- Total QTY on Hand -->
                                             <td class="px-3 py-2 text-xs text-gray-800 align-middle items-center">
@@ -1230,7 +1201,6 @@ onUnmounted(() => {
                                     <span class="font-medium">Expiry Date</span>
                                     <span class="text-gray-400 ml-2">(required)</span>
                                 </li>
-
                             </ul>
                         </div>
                     </div>
@@ -1385,8 +1355,6 @@ onUnmounted(() => {
                 </div>
             </div>
         </transition>
-
-
     </AuthenticatedLayout>
 </template>
 

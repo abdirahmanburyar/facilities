@@ -10,7 +10,7 @@ use App\Models\Inventory;
 use App\Models\Supply;
 use App\Models\SupplyItem;
 use App\Models\SubCategory;
-use App\Models\FacilityInventoryItem;
+use App\Models\MonthlyConsumptionReport;
 use App\Models\MonthlyConsumptionItem;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +59,8 @@ class Product extends Model
         });
     }
 
+
+
     public function category()
     {
         return $this->belongsTo(Category::class);
@@ -103,11 +105,11 @@ class Product extends Model
      */
     public function inventories()
     {
-        return $this->hasMany(Inventory::class);
+        return $this->hasMany(FacilityInventory::class);
     }
 
     public function items(){
-        return $this->hasMany(InventoryItem::class);
+        return $this->hasMany(FacilityInventoryItem::class);
     }
 
     public function eligible(){
@@ -119,33 +121,22 @@ class Product extends Model
     }
 
     /**
-     * Get facility inventory items for this product.
+     * Get the monthly consumption reports for this product.
      */
-    public function facilityInventoryItems()
+    public function monthlyConsumptionReports()
     {
         return $this->hasManyThrough(
-            FacilityInventoryItem::class,
-            FacilityInventory::class,
-            'product_id', // Foreign key on facility_inventories table
-            'facility_inventory_id', // Foreign key on facility_inventory_items table
+            MonthlyConsumptionReport::class,
+            MonthlyConsumptionItem::class,
+            'product_id', // Foreign key on facility_monthly_report_items table
+            'id', // Local key on facility_monthly_reports table
             'id', // Local key on products table
-            'id' // Local key on facility_inventories table
+            'parent_id' // Foreign key on facility_monthly_report_items table
         );
     }
 
     /**
-     * Get facility inventory items for this product for a specific facility.
-     */
-    public function facilityInventoryItemsForFacility($facilityId)
-    {
-        return $this->facilityInventoryItems()
-            ->whereHas('facility_inventory', function($query) use ($facilityId) {
-                $query->where('facility_id', $facilityId);
-            });
-    }
-
-    /**
-     * Get monthly consumption items for this product across all facilities.
+     * Get the monthly consumption items for this product.
      */
     public function monthlyConsumptionItems()
     {
@@ -153,36 +144,53 @@ class Product extends Model
     }
 
     /**
-     * Get monthly consumption items for this product for a specific facility.
+     * Get the monthly consumption items for this product in a specific facility.
      */
-    public function monthlyConsumptionItemsForFacility($facilityId)
+    public function monthlyConsumptionItemsForFacility()
     {
         return $this->monthlyConsumptionItems()
-            ->whereHas('report', function($query) use ($facilityId) {
-                $query->where('facility_id', $facilityId);
-            });
+            ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
+            ->where('facility_monthly_reports.facility_id', auth()->user()->facility_id);
     }
 
     /**
-     * Calculate AMC using percentage deviation screening from monthly consumption data
+     * Get AMC data for a specific facility with detailed information
+     */
+    public function getAMCDataForFacility()
+    {
+        $facilityId = auth()->user()->facility_id;
+        $amc = $this->calculateAMC($facilityId);
+        $bufferStock = $this->calculateBufferStock($facilityId);
+        $reorderLevel = $this->calculateReorderLevel($facilityId);
+        
+        return [
+            'amc' => $amc,
+            'buffer_stock' => $bufferStock,
+            'reorder_level' => $reorderLevel,
+            'facility_id' => $facilityId
+        ];
+    }
+
+    /**
+     * Calculate AMC using percentage deviation screening from monthly consumption reports
      */
     public function calculateAMC($facilityId = null)
     {
         try {
-            // Get consumption data from monthly consumption items
+            // Get all consumption values for the product from monthly consumption reports
             $query = $this->monthlyConsumptionItems()
-                ->where('quantity', '>', 0); // Only consider positive consumption values
-
+                ->join('facility_monthly_reports', 'facility_monthly_report_items.parent_id', '=', 'facility_monthly_reports.id')
+                ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
+                ->where('facility_monthly_report_items.stock_issued', '>', 0); // Use stock_issued as consumption
+            
+            // Filter by facility if specified
             if ($facilityId) {
-                $query->whereHas('report', function($q) use ($facilityId) {
-                    $q->where('facility_id', $facilityId);
-                });
+                $query->where('facility_monthly_reports.facility_id', $facilityId);
             }
-
-            $consumptionsWithMonth = $query->join('monthly_consumption_reports as mcr', 'monthly_consumption_items.parent_id', '=', 'mcr.id')
-                ->select('monthly_consumption_items.quantity', 'mcr.month_year')
-                ->orderBy('mcr.month_year', 'desc') // Most recent first
-                ->get();
+            
+            $consumptionsWithMonth = $query
+                ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->get(['facility_monthly_reports.report_period as month_year', 'facility_monthly_report_items.stock_issued as quantity']);
 
             // If we have less than 3 values, return 0
             if ($consumptionsWithMonth->count() < 3) {
@@ -316,19 +324,12 @@ class Product extends Model
             }
 
             // Get the selected months that passed screening (same logic as calculateAMC)
-            $query = $this->monthlyConsumptionItems()
-                ->where('quantity', '>', 0);
-
-            if ($facilityId) {
-                $query->whereHas('report', function($q) use ($facilityId) {
-                    $q->where('facility_id', $facilityId);
-                });
-            }
-
-            $consumptionsWithMonth = $query->join('monthly_consumption_reports as mcr', 'monthly_consumption_items.parent_id', '=', 'mcr.id')
-                ->select('monthly_consumption_items.quantity', 'mcr.month_year')
-                ->orderBy('mcr.month_year', 'desc')
-                ->get();
+            $consumptionsWithMonth = $this->monthlyConsumptionItems()
+                ->join('facility_monthly_reports', 'monthly_consumption_items.parent_id', '=', 'facility_monthly_reports.id')
+                ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
+                ->where('monthly_consumption_items.stock_issued', '>', 0) // Use stock_issued as consumption
+                ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->get(['facility_monthly_reports.report_period as month_year', 'monthly_consumption_items.stock_issued as quantity']);
 
             if ($consumptionsWithMonth->count() < 3) {
                 return 0;
@@ -463,20 +464,13 @@ class Product extends Model
     public function calculateInventoryMetrics($facilityId = null)
     {
         try {
-            // Get all consumption values for the product from monthly consumption items
-            $query = $this->monthlyConsumptionItems()
-                ->where('quantity', '>', 0); // Only consider positive consumption values
-
-            if ($facilityId) {
-                $query->whereHas('report', function($q) use ($facilityId) {
-                    $q->where('facility_id', $facilityId);
-                });
-            }
-
-            $consumptionsWithMonth = $query->join('monthly_consumption_reports as mcr', 'monthly_consumption_items.parent_id', '=', 'mcr.id')
-                ->select('monthly_consumption_items.quantity', 'mcr.month_year')
-                ->orderBy('mcr.month_year', 'desc') // Most recent first
-                ->get();
+            // Get all consumption values for the product from monthly consumption reports
+            $consumptionsWithMonth = $this->monthlyConsumptionItems()
+                ->join('facility_monthly_reports', 'monthly_consumption_items.parent_id', '=', 'facility_monthly_reports.id')
+                ->where('facility_monthly_reports.status', 'approved') // Only use approved reports
+                ->where('monthly_consumption_items.stock_issued', '>', 0) // Use stock_issued as consumption
+                ->orderBy('facility_monthly_reports.report_period', 'desc') // Most recent first
+                ->get(['facility_monthly_reports.report_period as month_year', 'monthly_consumption_items.stock_issued as quantity']);
 
             // If we have less than 3 values, return default values
             if ($consumptionsWithMonth->count() < 3) {
@@ -688,67 +682,5 @@ class Product extends Model
         ];
     }
 
-    /**
-     * Get facility inventory structure for a specific facility
-     */
-    public function getFacilityInventoryStructureForFacility($facilityId)
-    {
-        try {
-            $facilityInventoryItems = $this->facilityInventoryItemsForFacility($facilityId)->get();
-            
-            if ($facilityInventoryItems->isEmpty()) {
-                return [
-                    'total_quantity' => 0,
-                    'amc' => 0,
-                    'reorder_level' => 0,
-                    'status' => 'out_of_stock',
-                    'items' => collect([])
-                ];
-            }
-            
-            // Calculate total quantity
-            $totalQuantity = $facilityInventoryItems->sum('quantity');
-            
-            // Calculate AMC, reorder level, and status using monthly consumption data
-            $metrics = $this->calculateInventoryMetrics($facilityId);
-            
-            // Calculate status based on total quantity and reorder level
-            $reorderLevel = $metrics['reorder_level'];
-            $status = 'in_stock'; // default
-            
-            if ($totalQuantity <= 0) {
-                $status = 'out_of_stock';
-            } elseif ($reorderLevel <= 0) {
-                $status = 'in_stock';
-            } else {
-                $lowStockThreshold = $reorderLevel * 1.3;
-                
-                if ($totalQuantity <= $reorderLevel) {
-                    $status = 'low_stock_reorder_level';
-                } elseif ($totalQuantity <= $lowStockThreshold) {
-                    $status = 'low_stock';
-                } else {
-                    $status = 'in_stock';
-                }
-            }
-            
-            return [
-                'total_quantity' => $totalQuantity,
-                'amc' => $metrics['amc'],
-                'reorder_level' => $metrics['reorder_level'],
-                'status' => $status,
-                'items' => $facilityInventoryItems
-            ];
-            
-        } catch (\Exception $e) {
-            return [
-                'total_quantity' => 0,
-                'amc' => 0,
-                'reorder_level' => 0,
-                'status' => 'out_of_stock',
-                'items' => collect([])
-            ];
-        }
-    }
 
 }
