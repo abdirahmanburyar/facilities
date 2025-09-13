@@ -44,7 +44,7 @@ class DispenceController extends Controller
     public function create()
     {
         $user =  auth()->user();
-        $items = Product::whereHas('inventory', function($q) use($user){
+        $items = Product::whereHas('facilityInventories', function($q) use($user){
             $q->where('facility_id', $user->facility_id);
         })
         ->select('id','name')
