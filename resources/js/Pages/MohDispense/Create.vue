@@ -92,7 +92,6 @@
                                 </p>
                                 <ul class="mt-2 text-sm text-blue-700 list-disc list-inside">
                                     <li><strong>item</strong> - Product name, ID, or productID</li>
-                                    <li><strong>source</strong> - Where the medication came from (e.g., "Pharmacy A", "Central Store", "Donation")</li>
                                     <li><strong>batch_no</strong> - Batch number from the medication package</li>
                                     <li><strong>expiry_date</strong> - Expiry date (YYYY-MM-DD format)</li>
                                     <li><strong>quantity</strong> - Quantity dispensed (number only)</li>
@@ -103,7 +102,6 @@
                                 <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                     <h4 class="text-sm font-medium text-yellow-800 mb-2">Column Examples:</h4>
                                     <div class="text-xs text-yellow-700 space-y-1">
-                                        <div><strong>source:</strong> "Pharmacy A", "Central Store", "Donation", "Government Supply"</div>
                                         <div><strong>batch_no:</strong> "BATCH001", "LOT12345", "2024-001"</div>
                                         <div><strong>quantity:</strong> "10", "25", "100" (numbers only)</div>
                                         <div><strong>dispensed_by:</strong> "Dr. Smith", "Nurse Johnson", "Pharmacist"</div>

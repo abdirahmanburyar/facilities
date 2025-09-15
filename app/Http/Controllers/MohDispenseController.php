@@ -115,7 +115,7 @@ class MohDispenseController extends Controller
             }
 
             // Generate CSV content with only headers
-            $csvContent = "item,source,batch_no,expiry_date,quantity,dispense_date,dispensed_by\n";
+            $csvContent = "item,batch_no,expiry_date,quantity,dispense_date,dispensed_by\n";
 
             // Generate filename with facility name
             $fileName = 'moh_dispense_template_' . str_replace(' ', '_', $facility->name) . '.csv';
