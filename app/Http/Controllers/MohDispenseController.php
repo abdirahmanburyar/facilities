@@ -13,25 +13,39 @@ class MohDispenseController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MohDispense::with(['facility', 'createdBy', 'items'])
-            ->where('facility_id', auth()->user()->facility_id);
+        try {
+            $query = MohDispense::with(['facility', 'createdBy', 'items'])
+                ->where('facility_id', auth()->user()->facility_id);
 
-        // Search
-        if ($request->search) {
-            $query->where('moh_dispense_number', 'like', '%' . $request->search . '%');
+            // Search
+            if ($request->search) {
+                $query->where('moh_dispense_number', 'like', '%' . $request->search . '%');
+            }
+
+            // Filter by status
+            if ($request->status) {
+                $query->where('status', $request->status);
+            }
+
+            $mohDispenses = $query->orderBy('created_at', 'desc')->paginate(15);
+
+            return Inertia::render('MohDispense/Index', [
+                'mohDispenses' => $mohDispenses,
+                'filters' => $request->only(['search', 'status']),
+            ]);
+        
+        } catch (\Exception $e) {
+            \Log::error('MOH Dispense index error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading MOH dispenses: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Filter by status
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        $mohDispenses = $query->orderBy('created_at', 'desc')->paginate(15);
-
-        return Inertia::render('MohDispense/Index', [
-            'mohDispenses' => $mohDispenses,
-            'filters' => $request->only(['search', 'status']),
-        ]);
     }
 
     public function create()
@@ -41,9 +55,10 @@ class MohDispenseController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'excel_file' => 'required|file|max:10240', // 10MB max
-        ]);
+        try {
+            $request->validate([
+                'excel_file' => 'required|file|max:10240', // 10MB max
+            ]);
 
         // Additional file type validation
         $file = $request->file('excel_file');
@@ -93,6 +108,19 @@ class MohDispenseController extends Controller
             'moh_dispense_id' => $mohDispense->id,
             'moh_dispense_number' => $mohDispense->moh_dispense_number,
         ]);
+
+        } catch (\Exception $e) {
+            \Log::error('MOH Dispense upload error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show($id)
@@ -108,24 +136,24 @@ class MohDispenseController extends Controller
 
     public function process($id)
     {
-        $mohDispense = MohDispense::where('facility_id', auth()->user()->facility_id)
-            ->findOrFail($id);
-
-        if ($mohDispense->status !== 'draft') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only draft dispenses can be processed.',
-            ], 400);
-        }
-
-        if (!$mohDispense->excel_file_path || !Storage::exists($mohDispense->excel_file_path)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Excel file not found.',
-            ], 400);
-        }
-
         try {
+            $mohDispense = MohDispense::where('facility_id', auth()->user()->facility_id)
+                ->findOrFail($id);
+
+            if ($mohDispense->status !== 'draft') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only draft dispenses can be processed.',
+                ], 400);
+            }
+
+            if (!$mohDispense->excel_file_path || !Storage::exists($mohDispense->excel_file_path)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Excel file not found.',
+                ], 400);
+            }
+
             // Process the Excel file
             $filePath = Storage::path($mohDispense->excel_file_path);
             Excel::import(new MohDispenseImport($mohDispense->id), $filePath);
@@ -140,6 +168,13 @@ class MohDispenseController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('MOH Dispense process error: ' . $e->getMessage(), [
+                'moh_dispense_id' => $id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Error processing file: ' . $e->getMessage(),

@@ -224,6 +224,27 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
                 Route::get('/{id}/show', 'show')->name('moh-dispense.show');
                 Route::post('/{id}/process', 'process')->name('moh-dispense.process');
                 Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
+                Route::get('/test', function() {
+                    try {
+                        // Test if models can be instantiated
+                        $mohDispense = new \App\Models\MohDispense();
+                        $mohDispenseItem = new \App\Models\MohDispenseItem();
+                        
+                        return response()->json([
+                            'message' => 'MOH Dispense routes working',
+                            'models' => 'Models can be instantiated',
+                            'user' => auth()->user() ? 'User authenticated' : 'No user',
+                            'facility_id' => auth()->user() ? auth()->user()->facility_id : 'No facility'
+                        ]);
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'message' => 'Error in test route',
+                            'error' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ], 500);
+                    }
+                })->name('moh-dispense.test');
             });
 
             // Transfer Management Routes
