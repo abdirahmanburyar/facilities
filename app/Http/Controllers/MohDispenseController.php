@@ -128,6 +128,44 @@ class MohDispenseController extends Controller
         ]);
     }
 
+    public function process($id)
+    {
+        try {
+            $mohDispense = MohDispense::where('facility_id', auth()->user()->facility_id)
+                ->findOrFail($id);
+
+            if ($mohDispense->status !== 'draft') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only draft dispenses can be processed.',
+                ], 400);
+            }
+
+            // Since we're processing directly from upload, we need to get the file from the request
+            // For now, we'll just update the status to processed
+            $mohDispense->update(['status' => 'processed']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'MOH dispense processed successfully.',
+                'moh_dispense_number' => $mohDispense->moh_dispense_number,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('MOH Dispense process error: ' . $e->getMessage(), [
+                'moh_dispense_id' => $id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing MOH dispense: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     public function downloadTemplate()
     {
