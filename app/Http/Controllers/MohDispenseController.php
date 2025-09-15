@@ -93,8 +93,7 @@ class MohDispenseController extends Controller
 
         // Process the Excel file directly
         $file = $request->file('excel_file');
-        $filePath = $file->getPathname();
-        Excel::import(new MohDispenseImport($mohDispense->id), $filePath);
+        Excel::import(new MohDispenseImport($mohDispense->id), $file);
         
         // Update status to processed
         $mohDispense->update(['status' => 'processed']);
