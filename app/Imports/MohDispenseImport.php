@@ -41,6 +41,14 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
             throw new \Exception("Product not found: " . $row['item']);
         }
 
+        // Debug date values
+        \Log::info('Processing row dates:', [
+            'expiry_date_raw' => $row['expiry_date'] ?? 'not set',
+            'dispense_date_raw' => $row['dispense_date'] ?? 'not set',
+            'expiry_date_type' => gettype($row['expiry_date'] ?? null),
+            'dispense_date_type' => gettype($row['dispense_date'] ?? null),
+        ]);
+
         return new MohDispenseItem([
             'moh_dispense_id' => $this->mohDispenseId,
             'product_id' => $product->id,
@@ -60,24 +68,62 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
             'item' => 'required|string',
             'source' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',
-            'expiry_date' => 'required|date',
+            'expiry_date' => 'required',
             'quantity' => 'required|integer|min:1',
-            'dispense_date' => 'required|date',
+            'dispense_date' => 'required',
             'dispensed_by' => 'nullable|string|max:255',
         ];
     }
 
     private function parseDate($date)
     {
+        if (empty($date)) {
+            throw new \Exception("Date field is required");
+        }
+
+        // Handle Excel date serial numbers
         if (is_numeric($date)) {
-            // Handle Excel date serial numbers
-            return Carbon::createFromFormat('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($date)->format('Y-m-d'));
+            try {
+                return Carbon::createFromFormat('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($date)->format('Y-m-d'));
+            } catch (\Exception $e) {
+                // Fallback to manual calculation
+                return Carbon::createFromFormat('Y-m-d', gmdate('Y-m-d', ($date - 25569) * 86400));
+            }
         }
         
+        // Handle string dates - try multiple formats
+        $dateString = trim($date);
+        
+        // Common date formats to try
+        $formats = [
+            'Y-m-d',           // 2025-12-31
+            'd/m/Y',           // 31/12/2025
+            'm/d/Y',           // 12/31/2025
+            'd-m-Y',           // 31-12-2025
+            'm-d-Y',           // 12-31-2025
+            'Y/m/d',           // 2025/12/31
+            'd.m.Y',           // 31.12.2025
+            'm.d.Y',           // 12.31.2025
+            'Y.m.d',           // 2025.12.31
+        ];
+
+        foreach ($formats as $format) {
+            try {
+                $parsedDate = Carbon::createFromFormat($format, $dateString);
+                if ($parsedDate) {
+                    return $parsedDate;
+                }
+            } catch (\Exception $e) {
+                // Continue to next format
+                continue;
+            }
+        }
+
+        // Try Carbon's flexible parsing as last resort
         try {
-            return Carbon::parse($date);
+            return Carbon::parse($dateString);
         } catch (\Exception $e) {
-            throw new \Exception("Invalid date format: " . $date);
+            throw new \Exception("Unable to parse date: {$date}. Please use format YYYY-MM-DD (e.g., 2025-12-31)");
         }
     }
 }
