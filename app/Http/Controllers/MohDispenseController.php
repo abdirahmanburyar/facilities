@@ -149,6 +149,33 @@ class MohDispenseController extends Controller
         }
     }
 
+    public function submit($id)
+    {
+        try {
+            $mohDispense = MohDispense::findOrFail($id);
+            
+            // Check if it's in draft status
+            if ($mohDispense->status !== 'draft') {
+                return response()->json([
+                    'message' => 'Only draft MOH dispenses can be submitted.'
+                ], 422);
+            }
+
+            // Update status to processed
+            $mohDispense->update(['status' => 'processed']);
+
+            return response()->json([
+                'message' => 'MOH dispense submitted successfully.',
+                'status' => 'processed'
+            ], 200);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'Error submitting MOH dispense: ' . $th->getMessage()
+            ], 500);
+        }
+    }
+
     public function downloadTemplate()
     {
         try {

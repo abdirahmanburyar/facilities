@@ -215,15 +215,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
         });
 
         // MOH Dispense Routes
-        Route::controller(MohDispenseController::class)
-        ->prefix('/moh-dispense')
-        ->group(function () {
-            Route::get('/', 'index')->name('moh-dispense.index');
-            Route::get('/create', 'create')->name('moh-dispense.create');
-            Route::post('/store', 'store')->name('moh-dispense.store');
-            Route::get('/{id}/show', 'show')->name('moh-dispense.show');
-            Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
-        });
+Route::controller(MohDispenseController::class)
+    ->prefix('/moh-dispense')
+    ->group(function () {
+        Route::get('/', 'index')->name('moh-dispense.index');
+        Route::get('/create', 'create')->name('moh-dispense.create');
+        Route::post('/store', 'store')->name('moh-dispense.store');
+        Route::get('/{id}/show', 'show')->name('moh-dispense.show');
+        Route::post('/{id}/submit', 'submit')->name('moh-dispense.submit');
+        Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
+    });
 
             // Transfer Management Routes
 

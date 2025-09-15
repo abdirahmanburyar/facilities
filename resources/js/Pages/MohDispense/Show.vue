@@ -11,6 +11,19 @@
                         <p class="mt-1 text-sm text-gray-600">MOH Dispense Record Details</p>
                     </div>
                     <div class="flex space-x-3">
+                        <button v-if="props.mohDispense.status === 'draft'" 
+                            @click="submitDispense"
+                            :disabled="submitting"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            {{ submitting ? 'Submitting...' : 'Submit for Processing' }}
+                        </button>
                         <Link :href="route('moh-dispense.index')"
                             class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-lg transition-all duration-200">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,12 +169,35 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import moment from 'moment';
+import { ref } from 'vue';
 
 const props = defineProps({
     mohDispense: Object,
 });
+
+const submitting = ref(false);
+
+const submitDispense = () => {
+    if (confirm('Are you sure you want to submit this MOH dispense for processing? This action cannot be undone.')) {
+        submitting.value = true;
+        
+        router.post(route('moh-dispense.submit', props.mohDispense.id), {}, {
+            onSuccess: (page) => {
+                // Update the local status
+                props.mohDispense.status = 'processed';
+                alert('MOH dispense submitted successfully!');
+            },
+            onError: (errors) => {
+                alert('Error submitting MOH dispense: ' + (errors.message || 'Unknown error'));
+            },
+            onFinish: () => {
+                submitting.value = false;
+            }
+        });
+    }
+};
 
 const getStatusClass = (status) => {
     switch (status) {
