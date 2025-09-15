@@ -118,8 +118,6 @@
                                         </svg>
                                         Download Blank Template
                                     </button>
-                                    <p class="text-xs text-blue-600 mt-1">
-                                        Download the template                                    </p>
                                 </div>
                             </div>
                         </div>
