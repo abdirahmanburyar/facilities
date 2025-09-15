@@ -172,6 +172,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
 import moment from 'moment';
 import { ref } from 'vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     mohDispense: Object,
