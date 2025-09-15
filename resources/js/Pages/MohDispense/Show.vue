@@ -186,6 +186,7 @@ import { Link, router } from '@inertiajs/vue3';
 import moment from 'moment';
 import { ref } from 'vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
     mohDispense: Object,

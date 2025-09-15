@@ -343,6 +343,7 @@ import { TailwindPagination } from "laravel-vue-pagination";
 import { ref, watch, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import moment from 'moment';
+import axios from 'axios';
 
 const props = defineProps({
     mohDispenses: Object,

@@ -147,6 +147,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link } from '@inertiajs/vue3';
 import { ref, reactive } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
     errors: Object,
@@ -206,7 +207,7 @@ const downloadTemplate = () => {
     window.open(route('moh-dispense.download-template'), '_blank');
 };
 
-const submitForm = () => {
+const submitForm = async () => {
     if (!selectedFile.value) return;
     
     processing.value = true;
