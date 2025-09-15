@@ -45,6 +45,7 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
             'quantity' => (int) $row['quantity'],
             'dispense_date' => $this->parseDate($row['dispense_date']),
             'dispensed_by' => $row['dispensed_by'] ?? '',
+            'created_by' => auth()->id(),
         ]);
     }
 

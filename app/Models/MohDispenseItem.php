@@ -16,6 +16,7 @@ class MohDispenseItem extends Model
         'quantity',
         'dispense_date',
         'dispensed_by',
+        'created_by',
     ];
 
     protected $casts = [
@@ -31,5 +32,10 @@ class MohDispenseItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
