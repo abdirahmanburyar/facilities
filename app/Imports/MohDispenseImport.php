@@ -7,12 +7,13 @@ use App\Models\Product;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Carbon\Carbon;
 
-class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError
+class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, SkipsOnError
 {
     use Importable, SkipsErrors;
 
@@ -21,6 +22,11 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, Skip
     public function __construct($mohDispenseId)
     {
         $this->mohDispenseId = $mohDispenseId;
+    }
+
+    public function chunkSize(): int
+    {
+        return 1000; // Process 1000 rows at a time
     }
 
     public function model(array $row)

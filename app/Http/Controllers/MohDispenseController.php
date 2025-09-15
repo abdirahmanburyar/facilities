@@ -6,10 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\MohDispense;
 use App\Models\MohDispenseItem;
 use App\Models\Product;
-use App\Jobs\ProcessMohDispenseImport;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\MohDispenseImport;
 
@@ -63,22 +61,33 @@ class MohDispenseController extends Controller
             $mohDispense = MohDispense::create([
                 'facility_id' => auth()->user()->facility_id,
                 'created_by' => auth()->user()->id,
-                'status' => 'draft',
+                'status' => 'processing',
             ]);
 
-            // Store the uploaded file temporarily
+            // Process the Excel file with chunks
             $file = $request->file('excel_file');
-            $fileName = 'moh-dispenses/' . time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('moh-dispenses', time() . '_' . $file->getClientOriginalName(), 'public');
-
-            // Dispatch the job to process the Excel file
-            ProcessMohDispenseImport::dispatch($mohDispense->id, $filePath);
-
-            return response()->json([
-                'message' => 'MOH Dispense upload queued successfully. Processing will begin shortly.',
-                'moh_dispense_id' => $mohDispense->id,
-                'status' => 'queued'
-            ], 200);
+            
+            try {
+                // Import the Excel file using chunks
+                Excel::import(new MohDispenseImport($mohDispense->id), $file);
+                
+                // Update status to processed
+                $mohDispense->update(['status' => 'processed']);
+                
+                return response()->json([
+                    'message' => 'MOH Dispense processed successfully.',
+                    'moh_dispense_id' => $mohDispense->id,
+                    'status' => 'processed'
+                ], 200);
+                
+            } catch (\Exception $e) {
+                // Update status to failed
+                $mohDispense->update(['status' => 'failed']);
+                
+                return response()->json([
+                    'message' => 'Error processing Excel file: ' . $e->getMessage()
+                ], 500);
+            }
 
         } catch (\Throwable $th) {
             return response()->json([
