@@ -53,9 +53,47 @@ class MohDispenseController extends Controller
     public function store(Request $request)
     {
         try {
+            // Debug file information
+            if ($request->hasFile('excel_file')) {
+                $file = $request->file('excel_file');
+                \Log::info('File details:', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'extension' => $file->getClientOriginalExtension(),
+                    'size' => $file->getSize(),
+                ]);
+            }
+
             $request->validate([
-                'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // 10MB max
+                'excel_file' => 'required|file|max:10240', // 10MB max
+            ], [
+                'excel_file.required' => 'Please select a file to upload.',
+                'excel_file.file' => 'The uploaded file is not valid.',
+                'excel_file.max' => 'The file size must not exceed 10MB.',
             ]);
+
+            // Additional file type validation
+            $file = $request->file('excel_file');
+            $allowedExtensions = ['xlsx', 'xls', 'csv'];
+            $extension = strtolower($file->getClientOriginalExtension());
+            
+            // Also check MIME type as fallback
+            $allowedMimeTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                'application/vnd.ms-excel', // .xls
+                'text/csv', // .csv
+                'application/csv', // .csv alternative
+                'text/plain', // .csv sometimes reported as this
+                'application/octet-stream' // fallback for some systems
+            ];
+            
+            $mimeType = $file->getMimeType();
+            
+            if (!in_array($extension, $allowedExtensions) && !in_array($mimeType, $allowedMimeTypes)) {
+                return response()->json([
+                    'message' => 'Invalid file type. Please upload an Excel file (.xlsx, .xls) or CSV file (.csv). Detected: ' . $extension . ' (' . $mimeType . ')'
+                ], 422);
+            }
 
             // Create the MohDispense record first
             $mohDispense = MohDispense::create([

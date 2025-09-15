@@ -459,7 +459,10 @@ const isValidFileType = (file) => {
     const validTypes = [
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
         'application/vnd.ms-excel', // .xls
-        'text/csv' // .csv
+        'text/csv', // .csv
+        'application/csv', // .csv alternative
+        'text/plain', // .csv sometimes reported as this
+        'application/octet-stream' // fallback for some systems
     ];
     return validTypes.includes(file.type) || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv');
 };
