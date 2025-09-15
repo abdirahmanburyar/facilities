@@ -95,15 +95,12 @@ class MohDispenseController extends Controller
         $file = $request->file('excel_file');
         Excel::import(new MohDispenseImport($mohDispense->id), $file);
         
-        // Update status to processed
-        $mohDispense->update(['status' => 'processed']);
-
         return response()->json([
             'success' => true,
             'message' => 'Excel file processed successfully!',
             'moh_dispense_id' => $mohDispense->id,
             'moh_dispense_number' => $mohDispense->moh_dispense_number,
-            'status' => 'processed'
+            'status' => 'draft'
         ]);
 
         } catch (\Exception $e) {
