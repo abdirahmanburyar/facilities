@@ -11,6 +11,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\DispenceController;
+use App\Http\Controllers\MohDispenseController;
 use App\Http\Controllers\BackOrderController;
 use App\Http\Controllers\MonthlyInventoryReportController;
 use App\Http\Controllers\FacilityInventoryMovementController;
@@ -211,6 +212,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
 
             // dispence.check-invnetory
             Route::post('/check-invnetory', 'checkInventory')->name('dispence.check-invnetory');
+        });
+
+        // MOH Dispense Routes
+        Route::controller(MohDispenseController::class)
+        ->prefix('/moh-dispense')
+        ->group(function () {
+            Route::get('/', 'index')->name('moh-dispense.index');
+            Route::get('/create', 'create')->name('moh-dispense.create');
+            Route::post('/store', 'store')->name('moh-dispense.store');
+            Route::get('/{id}/show', 'show')->name('moh-dispense.show');
+            Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
         });
 
             // Transfer Management Routes
