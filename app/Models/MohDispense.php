@@ -21,9 +21,14 @@ class MohDispense extends Model
         parent::boot();
 
         static::creating(function ($mohDispense) {
-            $lastDispense = self::latest('moh_dispense_number')->first();
-            $number = $lastDispense ? (int)substr($lastDispense->moh_dispense_number, 12) + 1 : 1;
-            $mohDispense->moh_dispense_number = 'MOH-DISP-' . date('Ymd') . '-' . str_pad($number, 5, '0', STR_PAD_LEFT);
+            do {
+                $lastDispense = self::whereDate('created_at', today())
+                    ->latest('moh_dispense_number')
+                    ->first();
+                
+                $number = $lastDispense ? (int)substr($lastDispense->moh_dispense_number, 12) + 1 : 1;
+                $mohDispense->moh_dispense_number = 'MOH-DISP-' . date('Ymd') . '-' . str_pad($number, 5, '0', STR_PAD_LEFT);
+            } while (self::where('moh_dispense_number', $mohDispense->moh_dispense_number)->exists());
         });
     }
 

@@ -115,6 +115,7 @@ class MohDispenseController extends Controller
                 return response()->json([
                     'message' => 'MOH Dispense processed successfully.',
                     'moh_dispense_id' => $mohDispense->id,
+                    'moh_dispense_number' => $mohDispense->moh_dispense_number,
                     'status' => 'processed'
                 ], 200);
                 

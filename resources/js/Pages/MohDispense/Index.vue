@@ -489,8 +489,10 @@ const submitUpload = () => {
     router.post(route('moh-dispense.store'), formData, {
         onSuccess: (page) => {
             closeUploadModal();
-            // Show success message
-            alert('File processed successfully! The MOH dispense has been created and all items have been imported.');
+            // Show success message with MOH dispense number
+            const response = page.props;
+            const mohDispenseNumber = response.moh_dispense_number || 'Unknown';
+            alert(`File processed successfully! MOH Dispense ${mohDispenseNumber} has been created and all items have been imported.`);
             // Refresh the page to show new data
             router.reload({ only: ['mohDispenses'] });
         },
@@ -498,6 +500,8 @@ const submitUpload = () => {
             uploading.value = false;
             if (errors.excel_file) {
                 uploadError.value = errors.excel_file;
+            } else if (errors.message) {
+                uploadError.value = errors.message;
             } else {
                 uploadError.value = 'An error occurred while processing the file.';
             }
