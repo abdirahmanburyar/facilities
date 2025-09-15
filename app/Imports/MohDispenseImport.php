@@ -21,6 +21,7 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
 
     protected $mohDispenseId;
     protected $products = [];
+    protected $processedCount = 0;
 
     public function __construct($mohDispenseId)
     {
@@ -29,7 +30,7 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
 
     public function chunkSize(): int
     {
-        return 100; // Process 100 rows at a time to prevent memory issues
+        return 50; // Process 50 rows at a time to prevent timeout issues
     }
 
     public function model(array $row)
@@ -45,6 +46,15 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
 
             if (!$product) {
                 throw new \Exception("Product not found: " . $row['item']);
+            }
+
+            // Track progress and log every 100 rows
+            $this->processedCount++;
+            if ($this->processedCount % 100 === 0) {
+                logger()->info('Import progress:', [
+                    'processed_rows' => $this->processedCount,
+                    'moh_dispense_id' => $this->mohDispenseId
+                ]);
             }
 
             // Debug date values (only log first few rows to avoid performance issues)

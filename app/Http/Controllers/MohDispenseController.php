@@ -65,11 +65,10 @@ class MohDispenseController extends Controller
             }
 
             $request->validate([
-                'excel_file' => 'required|file|max:10240', // 10MB max
+                'excel_file' => 'required|file', // No size limit
             ], [
                 'excel_file.required' => 'Please select a file to upload.',
                 'excel_file.file' => 'The uploaded file is not valid.',
-                'excel_file.max' => 'The file size must not exceed 10MB.',
             ]);
 
             // Additional file type validation
@@ -113,6 +112,10 @@ class MohDispenseController extends Controller
                     'file_size' => $file->getSize()
                 ]);
 
+                // Set longer execution time for import
+                set_time_limit(0); // No time limit
+                ini_set('memory_limit', '1024M'); // 1GB memory limit
+
                 // Import the Excel file using chunks
                 Excel::import(new MohDispenseImport($mohDispense->id), $file);
                 
@@ -141,11 +144,18 @@ class MohDispenseController extends Controller
                     'trace' => $e->getTraceAsString()
                 ]);
                 
+                // Check if it's a timeout error
+                $isTimeout = strpos($e->getMessage(), 'Maximum execution time') !== false || 
+                           strpos($e->getMessage(), 'timeout') !== false;
+                
                 // Keep as draft if processing fails
                 return response()->json([
-                    'message' => 'Error processing Excel file: ' . $e->getMessage(),
+                    'message' => $isTimeout 
+                        ? 'Excel file processing timed out. Please try again or contact support if the issue persists.'
+                        : 'Error processing Excel file: ' . $e->getMessage(),
                     'error_type' => get_class($e),
-                    'moh_dispense_id' => $mohDispense->id
+                    'moh_dispense_id' => $mohDispense->id,
+                    'is_timeout' => $isTimeout
                 ], 500);
             }
 

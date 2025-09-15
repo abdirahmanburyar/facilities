@@ -269,7 +269,7 @@
                                                     </label>
                                                     <p class="pl-1">or drag and drop</p>
                                                 </div>
-                                                <p class="text-xs text-gray-500">Excel files (.xlsx, .xls, .csv) up to 10MB</p>
+                                                <p class="text-xs text-gray-500">Excel files (.xlsx, .xls, .csv) - no size limit</p>
                                             </div>
                                         </div>
                                         
@@ -423,6 +423,14 @@ const getResults = (page) => {
 const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
+        if (!isValidFileType(file)) {
+            uploadError.value = 'Please select a valid Excel file (.xlsx, .xls, .csv)';
+            selectedFile.value = null;
+            return;
+        }
+        
+        // File size validation removed - no limits
+        
         selectedFile.value = file;
         uploadError.value = '';
     }
@@ -431,7 +439,15 @@ const handleFileSelect = (event) => {
 const handleFileDrop = (event) => {
     isDragOver.value = false;
     const file = event.dataTransfer.files[0];
-    if (file && isValidFileType(file)) {
+    if (file) {
+        if (!isValidFileType(file)) {
+            uploadError.value = 'Please select a valid Excel file (.xlsx, .xls, .csv)';
+            selectedFile.value = null;
+            return;
+        }
+        
+        // File size validation removed - no limits
+        
         selectedFile.value = file;
         uploadError.value = '';
     }
@@ -455,6 +471,8 @@ const isValidFileType = (file) => {
     ];
     return validTypes.includes(file.type) || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv');
 };
+
+// File size validation removed - no limits
 
 const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
