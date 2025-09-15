@@ -222,6 +222,7 @@ Route::controller(MohDispenseController::class)
         Route::get('/create', 'create')->name('moh-dispense.create');
         Route::post('/store', 'store')->name('moh-dispense.store');
         Route::get('/{id}/show', 'show')->name('moh-dispense.show');
+        Route::post('/{id}/process', 'process')->name('moh-dispense.process'); // Added process route
         Route::post('/{id}/submit', 'submit')->name('moh-dispense.submit');
         Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
     });

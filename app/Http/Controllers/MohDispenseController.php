@@ -101,63 +101,31 @@ class MohDispenseController extends Controller
                 'status' => 'draft',
             ]);
 
-            // Process the Excel file with chunks
+            // Store the Excel file temporarily
             $file = $request->file('excel_file');
+            $fileName = 'moh_dispense_' . $mohDispense->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filePath = $file->storeAs('temp/moh_dispenses', $fileName);
             
-            try {
-                // Log the import start
-                logger()->info('Starting MOH Dispense import', [
-                    'moh_dispense_id' => $mohDispense->id,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize()
-                ]);
-
-                // Set longer execution time for import
-                set_time_limit(0); // No time limit
-                ini_set('memory_limit', '1024M'); // 1GB memory limit
-
-                // Import the Excel file using chunks
-                Excel::import(new MohDispenseImport($mohDispense->id), $file);
-                
-                // Update status to processed
-                $mohDispense->update(['status' => 'processed']);
-                
-                logger()->info('MOH Dispense import completed successfully', [
-                    'moh_dispense_id' => $mohDispense->id,
-                    'moh_dispense_number' => $mohDispense->moh_dispense_number
-                ]);
-                
-                return response()->json([
-                    'message' => 'MOH Dispense processed successfully.',
-                    'moh_dispense_id' => $mohDispense->id,
-                    'moh_dispense_number' => $mohDispense->moh_dispense_number,
-                    'status' => 'processed'
-                ], 200);
-                
-            } catch (\Exception $e) {
-                // Log the error
-                logger()->error('MOH Dispense import failed', [
-                    'moh_dispense_id' => $mohDispense->id,
-                    'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                
-                // Check if it's a timeout error
-                $isTimeout = strpos($e->getMessage(), 'Maximum execution time') !== false || 
-                           strpos($e->getMessage(), 'timeout') !== false;
-                
-                // Keep as draft if processing fails
-                return response()->json([
-                    'message' => $isTimeout 
-                        ? 'Excel file processing timed out. Please try again or contact support if the issue persists.'
-                        : 'Error processing Excel file: ' . $e->getMessage(),
-                    'error_type' => get_class($e),
-                    'moh_dispense_id' => $mohDispense->id,
-                    'is_timeout' => $isTimeout
-                ], 500);
-            }
+            // Update the MohDispense record with file info
+            $mohDispense->update([
+                'excel_file_name' => $file->getClientOriginalName(),
+                'excel_file_path' => $filePath,
+                'status' => 'draft'
+            ]);
+            
+            logger()->info('MOH Dispense file uploaded successfully', [
+                'moh_dispense_id' => $mohDispense->id,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'stored_path' => $filePath
+            ]);
+            
+            return response()->json([
+                'message' => 'Excel file uploaded successfully. You can now process it.',
+                'moh_dispense_id' => $mohDispense->id,
+                'moh_dispense_number' => $mohDispense->moh_dispense_number,
+                'status' => 'draft'
+            ], 200);
 
         } catch (\Throwable $th) {
             return response()->json([
@@ -180,6 +148,69 @@ class MohDispenseController extends Controller
             ]);
         } catch (\Throwable $th) {
             return response()->json($th->getMessage(), 500);
+        }
+    }
+
+    public function process($id)
+    {
+        try {
+            $mohDispense = MohDispense::findOrFail($id);
+            
+            // Check if it's in draft status and has a file
+            if ($mohDispense->status !== 'draft') {
+                return response()->json(['message' => 'Only draft MOH dispenses can be processed.'], 400);
+            }
+            
+            if (!$mohDispense->excel_file_path) {
+                return response()->json(['message' => 'No Excel file found for processing.'], 400);
+            }
+
+            // Check if file exists
+            if (!\Storage::exists($mohDispense->excel_file_path)) {
+                return response()->json(['message' => 'Excel file not found on server.'], 400);
+            }
+
+            // Set longer execution time for import
+            set_time_limit(0); // No time limit
+            ini_set('memory_limit', '1024M'); // 1GB memory limit
+
+            // Process the Excel file
+            $filePath = \Storage::path($mohDispense->excel_file_path);
+            
+            logger()->info('Starting MOH Dispense processing', [
+                'moh_dispense_id' => $mohDispense->id,
+                'file_path' => $filePath
+            ]);
+
+            Excel::import(new MohDispenseImport($mohDispense->id), $filePath);
+            
+            // Update status to processed
+            $mohDispense->update(['status' => 'processed']);
+            
+            logger()->info('MOH Dispense processing completed successfully', [
+                'moh_dispense_id' => $mohDispense->id,
+                'moh_dispense_number' => $mohDispense->moh_dispense_number
+            ]);
+            
+            return response()->json([
+                'message' => 'MOH Dispense processed successfully.',
+                'moh_dispense_id' => $mohDispense->id,
+                'moh_dispense_number' => $mohDispense->moh_dispense_number,
+                'status' => 'processed'
+            ], 200);
+
+        } catch (\Throwable $th) {
+            logger()->error('MOH Dispense processing failed', [
+                'moh_dispense_id' => $id,
+                'error' => $th->getMessage(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'trace' => $th->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Error processing MOH Dispense: ' . $th->getMessage()
+            ], 500);
         }
     }
 

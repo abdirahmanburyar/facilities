@@ -12,6 +12,8 @@ class MohDispense extends Model
         'moh_dispense_number',
         'facility_id',
         'created_by',
+        'excel_file_name',
+        'excel_file_path',
         'status',
     ];
 
