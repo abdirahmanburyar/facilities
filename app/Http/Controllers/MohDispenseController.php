@@ -106,11 +106,23 @@ class MohDispenseController extends Controller
             $file = $request->file('excel_file');
             
             try {
+                // Log the import start
+                \Log::info('Starting MOH Dispense import', [
+                    'moh_dispense_id' => $mohDispense->id,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize()
+                ]);
+
                 // Import the Excel file using chunks
                 Excel::import(new MohDispenseImport($mohDispense->id), $file);
                 
                 // Update status to processed
                 $mohDispense->update(['status' => 'processed']);
+                
+                \Log::info('MOH Dispense import completed successfully', [
+                    'moh_dispense_id' => $mohDispense->id,
+                    'moh_dispense_number' => $mohDispense->moh_dispense_number
+                ]);
                 
                 return response()->json([
                     'message' => 'MOH Dispense processed successfully.',
@@ -120,6 +132,13 @@ class MohDispenseController extends Controller
                 ], 200);
                 
             } catch (\Exception $e) {
+                // Log the error
+                \Log::error('MOH Dispense import failed', [
+                    'moh_dispense_id' => $mohDispense->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
                 // Keep as draft if processing fails
                 return response()->json([
                     'message' => 'Error processing Excel file: ' . $e->getMessage()
