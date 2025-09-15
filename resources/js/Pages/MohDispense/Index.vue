@@ -502,25 +502,38 @@ const closeUploadModal = () => {
     }
 };
 
-const processDispense = (id) => {
+const processDispense = async (id) => {
     if (processing.value) return;
     
     processing.value = true;
     
-    router.post(route('moh-dispense.process', id), {}, {
-        onSuccess: (page) => {
-            processing.value = false;
-            alert('MOH Dispense processed successfully!');
-            router.reload({ only: ['mohDispenses'] });
-        },
-        onError: (errors) => {
-            processing.value = false;
-            alert('Error processing MOH Dispense: ' + (errors.message || 'Unknown error'));
+    try {
+        const response = await axios.post(route('moh-dispense.process', id), {}, {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            timeout: 600000 // 10 minutes timeout
+        });
+        
+        processing.value = false;
+        alert('MOH Dispense processed successfully!');
+        router.reload({ only: ['mohDispenses'] });
+        
+    } catch (error) {
+        processing.value = false;
+        
+        if (error.response) {
+            const errorData = error.response.data;
+            alert('Error processing MOH Dispense: ' + (errorData.message || 'Unknown error'));
+        } else if (error.code === 'ECONNABORTED') {
+            alert('Processing timeout. Please try again.');
+        } else {
+            alert('Network error. Please check your connection and try again.');
         }
-    });
+    }
 };
 
-const submitUpload = () => {
+const submitUpload = async () => {
     if (!selectedFile.value) return;
     
     uploading.value = true;
@@ -529,30 +542,48 @@ const submitUpload = () => {
     const formData = new FormData();
     formData.append('excel_file', selectedFile.value);
     
-    router.post(route('moh-dispense.store'), formData, {
-        onSuccess: (page) => {
-            closeUploadModal();
-            // Show success message with MOH dispense number
-            const response = page.props;
-            const mohDispenseNumber = response.moh_dispense_number || 'Unknown';
-            alert(`Excel file uploaded successfully!\nMOH Dispense Number: ${mohDispenseNumber}\nYou can now process it from the list.`);
-            // Refresh the page to show new data
-            router.reload({ only: ['mohDispenses'] });
-        },
-        onError: (errors) => {
-            uploading.value = false;
-            if (errors.excel_file) {
-                uploadError.value = errors.excel_file;
-            } else if (errors.message) {
-                uploadError.value = errors.message;
-            } else {
-                uploadError.value = 'An error occurred while processing the file.';
+    try {
+        const response = await axios.post(route('moh-dispense.store'), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            timeout: 600000, // 10 minutes timeout
+            onUploadProgress: (progressEvent) => {
+                if (progressEvent.lengthComputable) {
+                    const percentComplete = (progressEvent.loaded / progressEvent.total) * 100;
+                    console.log('Upload progress:', percentComplete + '%');
+                }
             }
-        },
-        onFinish: () => {
-            uploading.value = false;
+        });
+        
+        // Success
+        closeUploadModal();
+        const mohDispenseNumber = response.data.moh_dispense_number || 'Unknown';
+        alert(`Excel file uploaded successfully!\nMOH Dispense Number: ${mohDispenseNumber}\nYou can now process it from the list.`);
+        router.reload({ only: ['mohDispenses'] });
+        
+    } catch (error) {
+        uploading.value = false;
+        
+        if (error.response) {
+            // Server responded with error status
+            const errorData = error.response.data;
+            if (errorData.message) {
+                uploadError.value = errorData.message;
+            } else if (errorData.errors && errorData.errors.excel_file) {
+                uploadError.value = errorData.errors.excel_file[0];
+            } else {
+                uploadError.value = 'Upload failed. Please try again.';
+            }
+        } else if (error.code === 'ECONNABORTED') {
+            // Timeout error
+            uploadError.value = 'Upload timeout. The file might be too large. Please try a smaller file.';
+        } else {
+            // Network error
+            uploadError.value = 'Network error. Please check your connection and try again.';
         }
-    });
+    }
 };
 
 // Watchers

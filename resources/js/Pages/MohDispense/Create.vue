@@ -214,21 +214,46 @@ const submitForm = () => {
     const formData = new FormData();
     formData.append('excel_file', selectedFile.value);
     
-    router.post(route('moh-dispense.store'), formData, {
-        onSuccess: (page) => {
-            // Redirect to the created MOH dispense or index
-            if (page.props.flash?.moh_dispense_id) {
-                router.visit(route('moh-dispense.show', page.props.flash.moh_dispense_id));
-            } else {
-                router.visit(route('moh-dispense.index'));
+    try {
+        const response = await axios.post(route('moh-dispense.store'), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            timeout: 600000, // 10 minutes timeout
+            onUploadProgress: (progressEvent) => {
+                if (progressEvent.lengthComputable) {
+                    const percentComplete = (progressEvent.loaded / progressEvent.total) * 100;
+                    console.log('Upload progress:', percentComplete + '%');
+                }
             }
-        },
-        onError: () => {
-            processing.value = false;
-        },
-        onFinish: () => {
-            processing.value = false;
+        });
+        
+        // Success - redirect to the created MOH dispense
+        if (response.data.moh_dispense_id) {
+            router.visit(route('moh-dispense.show', response.data.moh_dispense_id));
+        } else {
+            router.visit(route('moh-dispense.index'));
         }
-    });
+        
+    } catch (error) {
+        processing.value = false;
+        
+        if (error.response) {
+            // Server responded with error status
+            const errorData = error.response.data;
+            if (errorData.message) {
+                alert('Error: ' + errorData.message);
+            } else {
+                alert('Upload failed. Please try again.');
+            }
+        } else if (error.code === 'ECONNABORTED') {
+            // Timeout error
+            alert('Upload timeout. The file might be too large. Please try a smaller file.');
+        } else {
+            // Network error
+            alert('Network error. Please check your connection and try again.');
+        }
+    }
 };
 </script>

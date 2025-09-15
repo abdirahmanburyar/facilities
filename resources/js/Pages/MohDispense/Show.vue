@@ -211,42 +211,48 @@ const processDispense = () => {
         if (result.isConfirmed) {
             processing.value = true;
             
-            router.post(route('moh-dispense.process', props.mohDispense.id), {}, {
-                onSuccess: (page) => {
-                    processing.value = false;
-                    
-                    // Update the local status
-                    props.mohDispense.status = 'processed';
-                    
-                    // Show success message from flash data
-                    if (page.props.flash?.success) {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: page.props.flash.success,
-                            icon: 'success',
-                            confirmButtonColor: '#10b981'
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: 'Excel file processed successfully!',
-                            icon: 'success',
-                            confirmButtonColor: '#10b981'
-                        });
-                    }
-                },
-                onError: (errors) => {
-                    processing.value = false;
-                    
-                    // Show error message
-                    Swal.fire({
-                        title: 'Error!',
-                        text: errors.message || 'Error processing Excel file',
-                        icon: 'error',
-                        confirmButtonColor: '#ef4444'
-                    });
+            try {
+                const response = await axios.post(route('moh-dispense.process', props.mohDispense.id), {}, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    timeout: 600000 // 10 minutes timeout
+                });
+                
+                processing.value = false;
+                
+                // Update the local status
+                props.mohDispense.status = 'processed';
+                
+                // Show success message
+                Swal.fire({
+                    title: 'Success!',
+                    text: response.data.message || 'Excel file processed successfully!',
+                    icon: 'success',
+                    confirmButtonColor: '#10b981'
+                });
+                
+            } catch (error) {
+                processing.value = false;
+                
+                // Show error message
+                let errorMessage = 'Error processing Excel file';
+                if (error.response) {
+                    const errorData = error.response.data;
+                    errorMessage = errorData.message || errorMessage;
+                } else if (error.code === 'ECONNABORTED') {
+                    errorMessage = 'Processing timeout. Please try again.';
+                } else {
+                    errorMessage = 'Network error. Please check your connection and try again.';
                 }
-            });
+                
+                Swal.fire({
+                    title: 'Error!',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
         }
     });
 };
