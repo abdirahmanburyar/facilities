@@ -301,15 +301,15 @@
                                     </div>
 
                                     <!-- Template Download Link -->
-                                    <div class="mt-4">
-                                        <button type="button" @click="downloadTemplate"
-                                            class="text-sm text-blue-600 hover:text-blue-800 underline">
-                                            Download Template with Eligible Items
-                                        </button>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            Template includes eligible items for your facility (other columns to be filled manually)
-                                        </p>
-                                    </div>
+                                <div class="mt-4">
+                                    <button type="button" @click="downloadTemplate"
+                                        class="text-sm text-blue-600 hover:text-blue-800 underline">
+                                        Download Blank Template
+                                    </button>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Download a blank template with column headers for manual data entry
+                                    </p>
+                                </div>
                                 </div>
                             </div>
                         </div>

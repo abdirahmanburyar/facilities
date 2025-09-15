@@ -114,20 +114,8 @@ class MohDispenseController extends Controller
                 return response()->json(['message' => 'User facility not found'], 404);
             }
 
-            // Get eligible products for the facility
-            $eligibleProducts = $facility->eligibleProducts()
-                ->select('products.id', 'products.name', 'products.productID')
-                ->get();
-
-            // Generate CSV content
+            // Generate CSV content with only headers
             $csvContent = "item,source,batch_no,expiry_date,quantity,dispense_date,dispensed_by\n";
-            
-            foreach ($eligibleProducts as $product) {
-                $csvContent .= sprintf(
-                    "%s,,,,\n",
-                    $product->name // Include product name in item column, other columns empty
-                );
-            }
 
             // Generate filename with facility name
             $fileName = 'moh_dispense_template_' . str_replace(' ', '_', $facility->name) . '.csv';
