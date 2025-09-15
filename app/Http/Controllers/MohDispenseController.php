@@ -42,8 +42,32 @@ class MohDispenseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // 10MB max
+            'excel_file' => 'required|file|max:10240', // 10MB max
         ]);
+
+        // Additional file type validation
+        $file = $request->file('excel_file');
+        $allowedExtensions = ['xlsx', 'xls', 'csv'];
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        // Also check MIME type as fallback
+        $allowedMimeTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-excel', // .xls
+            'text/csv', // .csv
+            'application/csv', // .csv alternative
+            'text/plain', // .csv sometimes reported as this
+            'application/octet-stream' // fallback for some systems
+        ];
+        
+        $mimeType = $file->getMimeType();
+        
+        if (!in_array($extension, $allowedExtensions) && !in_array($mimeType, $allowedMimeTypes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid file type. Please upload an Excel file (.xlsx, .xls) or CSV file (.csv). Detected: ' . $extension . ' (' . $mimeType . ')'
+            ], 422);
+        }
 
         // Create MOH dispense record
         $mohDispense = MohDispense::create([
