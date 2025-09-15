@@ -17,21 +17,32 @@ class MohDispense extends Model
         'status',
     ];
 
-
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($mohDispense) {
-            do {
-                $lastDispense = self::whereDate('created_at', today())
-                    ->latest('moh_dispense_number')
-                    ->first();
-                
-                $number = $lastDispense ? (int)substr($lastDispense->moh_dispense_number, 12) + 1 : 1;
-                $mohDispense->moh_dispense_number = 'MOH-DISP-' . date('Ymd') . '-' . str_pad($number, 5, '0', STR_PAD_LEFT);
-            } while (self::where('moh_dispense_number', $mohDispense->moh_dispense_number)->exists());
+            if (empty($mohDispense->moh_dispense_number)) {
+                $mohDispense->moh_dispense_number = self::generateDispenseNumber();
+            }
         });
+    }
+
+    public static function generateDispenseNumber()
+    {
+        $date = now()->format('Ymd');
+        $lastNumber = self::whereDate('created_at', today())
+            ->where('moh_dispense_number', 'like', "MOH-DISP-{$date}-%")
+            ->orderBy('moh_dispense_number', 'desc')
+            ->value('moh_dispense_number');
+
+        if ($lastNumber) {
+            $sequence = (int) substr($lastNumber, -5) + 1;
+        } else {
+            $sequence = 1;
+        }
+
+        return 'MOH-DISP-' . $date . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
     }
 
     public function facility(): BelongsTo

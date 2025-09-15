@@ -21,8 +21,6 @@ return new class extends Migration
             $table->integer('quantity');
             $table->date('dispense_date');
             $table->string('dispensed_by');
-            $table->foreignId('created_by')->constrained('users');
-            $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->timestamps();
         });
     }
