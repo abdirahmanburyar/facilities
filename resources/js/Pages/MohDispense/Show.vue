@@ -195,10 +195,10 @@ const props = defineProps({
 const submitting = ref(false);
 const processing = ref(false);
 
-const processDispense = () => {
+const processDispense = async () => {
     if (processing.value) return;
     
-    Swal.fire({
+    const result = await Swal.fire({
         title: 'Process Excel File',
         text: 'Are you sure you want to process the uploaded Excel file? This will import all items from the file.',
         icon: 'question',
@@ -208,54 +208,54 @@ const processDispense = () => {
         confirmButtonText: 'Yes, Process',
         cancelButtonText: 'Cancel',
         reverseButtons: true
-    }).then((result) => {
-        if (result.isConfirmed) {
-            processing.value = true;
-            
-            try {
-                const response = await axios.post(route('moh-dispense.process', props.mohDispense.id), {}, {
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    timeout: 600000 // 10 minutes timeout
-                });
-                
-                processing.value = false;
-                
-                // Update the local status
-                props.mohDispense.status = 'processed';
-                
-                // Show success message
-                Swal.fire({
-                    title: 'Success!',
-                    text: response.data.message || 'Excel file processed successfully!',
-                    icon: 'success',
-                    confirmButtonColor: '#10b981'
-                });
-                
-            } catch (error) {
-                processing.value = false;
-                
-                // Show error message
-                let errorMessage = 'Error processing Excel file';
-                if (error.response) {
-                    const errorData = error.response.data;
-                    errorMessage = errorData.message || errorMessage;
-                } else if (error.code === 'ECONNABORTED') {
-                    errorMessage = 'Processing timeout. Please try again.';
-                } else {
-                    errorMessage = 'Network error. Please check your connection and try again.';
-                }
-                
-                Swal.fire({
-                    title: 'Error!',
-                    text: errorMessage,
-                    icon: 'error',
-                    confirmButtonColor: '#ef4444'
-                });
-            }
-        }
     });
+    
+    if (result.isConfirmed) {
+        processing.value = true;
+        
+        try {
+            const response = await axios.post(route('moh-dispense.process', props.mohDispense.id), {}, {
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                timeout: 600000 // 10 minutes timeout
+            });
+            
+            processing.value = false;
+            
+            // Update the local status
+            props.mohDispense.status = 'processed';
+            
+            // Show success message
+            Swal.fire({
+                title: 'Success!',
+                text: response.data.message || 'Excel file processed successfully!',
+                icon: 'success',
+                confirmButtonColor: '#10b981'
+            });
+            
+        } catch (error) {
+            processing.value = false;
+            
+            // Show error message
+            let errorMessage = 'Error processing Excel file';
+            if (error.response) {
+                const errorData = error.response.data;
+                errorMessage = errorData.message || errorMessage;
+            } else if (error.code === 'ECONNABORTED') {
+                errorMessage = 'Processing timeout. Please try again.';
+            } else {
+                errorMessage = 'Network error. Please check your connection and try again.';
+            }
+            
+            Swal.fire({
+                title: 'Error!',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    }
 };
 
 const submitDispense = () => {
