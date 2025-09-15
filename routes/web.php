@@ -222,7 +222,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
                 Route::get('/create', 'create')->name('moh-dispense.create');
                 Route::post('/store', 'store')->name('moh-dispense.store');
                 Route::get('/{id}/show', 'show')->name('moh-dispense.show');
-                Route::post('/{id}/process', 'process')->name('moh-dispense.process');
                 Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
                 Route::get('/test', function() {
                     try {

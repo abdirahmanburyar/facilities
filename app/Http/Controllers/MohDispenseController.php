@@ -91,22 +91,20 @@ class MohDispenseController extends Controller
             'status' => 'draft',
         ]);
 
-        // Store the uploaded file
+        // Process the Excel file directly
         $file = $request->file('excel_file');
-        $fileName = 'moh_dispense_' . $mohDispense->id . '_' . time() . '.' . $file->getClientOriginalExtension();
-        $filePath = $file->storeAs('temp/moh_dispenses', $fileName);
-
-        // Update with file info
-        $mohDispense->update([
-            'excel_file_name' => $file->getClientOriginalName(),
-            'excel_file_path' => $filePath,
-        ]);
+        $filePath = $file->getPathname();
+        Excel::import(new MohDispenseImport($mohDispense->id), $filePath);
+        
+        // Update status to processed
+        $mohDispense->update(['status' => 'processed']);
 
         return response()->json([
             'success' => true,
-            'message' => 'File uploaded successfully. You can now process it.',
+            'message' => 'Excel file processed successfully!',
             'moh_dispense_id' => $mohDispense->id,
             'moh_dispense_number' => $mohDispense->moh_dispense_number,
+            'status' => 'processed'
         ]);
 
         } catch (\Exception $e) {
@@ -134,53 +132,6 @@ class MohDispenseController extends Controller
         ]);
     }
 
-    public function process($id)
-    {
-        try {
-            $mohDispense = MohDispense::where('facility_id', auth()->user()->facility_id)
-                ->findOrFail($id);
-
-            if ($mohDispense->status !== 'draft') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only draft dispenses can be processed.',
-                ], 400);
-            }
-
-            if (!$mohDispense->excel_file_path || !Storage::exists($mohDispense->excel_file_path)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Excel file not found.',
-                ], 400);
-            }
-
-            // Process the Excel file
-            $filePath = Storage::path($mohDispense->excel_file_path);
-            Excel::import(new MohDispenseImport($mohDispense->id), $filePath);
-
-            // Update status
-            $mohDispense->update(['status' => 'processed']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Excel file processed successfully.',
-                'moh_dispense_number' => $mohDispense->moh_dispense_number,
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('MOH Dispense process error: ' . $e->getMessage(), [
-                'moh_dispense_id' => $id,
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error processing file: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
 
     public function downloadTemplate()
     {

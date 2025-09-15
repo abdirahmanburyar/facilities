@@ -16,8 +16,6 @@ return new class extends Migration
             $table->string('moh_dispense_number')->unique();
             $table->foreignId('facility_id')->constrained('facilities')->onDelete('cascade');
             $table->foreignId('created_by')->constrained('users');
-            $table->string('excel_file_name')->nullable();
-            $table->string('excel_file_path')->nullable();
             $table->enum('status', ['draft', 'processed'])->default('draft');
             $table->timestamps();
         });

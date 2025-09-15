@@ -8,12 +8,6 @@
                     <p class="mt-1 text-sm text-gray-600">MOH Dispense Record Details</p>
                 </div>
                 <div class="flex space-x-3">
-                    <button v-if="mohDispense.status === 'draft' && mohDispense.excel_file_path" 
-                        @click="processDispense"
-                        :disabled="processing"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                        {{ processing ? 'Processing...' : 'Process Excel File' }}
-                    </button>
                     <Link :href="route('moh-dispense.index')"
                         class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
                         Back to List
@@ -51,22 +45,6 @@
                     </dl>
                 </div>
 
-                <!-- File Info -->
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">File Information</h3>
-                    <dl class="space-y-3">
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">File Name</dt>
-                            <dd class="text-sm text-gray-900">{{ mohDispense.excel_file_name || 'N/A' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">File Status</dt>
-                            <dd class="text-sm text-gray-900">
-                                {{ mohDispense.excel_file_path ? 'File Available' : 'No File' }}
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
 
                 <!-- Summary -->
                 <div class="bg-white rounded-lg shadow p-6">
@@ -148,14 +126,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
 import moment from 'moment';
 import { ref, computed } from 'vue';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
 const props = defineProps({
     mohDispense: Object,
 });
-
-const processing = ref(false);
 
 // Computed properties
 const totalQuantity = computed(() => {
@@ -175,66 +148,4 @@ const formatDate = (date) => {
     return moment(date).format('MMM DD, YYYY');
 };
 
-const processDispense = async () => {
-    if (processing.value) return;
-    
-    const result = await Swal.fire({
-        title: 'Process Excel File',
-        text: 'Are you sure you want to process the uploaded Excel file? This will import all items from the file.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3b82f6',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, Process',
-        cancelButtonText: 'Cancel',
-        reverseButtons: true
-    });
-    
-    if (result.isConfirmed) {
-        processing.value = true;
-        
-        try {
-            const response = await axios.post(route('moh-dispense.process', props.mohDispense.id), {}, {
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                timeout: 300000 // 5 minutes timeout
-            });
-            
-            processing.value = false;
-            
-            // Update the local status
-            props.mohDispense.status = 'processed';
-            
-            // Show success message
-            Swal.fire({
-                title: 'Success!',
-                text: response.data.message || 'Excel file processed successfully!',
-                icon: 'success',
-                confirmButtonColor: '#10b981'
-            });
-            
-        } catch (error) {
-            processing.value = false;
-            
-            // Show error message
-            let errorMessage = 'Error processing Excel file';
-            if (error.response) {
-                const errorData = error.response.data;
-                errorMessage = errorData.message || errorMessage;
-            } else if (error.code === 'ECONNABORTED') {
-                errorMessage = 'Processing timeout. Please try again.';
-            } else {
-                errorMessage = 'Network error. Please check your connection and try again.';
-            }
-            
-            Swal.fire({
-                title: 'Error!',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonColor: '#ef4444'
-            });
-        }
-    }
-};
 </script>

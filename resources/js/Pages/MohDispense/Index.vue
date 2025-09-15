@@ -225,7 +225,7 @@ const submitUpload = async () => {
         });
         
         closeUploadModal();
-        alert(`File uploaded successfully!\nMOH Number: ${response.data.moh_dispense_number}`);
+        alert(`Excel file processed successfully!\nMOH Number: ${response.data.moh_dispense_number}`);
         router.reload({ only: ['mohDispenses'] });
         
     } catch (error) {
