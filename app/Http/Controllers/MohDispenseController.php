@@ -56,7 +56,7 @@ class MohDispenseController extends Controller
             // Debug file information
             if ($request->hasFile('excel_file')) {
                 $file = $request->file('excel_file');
-                \Log::info('File details:', [
+                logger()->info('File details:', [
                     'original_name' => $file->getClientOriginalName(),
                     'mime_type' => $file->getMimeType(),
                     'extension' => $file->getClientOriginalExtension(),
@@ -107,7 +107,7 @@ class MohDispenseController extends Controller
             
             try {
                 // Log the import start
-                \Log::info('Starting MOH Dispense import', [
+                logger()->info('Starting MOH Dispense import', [
                     'moh_dispense_id' => $mohDispense->id,
                     'file_name' => $file->getClientOriginalName(),
                     'file_size' => $file->getSize()
@@ -119,7 +119,7 @@ class MohDispenseController extends Controller
                 // Update status to processed
                 $mohDispense->update(['status' => 'processed']);
                 
-                \Log::info('MOH Dispense import completed successfully', [
+                logger()->info('MOH Dispense import completed successfully', [
                     'moh_dispense_id' => $mohDispense->id,
                     'moh_dispense_number' => $mohDispense->moh_dispense_number
                 ]);
@@ -133,15 +133,19 @@ class MohDispenseController extends Controller
                 
             } catch (\Exception $e) {
                 // Log the error
-                \Log::error('MOH Dispense import failed', [
+                logger()->error('MOH Dispense import failed', [
                     'moh_dispense_id' => $mohDispense->id,
                     'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
                 ]);
                 
                 // Keep as draft if processing fails
                 return response()->json([
-                    'message' => 'Error processing Excel file: ' . $e->getMessage()
+                    'message' => 'Error processing Excel file: ' . $e->getMessage(),
+                    'error_type' => get_class($e),
+                    'moh_dispense_id' => $mohDispense->id
                 ], 500);
             }
 

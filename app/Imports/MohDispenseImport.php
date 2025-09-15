@@ -11,13 +11,16 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterImport;
 use Carbon\Carbon;
 
-class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, SkipsOnError
+class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, SkipsOnError, WithEvents
 {
     use Importable, SkipsErrors;
 
     protected $mohDispenseId;
+    protected $products = [];
 
     public function __construct($mohDispenseId)
     {
@@ -26,39 +29,56 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
 
     public function chunkSize(): int
     {
-        return 1000; // Process 1000 rows at a time
+        return 100; // Process 100 rows at a time to prevent memory issues
     }
 
     public function model(array $row)
     {
-        // Find product by name or ID
-        $product = Product::where('name', $row['item'])
-            ->orWhere('id', $row['item'])
-            ->orWhere('productID', $row['item'])
-            ->first();
+        try {
+            // Validate required fields
+            if (empty($row['item'])) {
+                throw new \Exception("Item field is required");
+            }
 
-        if (!$product) {
-            throw new \Exception("Product not found: " . $row['item']);
+            // Get product from cache or database
+            $product = $this->getProduct($row['item']);
+
+            if (!$product) {
+                throw new \Exception("Product not found: " . $row['item']);
+            }
+
+            // Debug date values (only log first few rows to avoid performance issues)
+            static $rowCount = 0;
+            if ($rowCount < 3) {
+                logger()->info('Processing row:', [
+                    'row' => $rowCount + 1,
+                    'item' => $row['item'],
+                    'expiry_date_raw' => $row['expiry_date'] ?? 'not set',
+                    'dispense_date_raw' => $row['dispense_date'] ?? 'not set',
+                    'quantity' => $row['quantity'] ?? 'not set',
+                ]);
+                $rowCount++;
+            }
+
+            return new MohDispenseItem([
+                'moh_dispense_id' => $this->mohDispenseId,
+                'product_id' => $product->id,
+                'source' => $row['source'] ?? '',
+                'batch_no' => $row['batch_no'] ?? '',
+                'expiry_date' => $this->parseDate($row['expiry_date']),
+                'quantity' => (int) $row['quantity'],
+                'dispense_date' => $this->parseDate($row['dispense_date']),
+                'dispensed_by' => $row['dispensed_by'] ?? '',
+            ]);
+
+        } catch (\Exception $e) {
+            logger()->error('Error processing row:', [
+                'row' => $row,
+                'error' => $e->getMessage(),
+                'moh_dispense_id' => $this->mohDispenseId
+            ]);
+            throw $e;
         }
-
-        // Debug date values
-        \Log::info('Processing row dates:', [
-            'expiry_date_raw' => $row['expiry_date'] ?? 'not set',
-            'dispense_date_raw' => $row['dispense_date'] ?? 'not set',
-            'expiry_date_type' => gettype($row['expiry_date'] ?? null),
-            'dispense_date_type' => gettype($row['dispense_date'] ?? null),
-        ]);
-
-        return new MohDispenseItem([
-            'moh_dispense_id' => $this->mohDispenseId,
-            'product_id' => $product->id,
-            'source' => $row['source'] ?? '',
-            'batch_no' => $row['batch_no'] ?? '',
-            'expiry_date' => $this->parseDate($row['expiry_date']),
-            'quantity' => (int) $row['quantity'],
-            'dispense_date' => $this->parseDate($row['dispense_date']),
-            'dispensed_by' => $row['dispensed_by'] ?? '',
-        ]);
     }
 
 
@@ -73,6 +93,38 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
             'dispense_date' => 'required',
             'dispensed_by' => 'nullable|string|max:255',
         ];
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterImport::class => function(AfterImport $event) {
+                logger()->info('MOH Dispense import completed', [
+                    'moh_dispense_id' => $this->mohDispenseId,
+                    'total_errors' => $this->getErrors()->count(),
+                    'errors' => $this->getErrors()->toArray()
+                ]);
+            },
+        ];
+    }
+
+    private function getProduct($item)
+    {
+        // Check cache first
+        if (isset($this->products[$item])) {
+            return $this->products[$item];
+        }
+
+        // Find product in database
+        $product = Product::where('name', $item)
+            ->orWhere('id', $item)
+            ->orWhere('productID', $item)
+            ->first();
+
+        // Cache the result
+        $this->products[$item] = $product;
+
+        return $product;
     }
 
     private function parseDate($date)
