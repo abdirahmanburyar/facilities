@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -16,7 +17,7 @@ return new class extends Migration
             $table->string('moh_dispense_number');
             $table->foreignId('facility_id')->constrained('facilities')->onDelete('cascade');
             $table->foreignId('created_by')->constrained('users');
-            $table->enum('status', ['draft', 'processing', 'processed', 'failed'])->default('draft');
+            $table->enum('status', ['draft', 'processed'])->default('draft');
             $table->timestamps();
         });
     }
@@ -26,6 +27,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
         Schema::dropIfExists('moh_dispenses');
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
 };

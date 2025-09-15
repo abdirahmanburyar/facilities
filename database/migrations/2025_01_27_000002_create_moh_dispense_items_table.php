@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('moh_dispense_items', function (Blueprint $table) {
             $table->id();
-        $table->foreignId('moh_dispense_id')->constrained('moh_dispenses')->onDelete('cascade');
-        $table->foreignId('product_id')->constrained('products')->onDelete('restrict');
-        $table->string('source')->nullable();
-        $table->string('batch_no');
+            $table->foreignId('moh_dispense_id')->constrained('moh_dispenses')->onDelete('cascade');
+            $table->foreignId('product_id')->constrained('products')->onDelete('restrict');
+            $table->string('source')->nullable();
+            $table->string('batch_no');
             $table->date('expiry_date');
             $table->integer('quantity');
             $table->date('dispense_date');

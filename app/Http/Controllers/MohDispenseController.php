@@ -99,7 +99,7 @@ class MohDispenseController extends Controller
             $mohDispense = MohDispense::create([
                 'facility_id' => auth()->user()->facility_id,
                 'created_by' => auth()->user()->id,
-                'status' => 'processing',
+                'status' => 'draft',
             ]);
 
             // Process the Excel file with chunks
@@ -119,9 +119,7 @@ class MohDispenseController extends Controller
                 ], 200);
                 
             } catch (\Exception $e) {
-                // Update status to failed
-                $mohDispense->update(['status' => 'failed']);
-                
+                // Keep as draft if processing fails
                 return response()->json([
                     'message' => 'Error processing Excel file: ' . $e->getMessage()
                 ], 500);

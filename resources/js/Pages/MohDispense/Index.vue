@@ -111,10 +111,6 @@
                                 </svg>
                             </div>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Processing</p>
-                            <p class="text-2xl font-semibold text-gray-900">{{ processingCount }}</p>
-                        </div>
                     </div>
                 </div>
 
@@ -366,9 +362,6 @@ const processedCount = computed(() => {
     return props.mohDispenses.data.filter(dispense => dispense.status === 'processed').length;
 });
 
-const processingCount = computed(() => {
-    return props.mohDispenses.data.filter(dispense => dispense.status === 'processing').length;
-});
 
 const draftCount = computed(() => {
     return props.mohDispenses.data.filter(dispense => dispense.status === 'draft').length;
@@ -379,12 +372,8 @@ const getStatusClass = (status) => {
     switch (status) {
         case 'processed':
             return 'bg-green-100 text-green-800';
-        case 'processing':
-            return 'bg-blue-100 text-blue-800';
         case 'draft':
             return 'bg-yellow-100 text-yellow-800';
-        case 'failed':
-            return 'bg-red-100 text-red-800';
         default:
             return 'bg-gray-100 text-gray-800';
     }
