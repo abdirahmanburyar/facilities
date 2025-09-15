@@ -199,23 +199,37 @@ const submitDispense = () => {
                 onSuccess: (page) => {
                     // Update the local status
                     props.mohDispense.status = 'processed';
-                    Swal.fire({
-                        title: 'Success!',
-                        text: 'MOH dispense submitted successfully!',
-                        icon: 'success',
-                        confirmButtonColor: '#10b981'
-                    });
+                    submitting.value = false;
+                    
+                    // Show success message from flash data
+                    if (page.props.flash?.success) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: page.props.flash.success,
+                            icon: 'success',
+                            confirmButtonColor: '#10b981'
+                        });
+                    }
                 },
                 onError: (errors) => {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: errors.message || 'Unknown error occurred',
-                        icon: 'error',
-                        confirmButtonColor: '#ef4444'
-                    });
-                },
-                onFinish: () => {
                     submitting.value = false;
+                    
+                    // Show error message from flash data
+                    if (errors.error) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errors.error,
+                            icon: 'error',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Unknown error occurred',
+                            icon: 'error',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    }
                 }
             });
         }

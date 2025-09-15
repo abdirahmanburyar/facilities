@@ -156,23 +156,16 @@ class MohDispenseController extends Controller
             
             // Check if it's in draft status
             if ($mohDispense->status !== 'draft') {
-                return response()->json([
-                    'message' => 'Only draft MOH dispenses can be submitted.'
-                ], 422);
+                return back()->with('error', 'Only draft MOH dispenses can be submitted.');
             }
 
             // Update status to processed
             $mohDispense->update(['status' => 'processed']);
 
-            return response()->json([
-                'message' => 'MOH dispense submitted successfully.',
-                'status' => 'processed'
-            ], 200);
+            return back()->with('success', 'MOH dispense submitted successfully.');
 
         } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'Error submitting MOH dispense: ' . $th->getMessage()
-            ], 500);
+            return back()->with('error', 'Error submitting MOH dispense: ' . $th->getMessage());
         }
     }
 
