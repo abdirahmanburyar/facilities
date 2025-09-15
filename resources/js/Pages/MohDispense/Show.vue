@@ -180,23 +180,45 @@ const props = defineProps({
 const submitting = ref(false);
 
 const submitDispense = () => {
-    if (confirm('Are you sure you want to submit this MOH dispense for processing? This action cannot be undone.')) {
-        submitting.value = true;
-        
-        router.post(route('moh-dispense.submit', props.mohDispense.id), {}, {
-            onSuccess: (page) => {
-                // Update the local status
-                props.mohDispense.status = 'processed';
-                alert('MOH dispense submitted successfully!');
-            },
-            onError: (errors) => {
-                alert('Error submitting MOH dispense: ' + (errors.message || 'Unknown error'));
-            },
-            onFinish: () => {
-                submitting.value = false;
-            }
-        });
-    }
+    Swal.fire({
+        title: 'Submit MOH Dispense',
+        text: 'Are you sure you want to submit this MOH dispense for processing? This action cannot be undone.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Submit',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            submitting.value = true;
+            
+            router.post(route('moh-dispense.submit', props.mohDispense.id), {}, {
+                onSuccess: (page) => {
+                    // Update the local status
+                    props.mohDispense.status = 'processed';
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'MOH dispense submitted successfully!',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981'
+                    });
+                },
+                onError: (errors) => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: errors.message || 'Unknown error occurred',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                },
+                onFinish: () => {
+                    submitting.value = false;
+                }
+            });
+        }
+    });
 };
 
 const getStatusClass = (status) => {
