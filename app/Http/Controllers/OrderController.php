@@ -1320,20 +1320,27 @@ class OrderController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->first();
 
+            $now = Carbon::now();
+            $quarter = $now->quarter;
+            $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
+            $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
+            
+            // Calculate quarter end date (next quarter start minus 1 day)
+            $nextQuarter = $quarter === 4 ? 1 : $quarter + 1;
+            $nextQuarterYear = $quarter === 4 ? $now->year + 1 : $now->year;
+            $nextQuarterStartDateParts = explode('-', self::QUARTER_START_DATES[$nextQuarter]);
+            $quarterEnd = Carbon::createFromDate($nextQuarterYear, $nextQuarterStartDateParts[1], $nextQuarterStartDateParts[0])->subDay()->endOfDay();
+            
             if ($lastReceivedOrder) {
                 $lastReceivedDate = Carbon::parse($lastReceivedOrder->updated_at)->startOfDay();
-                $daysSince = $lastReceivedDate->diffInDays(Carbon::now()->startOfDay());
+                $daysSince = $lastReceivedDate->diffInDays($now->startOfDay());
             } else {
                 // Fallback: use quarter start date
-                $now = Carbon::now();
-                $quarter = $now->quarter;
-                $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
-                $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
                 $daysSince = $quarterStart->diffInDays($now->startOfDay());
             }
     
-            // Days remaining in 120-day cycle
-            $daysRemaining = 90 - $daysSince;
+            // Days remaining in current quarter (from today to quarter end)
+            $daysRemaining = $now->startOfDay()->diffInDays($quarterEnd->startOfDay());
     
             // // Quantity on Order (QOO) default to 0
             $qoo = 0;
