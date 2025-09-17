@@ -695,10 +695,10 @@ class OrderController extends Controller
     }
 
     private const QUARTER_START_DATES = [
-        1 => '01-12',
-        2 => '01-03',
-        3 => '01-06',
-        4 => '01-09'
+        1 => '01-09',  // Q1: Sep 1 - Nov 30 (90 days)
+        2 => '01-12',  // Q2: Dec 1 - Feb 28/29 (90 days)
+        3 => '01-03',  // Q3: Mar 1 - May 31 (90 days)
+        4 => '01-06'   // Q4: Jun 1 - Aug 31 (90 days)
     ];
 
     /**
@@ -709,7 +709,27 @@ class OrderController extends Controller
     private function getCurrentQuarter()
     {
         $now = Carbon::now();
-        return $now->quarter;
+        $month = $now->month;
+        
+        // Q1: Sep (9) - Nov (11)
+        if ($month >= 9 && $month <= 11) {
+            return 1;
+        }
+        // Q2: Dec (12) - Feb (2)
+        elseif ($month == 12 || $month <= 2) {
+            return 2;
+        }
+        // Q3: Mar (3) - May (5)
+        elseif ($month >= 3 && $month <= 5) {
+            return 3;
+        }
+        // Q4: Jun (6) - Aug (8)
+        elseif ($month >= 6 && $month <= 8) {
+            return 4;
+        }
+        
+        // Fallback (should not reach here)
+        return 1;
     }
 
     /**
@@ -1325,12 +1345,6 @@ class OrderController extends Controller
             $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
             $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
             
-            // Calculate quarter end date (next quarter start minus 1 day)
-            $nextQuarter = $quarter === 4 ? 1 : $quarter + 1;
-            $nextQuarterYear = $quarter === 4 ? $now->year + 1 : $now->year;
-            $nextQuarterStartDateParts = explode('-', self::QUARTER_START_DATES[$nextQuarter]);
-            $quarterEnd = Carbon::createFromDate($nextQuarterYear, $nextQuarterStartDateParts[1], $nextQuarterStartDateParts[0])->subDay()->endOfDay();
-            
             if ($lastReceivedOrder) {
                 $lastReceivedDate = Carbon::parse($lastReceivedOrder->updated_at)->startOfDay();
                 $daysSince = $lastReceivedDate->diffInDays($now->startOfDay());
@@ -1339,8 +1353,8 @@ class OrderController extends Controller
                 $daysSince = $quarterStart->diffInDays($now->startOfDay());
             }
     
-            // Days remaining in current quarter (from today to quarter end)
-            $daysRemaining = $now->startOfDay()->diffInDays($quarterEnd->startOfDay());
+            // Days remaining in 90-day quarter cycle
+            $daysRemaining = 90 - $daysSince;
     
             // // Quantity on Order (QOO) default to 0
             $qoo = 0;
