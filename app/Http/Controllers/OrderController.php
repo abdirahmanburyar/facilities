@@ -746,7 +746,7 @@ class OrderController extends Controller
 
     private function generateOrderNumber() {
         $now = Carbon::now();
-        $quarter = $now->quarter;
+        $quarter = $this->getCurrentQuarter();
         $year = $now->year;
 
         // Get the last order number for this quarter
@@ -1341,7 +1341,7 @@ class OrderController extends Controller
                 ->first();
 
             $now = Carbon::now();
-            $quarter = $now->quarter;
+            $quarter = $this->getCurrentQuarter();
             $quarterStartDateParts = explode('-', self::QUARTER_START_DATES[$quarter]);
             $quarterStart = Carbon::createFromDate($now->year, $quarterStartDateParts[1], $quarterStartDateParts[0])->startOfDay();
             
@@ -1354,6 +1354,7 @@ class OrderController extends Controller
             }
     
             // Days remaining in 90-day quarter cycle
+            // Formula: 90 - days_since_quarter_start
             $daysRemaining = 90 - $daysSince;
     
             // // Quantity on Order (QOO) default to 0
