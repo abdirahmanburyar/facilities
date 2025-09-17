@@ -182,11 +182,22 @@ class OrderController extends Controller
                     if($item['product_id'] == null){
                         continue;
                     }
+                    // Get available inventory for this product to determine warehouse_id
+                    $availableInventory = InventoryItem::where('product_id', $item['product_id'])
+                        ->where('quantity', '>', 0)
+                        ->where('expiry_date', '>=', Carbon::now()->addMonths(3)->toDateString()) // Only use inventory that doesn't expire in next 3 months
+                        ->orderBy('created_at', 'asc') // FIFO principle
+                        ->get();
+
+                    // Get warehouse_id from the first available inventory item
+                    $warehouseId = $availableInventory->isNotEmpty() ? $availableInventory->first()->warehouse_id : null;
+
                     // Create order item
                     $orderItem = OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
+                        'warehouse_id' => $warehouseId,
                         'quantity_on_order' => $item['quantity_on_order'],
                         'quantity_to_release' => 0, // Initialize to 0, will be updated as inventory is allocated
                         'no_of_days' => $item['no_of_days'],
@@ -198,13 +209,6 @@ class OrderController extends Controller
 
                     // Calculate the quantity to deduct from inventory (quantity - quantity_on_order)
                     $quantityToDeduct = (float) $item['quantity'] - (float) ($item['quantity_on_order'] ?? 0);
-                    
-                    // Get available inventory for this product
-                    $availableInventory = InventoryItem::where('product_id', $item['product_id'])
-                        ->where('quantity', '>', 0)
-                        ->where('expiry_date', '>=', Carbon::now()->addMonths(3)->toDateString()) // Only use inventory that doesn't expire in next 3 months
-                        ->orderBy('created_at', 'asc') // FIFO principle
-                        ->get();
 
                     $remainingQuantity = $quantityToDeduct; // Only deduct the difference
                     $allocations = [];
