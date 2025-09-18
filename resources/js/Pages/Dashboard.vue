@@ -219,7 +219,7 @@ const kpiCards = computed(() => [
 const orderChartData = computed(() => ({
     labels: Object.keys(orderCounts.value),
     datasets: [{
-        label: 'Count',
+        label: '',
         data: Object.values(orderCounts.value),
         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B'],
         borderWidth: 0,
@@ -231,14 +231,14 @@ const orderChartData = computed(() => ({
 
 // Ring indicators configuration (match warehouse)
 const orderStatusConfig = [
-  { key: 'pending', label: 'Pending', stroke: '#eab308', textClass: 'text-yellow-600' },
-  { key: 'reviewed', label: 'Reviewed', stroke: '#3b82f6', textClass: 'text-blue-600' },
-  { key: 'approved', label: 'Approved', stroke: '#10b981', textClass: 'text-emerald-600' },
-  { key: 'in_process', label: 'In Process', stroke: '#8b5cf6', textClass: 'text-violet-600' },
-  { key: 'dispatched', label: 'Dispatched', stroke: '#ec4899', textClass: 'text-pink-600' },
-  { key: 'delivered', label: 'Delivered', stroke: '#f59e0b', textClass: 'text-amber-600' },
-  { key: 'received', label: 'Received', stroke: '#6366f1', textClass: 'text-indigo-600' },
-  { key: 'rejected', label: 'Rejected', stroke: '#ef4444', textClass: 'text-red-600' }
+  { key: 'pending', label: 'Pending', stroke: '#eab308', textClass: 'text-yellow-600', icon: '/assets/images/pending.png' },
+  { key: 'reviewed', label: 'Reviewed', stroke: '#3b82f6', textClass: 'text-blue-600', icon: '/assets/images/review.png' },
+  { key: 'approved', label: 'Approved', stroke: '#10b981', textClass: 'text-emerald-600', icon: '/assets/images/approved.png' },
+  { key: 'in_process', label: 'In Process', stroke: '#8b5cf6', textClass: 'text-violet-600', icon: '/assets/images/inprocess.png' },
+  { key: 'dispatched', label: 'Dispatched', stroke: '#ec4899', textClass: 'text-pink-600', icon: '/assets/images/dispatch.png' },
+  { key: 'delivered', label: 'Delivered', stroke: '#f59e0b', textClass: 'text-amber-600', icon: '/assets/images/delivery.png' },
+  { key: 'received', label: 'Received', stroke: '#6366f1', textClass: 'text-indigo-600', icon: '/assets/images/received.png' },
+  { key: 'rejected', label: 'Rejected', stroke: '#ef4444', textClass: 'text-red-600', icon: '/assets/images/rejected.png' }
 ];
 
 const expiredChartData = computed(() => ({
@@ -359,15 +359,24 @@ const orderChartOptions = {
             display: false
         },
         datalabels: {
-            color: '#fff',
+            color: '#ffffff',
             font: {
-                weight: 'bold'
+                weight: 'bold',
+                size: 14
             },
+            anchor: 'center',
+            align: 'center',
             formatter: (value) => {
-                return formatNumber(value);
+                return value > 0 ? formatNumber(value) : '';
             }
         },
         tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            borderColor: '#ffffff',
+            borderWidth: 1,
+            cornerRadius: 8,
             callbacks: {
                 label: function(context) {
                     return context.dataset.label + ': ' + formatNumber(context.parsed.y);
@@ -381,12 +390,36 @@ const orderChartOptions = {
             ticks: {
                 callback: function(value) {
                     return formatNumber(value);
+                },
+                color: '#6b7280',
+                font: {
+                    size: 12,
+                    weight: '500'
                 }
             },
-            grid: { display: false }
+            grid: { 
+                display: true,
+                color: '#f3f4f6',
+                drawBorder: false
+            },
+            border: {
+                display: false
+            }
         },
         x: {
-            grid: { display: false }
+            ticks: {
+                color: '#6b7280',
+                font: {
+                    size: 12,
+                    weight: '500'
+                }
+            },
+            grid: { 
+                display: false
+            },
+            border: {
+                display: false
+            }
         }
     },
     elements: {
@@ -394,21 +427,11 @@ const orderChartOptions = {
             borderWidth: 0,
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
-            borderRadius: { topLeft: 100, topRight: 100, bottomLeft: 0, bottomRight: 0 },
-            barThickness: 12,
-            maxBarThickness: 14,
-            barPercentage: 0.5,
-            categoryPercentage: 0.5
-        }
-    },
-    plugins: {
-        datalabels: {
-            color: '#111827',
-            anchor: 'end',
-            align: 'end',
-            offset: -2,
-            font: { weight: 'bold' },
-            formatter: (v) => formatNumber(v)
+            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+            barThickness: 40,
+            maxBarThickness: 50,
+            barPercentage: 0.7,
+            categoryPercentage: 0.8
         }
     }
 };
@@ -957,7 +980,7 @@ onMounted(() => {
                 <div
                     v-for="cfg in orderStatusConfig"
                     :key="cfg.key"
-                    class="flex items-center justify-center gap-3 p-3 rounded-lg border border-gray-200 hover:shadow-sm transition-all"
+                    class="flex items-center justify-center gap-3 p-3 rounded-lg hover:shadow-sm transition-all"
                 >
                     <div class="flex items-center">
                         <div class="w-14 h-14 relative mr-2">
@@ -980,7 +1003,10 @@ onMounted(() => {
                             </div>
                         </div>
                         <div class="text-center">
-                            <div class="text-base font-semibold text-gray-900">{{ props.orderStats[cfg.key] || 0 }}</div>
+                            <div class="flex items-center justify-center mb-1">
+                                <img :src="cfg.icon" :alt="cfg.label" class="w-6 h-6 mr-2" />
+                                <div class="text-base font-semibold text-gray-900">{{ props.orderStats[cfg.key] || 0 }}</div>
+                            </div>
                             <div class="text-xs text-gray-600">{{ cfg.label }}</div>
                         </div>
                     </div>
