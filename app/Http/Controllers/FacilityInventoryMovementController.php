@@ -110,7 +110,8 @@ class FacilityInventoryMovementController extends Controller
             'source_types' => [
                 'transfer' => 'Transfer',
                 'order' => 'Order',
-                'dispense' => 'Dispense'
+                'dispense' => 'Dispense',
+                'moh_dispense' => 'MOH Dispense'
             ]
         ]);
     }
