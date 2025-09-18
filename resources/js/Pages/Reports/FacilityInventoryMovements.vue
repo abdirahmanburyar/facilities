@@ -369,7 +369,8 @@ function getSourceTypeClass(type) {
     const classes = {
         'transfer': 'bg-blue-100 text-blue-800',
         'order': 'bg-purple-100 text-purple-800',
-        'dispense': 'bg-orange-100 text-orange-800'
+        'dispense': 'bg-orange-100 text-orange-800',
+        'moh_dispense': 'bg-emerald-100 text-emerald-800'
     };
     return classes[type] || 'bg-gray-100 text-gray-800';
 }
