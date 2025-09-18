@@ -38,7 +38,7 @@ const props = defineProps({
         type: Object,
         required: true,
         default: () => ({
-            pending: 0, reviewed: 0, approved: 0, in_process: 0, dispatched: 0, received: 0, rejected: 0
+            pending: 0, reviewed: 0, approved: 0, in_process: 0, dispatched: 0, delivered: 0, received: 0, rejected: 0
         })
     },
 
@@ -161,7 +161,10 @@ const productCategoryChartData = computed(() => ({
 
 // Computed properties for dashboard stats
 const totalOrdersCount = computed(() => {
-    return Object.values(props.orderStats || {}).reduce((sum, count) => sum + count, 0);
+    return Object.values(props.orderStats || {}).reduce((sum, count) => {
+        const numCount = Number(count) || 0;
+        return sum + numCount;
+    }, 0);
 });
 
 const lowStockCount = computed(() => {
@@ -362,12 +365,13 @@ const orderChartOptions = {
             color: '#ffffff',
             font: {
                 weight: 'bold',
-                size: 14
+                size: 16
             },
             anchor: 'center',
             align: 'center',
+            offset: 0,
             formatter: (value) => {
-                return value > 0 ? formatNumber(value) : '';
+                return value > 0 ? value.toString() : '';
             }
         },
         tooltip: {
@@ -428,10 +432,10 @@ const orderChartOptions = {
             hoverBorderWidth: 0,
             borderSkipped: 'bottom',
             borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
-            barThickness: 40,
-            maxBarThickness: 50,
-            barPercentage: 0.7,
-            categoryPercentage: 0.8
+            barThickness: 30,
+            maxBarThickness: 40,
+            barPercentage: 0.5,
+            categoryPercentage: 0.7
         }
     }
 };
@@ -993,12 +997,12 @@ onMounted(() => {
                                     fill="none"
                                     :stroke="cfg.stroke"
                                     stroke-width="4"
-                                    :stroke-dasharray="(totalOrdersCount && totalOrdersCount > 0) ? `${(props.orderStats[cfg.key] / totalOrdersCount) * 150.72} 150.72` : '0 150.72'"
+                                    :stroke-dasharray="(totalOrdersCount && totalOrdersCount > 0) ? `${((Number(props.orderStats[cfg.key]) || 0) / totalOrdersCount) * 150.72} 150.72` : '0 150.72'"
                                 />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <span :class="['text-xs font-bold', cfg.textClass]">
-                                    {{ totalOrdersCount > 0 ? Math.round((props.orderStats[cfg.key] / totalOrdersCount) * 100) : 0 }}%
+                                    {{ totalOrdersCount > 0 ? Math.round(((Number(props.orderStats[cfg.key]) || 0) / totalOrdersCount) * 100) : 0 }}%
                                 </span>
                             </div>
                         </div>
