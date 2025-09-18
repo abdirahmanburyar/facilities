@@ -469,25 +469,12 @@ class MonthlyInventoryReportController extends Controller
             foreach ($movements as $productId => $productMovements) {
                 $product = $productMovements->first()->product;
                 
-                // Calculate opening balance from previous month or current inventory
+                // Calculate opening balance from previous month's closing balance
                 $openingBalance = 0;
                 if (isset($previousReportItems[$productId])) {
                     $openingBalance = $previousReportItems[$productId]->closing_balance;
-                } else {
-                    // Get current facility inventory for this product as fallback
-                    $currentInventory = \App\Models\FacilityInventory::where('facility_id', $facilityId)
-                        ->whereHas('items', function($q) use ($productId) {
-                            $q->where('product_id', $productId);
-                        })
-                        ->with(['items' => function($q) use ($productId) {
-                            $q->where('product_id', $productId);
-                        }])
-                        ->first();
-                    
-                    if ($currentInventory && $currentInventory->items->count() > 0) {
-                        $openingBalance = $currentInventory->items->sum('quantity');
-                    }
                 }
+                // If no previous month data exists, opening balance should be 0
 
                 // Calculate movements
                 $stockReceived = $productMovements->where('movement_type', 'facility_received')->sum('facility_received_quantity');
