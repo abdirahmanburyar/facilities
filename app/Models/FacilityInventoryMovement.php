@@ -13,9 +13,9 @@ class FacilityInventoryMovement extends Model
         'facility_id',
         'product_id',
         'movement_type', // 'facility_received' or 'facility_issued'
-        'source_type', // 'transfer', 'order', 'dispense'
-        'source_id', // ID of the source record (transfer_id, order_id, dispence_id)
-        'source_item_id', // ID of the source item (transfer_item_id, order_item_id, dispence_item_id)
+        'source_type', // 'transfer', 'order', 'dispense', 'moh_dispense'
+        'source_id', // ID of the source record (transfer_id, order_id, dispence_id, moh_dispense_id)
+        'source_item_id', // ID of the source item (transfer_item_id, order_item_id, dispence_item_id, moh_dispense_item_id)
         'facility_received_quantity',
         'facility_issued_quantity',
         'batch_number',
@@ -60,6 +60,8 @@ class FacilityInventoryMovement extends Model
                 return $this->belongsTo(Order::class, 'source_id');
             case 'dispense':
                 return $this->belongsTo(Dispence::class, 'source_id');
+            case 'moh_dispense':
+                return $this->belongsTo(MohDispense::class, 'source_id');
             default:
                 return null;
         }
@@ -74,6 +76,8 @@ class FacilityInventoryMovement extends Model
                 return $this->belongsTo(OrderItem::class, 'source_item_id');
             case 'dispense':
                 return $this->belongsTo(DispenceItem::class, 'source_item_id');
+            case 'moh_dispense':
+                return $this->belongsTo(MohDispenseItem::class, 'source_item_id');
             default:
                 return null;
         }

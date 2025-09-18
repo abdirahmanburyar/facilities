@@ -16,7 +16,10 @@ return new class extends Migration
             $table->string('moh_dispense_number')->unique();
             $table->foreignId('facility_id')->constrained('facilities')->onDelete('cascade');
             $table->foreignId('created_by')->constrained('users');
-            $table->enum('status', ['draft', 'processed'])->default('draft');
+            $table->enum('status', ['draft', 'processed', 'insufficient_inventory'])->default('draft');
+            $table->timestamp('processed_at')->nullable();
+            $table->foreignId('processed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->timestamp('inventory_issues_at')->nullable();
             $table->timestamps();
         });
     }

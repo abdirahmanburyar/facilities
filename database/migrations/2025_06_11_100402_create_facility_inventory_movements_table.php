@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('facility_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->enum('movement_type', ['facility_received', 'facility_issued']);
-            $table->enum('source_type', ['transfer', 'order', 'dispense']);
+            $table->enum('source_type', ['transfer', 'order', 'dispense', 'moh_dispense']);
             $table->unsignedBigInteger('source_id'); // ID of the source record
             $table->unsignedBigInteger('source_item_id'); // ID of the source item
             $table->decimal('facility_received_quantity', 10, 2)->default(0);

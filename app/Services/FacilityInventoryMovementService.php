@@ -231,6 +231,38 @@ class FacilityInventoryMovementService
     }
 
     /**
+     * Record MOH dispense issued movement
+     */
+    public function recordMohDispenseIssued($mohDispense, $mohDispenseItem, $facilityId, $quantity, $batchNumber = null, $expiryDate = null)
+    {
+        try {
+            return FacilityInventoryMovement::recordFacilityIssued([
+                'facility_id' => $facilityId,
+                'product_id' => $mohDispenseItem->product_id,
+                'source_type' => 'moh_dispense',
+                'source_id' => $mohDispense->id,
+                'source_item_id' => $mohDispenseItem->id,
+                'facility_issued_quantity' => $quantity,
+                'batch_number' => $batchNumber,
+                'expiry_date' => $expiryDate,
+                'barcode' => $mohDispenseItem->batch_no ?? null,
+                'uom' => null, // Can be added if available in MOH dispense items
+                'movement_date' => $mohDispenseItem->dispense_date ?? Carbon::now(),
+                'reference_number' => $mohDispense->moh_dispense_number,
+                'notes' => "MOH Dispense issued: {$mohDispense->moh_dispense_number} - {$mohDispenseItem->source}",
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to record MOH dispense movement', [
+                'moh_dispense_id' => $mohDispense->id,
+                'moh_dispense_item_id' => $mohDispenseItem->id,
+                'facility_id' => $facilityId,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Bulk record movements (useful for data migration or bulk operations)
      */
     public static function bulkRecordMovements(array $movementsData)

@@ -79,6 +79,7 @@ class DashboardController extends Controller
             'approved' => Order::where('facility_id', $facilityId)->where('status', 'approved')->count(),
             'in_process' => Order::where('facility_id', $facilityId)->where('status', 'in_process')->count(),
             'dispatched' => Order::where('facility_id', $facilityId)->where('status', 'dispatched')->count(),
+            'delivered' => Order::where('facility_id', $facilityId)->where('status', 'delivered')->count(),
             'received' => Order::where('facility_id', $facilityId)->where('status', 'received')->count(),
             'rejected' => Order::where('facility_id', $facilityId)->where('status', 'rejected')->count(),
         ];

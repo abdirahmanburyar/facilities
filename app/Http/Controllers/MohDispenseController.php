@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MohDispense;
 use App\Imports\MohDispenseImport;
+use App\Services\MohDispenseInventoryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
@@ -141,15 +142,11 @@ class MohDispenseController extends Controller
                 ], 400);
             }
 
-            // Since we're processing directly from upload, we need to get the file from the request
-            // For now, we'll just update the status to processed
-            $mohDispense->update(['status' => 'processed']);
+            // Use the inventory service to process the MOH dispense
+            $inventoryService = new MohDispenseInventoryService();
+            $result = $inventoryService->processMohDispense($id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'MOH dispense processed successfully.',
-                'moh_dispense_number' => $mohDispense->moh_dispense_number,
-            ]);
+            return response()->json($result);
 
         } catch (\Exception $e) {
             \Log::error('MOH Dispense process error: ' . $e->getMessage(), [
@@ -166,6 +163,45 @@ class MohDispenseController extends Controller
         }
     }
 
+
+    /**
+     * Validate inventory before processing MOH dispense
+     */
+    public function validateInventory($id)
+    {
+        try {
+            $mohDispense = MohDispense::where('facility_id', auth()->user()->facility_id)
+                ->findOrFail($id);
+
+            if ($mohDispense->status !== 'draft') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only draft dispenses can be validated.',
+                ], 400);
+            }
+
+            $inventoryService = new MohDispenseInventoryService();
+            $result = $inventoryService->validateInventory($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('MOH Dispense validation error: ' . $e->getMessage(), [
+                'moh_dispense_id' => $id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error validating MOH dispense: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function downloadTemplate()
     {

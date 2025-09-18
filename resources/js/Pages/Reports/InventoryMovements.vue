@@ -267,7 +267,8 @@ const movementTypeOptions = [
 const sourceTypeOptions = [
     { label: 'Transfer', value: 'transfer' },
     { label: 'Order', value: 'order' },
-    { label: 'Dispense', value: 'dispense' }
+    { label: 'Dispense', value: 'dispense' },
+    { label: 'MOH Dispense', value: 'moh_dispense' }
 ]
 
 const hasActiveFilters = computed(() => {
@@ -374,7 +375,8 @@ const sourceTypeClass = (type) => {
     const classes = {
         transfer: 'bg-blue-100 text-blue-800',
         order: 'bg-purple-100 text-purple-800',
-        dispense: 'bg-orange-100 text-orange-800'
+        dispense: 'bg-orange-100 text-orange-800',
+        moh_dispense: 'bg-emerald-100 text-emerald-800'
     }
     return classes[type] || 'bg-gray-100 text-gray-800'
 }

@@ -13,6 +13,14 @@ class MohDispense extends Model
         'facility_id',
         'created_by',
         'status',
+        'processed_at',
+        'processed_by',
+        'inventory_issues_at',
+    ];
+
+    protected $casts = [
+        'processed_at' => 'datetime',
+        'inventory_issues_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -56,5 +64,10 @@ class MohDispense extends Model
     public function items(): HasMany
     {
         return $this->hasMany(MohDispenseItem::class);
+    }
+
+    public function processedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'processed_by');
     }
 }

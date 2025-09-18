@@ -9,10 +9,16 @@
                 </div>
                 <div class="flex space-x-3">
                     <button v-if="mohDispense.status === 'draft'" 
+                        @click="validateInventory"
+                        :disabled="validating"
+                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50">
+                        {{ validating ? 'Validating...' : 'Validate Inventory' }}
+                    </button>
+                    <button v-if="mohDispense.status === 'draft'" 
                         @click="processDispense"
                         :disabled="processing"
                         class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                        {{ processing ? 'Processing...' : 'Process Excel File' }}
+                        {{ processing ? 'Processing...' : 'Process Dispense' }}
                     </button>
                     <Link :href="route('moh-dispense.index')"
                         class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
@@ -139,6 +145,7 @@ const props = defineProps({
 });
 
 const processing = ref(false);
+const validating = ref(false);
 
 // Computed properties
 const totalQuantity = computed(() => {
@@ -151,6 +158,7 @@ const getStatusClass = (status) => {
     return {
         'bg-yellow-100 text-yellow-800': status === 'draft',
         'bg-green-100 text-green-800': status === 'processed',
+        'bg-red-100 text-red-800': status === 'insufficient_inventory',
     };
 };
 
@@ -158,12 +166,69 @@ const formatDate = (date) => {
     return moment(date).format('MMM DD, YYYY');
 };
 
+const validateInventory = async () => {
+    if (validating.value) return;
+    
+    validating.value = true;
+    
+    try {
+        const response = await axios.post(route('moh-dispense.validate-inventory', props.mohDispense.id));
+        
+        if (response.data.success) {
+            const validation = response.data.data;
+            
+            if (validation.can_process) {
+                await Swal.fire({
+                    title: 'Inventory Validation Passed',
+                    text: 'All items have sufficient inventory. You can proceed with processing.',
+                    icon: 'success',
+                    confirmButtonColor: '#10b981',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                // Show detailed validation results
+                const insufficientItems = validation.validation_results.filter(item => !item.sufficient);
+                let html = '<div class="text-left"><p class="mb-3">The following items have insufficient inventory:</p><ul class="space-y-2">';
+                
+                insufficientItems.forEach(item => {
+                    html += `<li class="text-sm">
+                        <strong>${item.product_name}</strong><br>
+                        Required: ${item.required_quantity}, Available: ${item.available_quantity}<br>
+                        <span class="text-red-600">Shortage: ${item.shortage}</span>
+                    </li>`;
+                });
+                
+                html += '</ul></div>';
+                
+                await Swal.fire({
+                    title: 'Insufficient Inventory',
+                    html: html,
+                    icon: 'warning',
+                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: 'OK'
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Validation error:', error);
+        await Swal.fire({
+            title: 'Validation Error',
+            text: error.response?.data?.message || 'Failed to validate inventory. Please try again.',
+            icon: 'error',
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'OK'
+        });
+    } finally {
+        validating.value = false;
+    }
+};
+
 const processDispense = async () => {
     if (processing.value) return;
     
     const result = await Swal.fire({
-        title: 'Process Excel File',
-        text: 'Are you sure you want to process this MOH dispense? This will import all items from the Excel file.',
+        title: 'Process MOH Dispense',
+        text: 'Are you sure you want to process this MOH dispense? This will deduct items from facility inventory.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3b82f6',

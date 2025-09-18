@@ -24,6 +24,7 @@
                     <option value="">All Status</option>
                     <option value="draft">Draft</option>
                     <option value="processed">Processed</option>
+                    <option value="insufficient_inventory">Insufficient Inventory</option>
                 </select>
             </div>
         </div>
@@ -171,6 +172,7 @@ const getStatusClass = (status) => {
     return {
         'bg-yellow-100 text-yellow-800': status === 'draft',
         'bg-green-100 text-green-800': status === 'processed',
+        'bg-red-100 text-red-800': status === 'insufficient_inventory',
     };
 };
 

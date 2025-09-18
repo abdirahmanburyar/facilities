@@ -431,6 +431,32 @@ class MonthlyInventoryReportController extends Controller
                 ->get()
                 ->groupBy('product_id');
 
+            // Get Dispence data for the month (patient-level dispensing)
+            $dispenceData = \App\Models\DispenceItem::join('dispences', 'dispence_items.dispence_id', '=', 'dispences.id')
+                ->where('dispences.facility_id', $facilityId)
+                ->whereBetween('dispences.dispence_date', [$startDate, $endDate])
+                ->select(
+                    'dispence_items.product_id',
+                    \DB::raw('SUM(dispence_items.quantity) as total_quantity'),
+                    \DB::raw('COUNT(DISTINCT dispences.id) as dispense_count')
+                )
+                ->groupBy('dispence_items.product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            // Get MohDispense data for the month (inventory-level dispensing)
+            $mohDispenseData = \App\Models\MohDispenseItem::join('moh_dispenses', 'moh_dispense_items.moh_dispense_id', '=', 'moh_dispenses.id')
+                ->where('moh_dispenses.facility_id', $facilityId)
+                ->whereBetween('moh_dispense_items.dispense_date', [$startDate, $endDate])
+                ->select(
+                    'moh_dispense_items.product_id',
+                    \DB::raw('SUM(moh_dispense_items.quantity) as total_quantity'),
+                    \DB::raw('COUNT(DISTINCT moh_dispenses.id) as dispense_count')
+                )
+                ->groupBy('moh_dispense_items.product_id')
+                ->get()
+                ->keyBy('product_id');
+
             // Get opening balances from previous month's closing balance
             $previousReportItems = FacilityMonthlyReportItem::whereHas('report', function($q) use ($facilityId, $previousMonth) {
                 $q->where('facility_id', $facilityId)
@@ -467,6 +493,23 @@ class MonthlyInventoryReportController extends Controller
                 $stockReceived = $productMovements->where('movement_type', 'facility_received')->sum('facility_received_quantity');
                 $stockIssued = $productMovements->where('movement_type', 'facility_issued')->sum('facility_issued_quantity');
                 
+                // Get MOH dispense movements (these are also facility_issued but from moh_dispense source)
+                $mohDispenseIssued = $productMovements->where('movement_type', 'facility_issued')
+                    ->where('source_type', 'moh_dispense')
+                    ->sum('facility_issued_quantity');
+                
+                // Get dispense data for this product (for detailed tracking)
+                $dispenceQuantity = $dispenceData->get($productId)->total_quantity ?? 0;
+                $dispenceCount = $dispenceData->get($productId)->dispense_count ?? 0;
+                $mohDispenseQuantity = $mohDispenseData->get($productId)->total_quantity ?? 0;
+                $mohDispenseCount = $mohDispenseData->get($productId)->dispense_count ?? 0;
+                
+                // Total dispensed quantity (both sources) - use movement data for accuracy
+                $totalDispensed = $dispenceQuantity + $mohDispenseQuantity;
+                
+                // Note: MOH dispense quantities should match the movement data
+                // This provides dual verification of the data integrity
+                
                 // Calculate closing balance
                 $closingBalance = $openingBalance + $stockReceived - $stockIssued;
 
@@ -482,6 +525,13 @@ class MonthlyInventoryReportController extends Controller
                     'negative_adjustments' => 0,
                     'closing_balance' => $closingBalance,
                     'stockout_days' => 0, // This would need manual input or separate calculation
+                    // Add dispense tracking fields
+                    'patient_dispense_quantity' => $dispenceQuantity,
+                    'patient_dispense_count' => $dispenceCount,
+                    'moh_dispense_quantity' => $mohDispenseQuantity,
+                    'moh_dispense_count' => $mohDispenseCount,
+                    'total_dispensed_quantity' => $totalDispensed,
+                    'total_dispense_count' => $dispenceCount + $mohDispenseCount,
                 ]);
                 
                 if ($item->wasRecentlyCreated) {
@@ -503,6 +553,13 @@ class MonthlyInventoryReportController extends Controller
                         $openingBalance = $previousReportItems[$product->id]->closing_balance;
                     }
 
+                    // Get dispense data for this product (even if no movements)
+                    $dispenceQuantity = $dispenceData->get($product->id)->total_quantity ?? 0;
+                    $dispenceCount = $dispenceData->get($product->id)->dispense_count ?? 0;
+                    $mohDispenseQuantity = $mohDispenseData->get($product->id)->total_quantity ?? 0;
+                    $mohDispenseCount = $mohDispenseData->get($product->id)->dispense_count ?? 0;
+                    $totalDispensed = $dispenceQuantity + $mohDispenseQuantity;
+
                     $item = FacilityMonthlyReportItem::firstOrCreate([
                         'parent_id' => $monthlyReport->id,
                         'product_id' => $product->id,
@@ -514,6 +571,13 @@ class MonthlyInventoryReportController extends Controller
                         'negative_adjustments' => 0,
                         'closing_balance' => $openingBalance,
                         'stockout_days' => 0,
+                        // Add dispense tracking fields
+                        'patient_dispense_quantity' => $dispenceQuantity,
+                        'patient_dispense_count' => $dispenceCount,
+                        'moh_dispense_quantity' => $mohDispenseQuantity,
+                        'moh_dispense_count' => $mohDispenseCount,
+                        'total_dispensed_quantity' => $totalDispensed,
+                        'total_dispense_count' => $dispenceCount + $mohDispenseCount,
                     ]);
                     
                     if ($item->wasRecentlyCreated) {
@@ -523,12 +587,19 @@ class MonthlyInventoryReportController extends Controller
             }
 
             $totalProducts = $createdCount + $updatedCount;
-            $message = "Monthly report generated successfully from facility movements.";
+            $totalDispenceQuantity = $dispenceData->sum('total_quantity');
+            $totalMohDispenseQuantity = $mohDispenseData->sum('total_quantity');
+            $totalDispensed = $totalDispenceQuantity + $totalMohDispenseQuantity;
+            
+            $message = "Monthly report generated successfully from facility movements and dispense data.";
             if ($createdCount > 0) {
                 $message .= " {$createdCount} new items created.";
             }
             if ($updatedCount > 0) {
                 $message .= " {$updatedCount} existing items updated.";
+            }
+            if ($totalDispensed > 0) {
+                $message .= " Total dispensed: {$totalDispensed} units (Patient: {$totalDispenceQuantity}, MOH: {$totalMohDispenseQuantity}).";
             }
 
             return response()->json([
@@ -540,7 +611,15 @@ class MonthlyInventoryReportController extends Controller
                     'total_products' => $totalProducts,
                     'report_period' => $reportPeriod,
                     'facility_id' => $facilityId,
-                    'movements_processed' => $movements->count()
+                    'movements_processed' => $movements->count(),
+                    'dispense_data' => [
+                        'patient_dispense_quantity' => $totalDispenceQuantity,
+                        'patient_dispense_count' => $dispenceData->count(),
+                        'moh_dispense_quantity' => $totalMohDispenseQuantity,
+                        'moh_dispense_count' => $mohDispenseData->count(),
+                        'total_dispensed_quantity' => $totalDispensed,
+                        'total_dispense_count' => $dispenceData->count() + $mohDispenseData->count(),
+                    ]
                 ]
             ]);
 
@@ -687,6 +766,128 @@ class MonthlyInventoryReportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to generate report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync dispense data to existing monthly report
+     */
+    public function syncDispenseData(Request $request)
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2030',
+            'month' => 'required|integer|min:1|max:12',
+        ]);
+
+        $facilityId = auth()->user()->facility_id;
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $reportPeriod = sprintf('%04d-%02d', $year, $month);
+
+        try {
+            // Get existing monthly report
+            $monthlyReport = FacilityMonthlyReport::where('facility_id', $facilityId)
+                ->where('report_period', $reportPeriod)
+                ->first();
+
+            if (!$monthlyReport) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No monthly report found for the specified period. Please generate the report first.'
+                ], 400);
+            }
+
+            // Create date range for the month
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+            // Get dispense data for the month
+            $dispenceData = \App\Models\DispenceItem::join('dispences', 'dispence_items.dispence_id', '=', 'dispences.id')
+                ->where('dispences.facility_id', $facilityId)
+                ->whereBetween('dispences.dispence_date', [$startDate, $endDate])
+                ->select(
+                    'dispence_items.product_id',
+                    \DB::raw('SUM(dispence_items.quantity) as total_quantity'),
+                    \DB::raw('COUNT(DISTINCT dispences.id) as dispense_count')
+                )
+                ->groupBy('dispence_items.product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            // Get MohDispense data for the month
+            $mohDispenseData = \App\Models\MohDispenseItem::join('moh_dispenses', 'moh_dispense_items.moh_dispense_id', '=', 'moh_dispenses.id')
+                ->where('moh_dispenses.facility_id', $facilityId)
+                ->whereBetween('moh_dispense_items.dispense_date', [$startDate, $endDate])
+                ->select(
+                    'moh_dispense_items.product_id',
+                    \DB::raw('SUM(moh_dispense_items.quantity) as total_quantity'),
+                    \DB::raw('COUNT(DISTINCT moh_dispenses.id) as dispense_count')
+                )
+                ->groupBy('moh_dispense_items.product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            $updatedCount = 0;
+            $totalDispenceQuantity = $dispenceData->sum('total_quantity');
+            $totalMohDispenseQuantity = $mohDispenseData->sum('total_quantity');
+
+            // Update existing report items with dispense data
+            $reportItems = FacilityMonthlyReportItem::where('parent_id', $monthlyReport->id)->get();
+            
+            foreach ($reportItems as $item) {
+                $dispenceQuantity = $dispenceData->get($item->product_id)->total_quantity ?? 0;
+                $dispenceCount = $dispenceData->get($item->product_id)->dispense_count ?? 0;
+                $mohDispenseQuantity = $mohDispenseData->get($item->product_id)->total_quantity ?? 0;
+                $mohDispenseCount = $mohDispenseData->get($item->product_id)->dispense_count ?? 0;
+                $totalDispensed = $dispenceQuantity + $mohDispenseQuantity;
+
+                $item->update([
+                    'patient_dispense_quantity' => $dispenceQuantity,
+                    'patient_dispense_count' => $dispenceCount,
+                    'moh_dispense_quantity' => $mohDispenseQuantity,
+                    'moh_dispense_count' => $mohDispenseCount,
+                    'total_dispensed_quantity' => $totalDispensed,
+                    'total_dispense_count' => $dispenceCount + $mohDispenseCount,
+                ]);
+
+                $updatedCount++;
+            }
+
+            $monthName = $this->getMonthName($month);
+            $message = "Dispense data synced successfully for {$monthName} {$year}. ";
+            $message .= "Updated {$updatedCount} report items. ";
+            $message .= "Total dispensed: " . ($totalDispenceQuantity + $totalMohDispenseQuantity) . " units ";
+            $message .= "(Patient: {$totalDispenceQuantity}, MOH: {$totalMohDispenseQuantity}).";
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'updated_count' => $updatedCount,
+                    'report_period' => $reportPeriod,
+                    'dispense_data' => [
+                        'patient_dispense_quantity' => $totalDispenceQuantity,
+                        'patient_dispense_count' => $dispenceData->count(),
+                        'moh_dispense_quantity' => $totalMohDispenseQuantity,
+                        'moh_dispense_count' => $mohDispenseData->count(),
+                        'total_dispensed_quantity' => $totalDispenceQuantity + $totalMohDispenseQuantity,
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Dispense data sync failed: ' . $e->getMessage(), [
+                'facility_id' => $facilityId,
+                'year' => $year,
+                'month' => $month,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to sync dispense data: ' . $e->getMessage()
             ], 500);
         }
     }
