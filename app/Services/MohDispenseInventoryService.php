@@ -99,7 +99,6 @@ class MohDispenseInventoryService
             // Update MOH dispense status to processed
             $mohDispense->update([
                 'status' => 'processed',
-                'processed_at' => now(),
                 'processed_by' => auth()->id(),
             ]);
 
@@ -179,7 +178,6 @@ class MohDispenseInventoryService
         // Update MOH dispense status to indicate inventory issues
         $mohDispense->update([
             'status' => 'insufficient_inventory',
-            'inventory_issues_at' => now(),
         ]);
 
         // Trigger low stock alert event

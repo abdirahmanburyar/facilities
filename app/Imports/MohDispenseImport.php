@@ -40,7 +40,7 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
             'moh_dispense_id' => $this->mohDispenseId,
             'product_id' => $product->id,
             'source' => $row['source'] ?? '',
-            'batch_no' => $row['batch_no'] ?? '',
+            'batch_no' => (string) ($row['batch_no'] ?? ''),
             'expiry_date' => $this->parseDate($row['expiry_date']),
             'quantity' => (int) $row['quantity'],
             'dispense_date' => $this->parseDate($row['dispense_date']),
