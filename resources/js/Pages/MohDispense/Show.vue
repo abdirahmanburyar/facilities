@@ -211,9 +211,22 @@ const validateInventory = async () => {
         }
     } catch (error) {
         console.error('Validation error:', error);
+        
+        let errorMessage = 'Failed to validate inventory. Please try again.';
+        let debugInfo = '';
+        
+        if (error.response?.data) {
+            errorMessage = error.response.data.message || errorMessage;
+            if (error.response.data.debug) {
+                debugInfo = `\nError: ${error.response.data.debug.error_file}:${error.response.data.debug.error_line}`;
+            }
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
         await Swal.fire({
             title: 'Validation Error',
-            text: error.response?.data?.message || 'Failed to validate inventory. Please try again.',
+            text: errorMessage + debugInfo,
             icon: 'error',
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'OK'

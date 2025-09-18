@@ -99,7 +99,6 @@ class MohDispenseInventoryService
             // Update MOH dispense status to processed
             $mohDispense->update([
                 'status' => 'processed',
-                'processed_by' => auth()->id(),
             ]);
 
             // Record facility inventory movements
@@ -267,12 +266,19 @@ class MohDispenseInventoryService
      */
     public function validateInventory($mohDispenseId)
     {
-        $mohDispense = MohDispense::with('items.product')->findOrFail($mohDispenseId);
-        $facilityId = $mohDispense->facility_id;
-        $validationResults = [];
-        $hasInsufficientItems = false;
+        try {
+            $mohDispense = MohDispense::with('items.product')->findOrFail($mohDispenseId);
+            $facilityId = $mohDispense->facility_id;
+            $validationResults = [];
+            $hasInsufficientItems = false;
 
-        $itemsByProduct = $mohDispense->items->groupBy('product_id');
+            \Log::info('MOH Dispense validation started', [
+                'moh_dispense_id' => $mohDispenseId,
+                'facility_id' => $facilityId,
+                'items_count' => $mohDispense->items->count()
+            ]);
+
+            $itemsByProduct = $mohDispense->items->groupBy('product_id');
 
         foreach ($itemsByProduct as $productId => $items) {
             $totalRequiredQuantity = $items->sum('quantity');
@@ -293,10 +299,26 @@ class MohDispenseInventoryService
             }
         }
 
-        return [
-            'can_process' => !$hasInsufficientItems,
-            'validation_results' => $validationResults,
-            'has_insufficient_items' => $hasInsufficientItems
-        ];
+            \Log::info('MOH Dispense validation completed', [
+                'moh_dispense_id' => $mohDispenseId,
+                'can_process' => !$hasInsufficientItems,
+                'validation_results_count' => count($validationResults)
+            ]);
+
+            return [
+                'can_process' => !$hasInsufficientItems,
+                'validation_results' => $validationResults,
+                'has_insufficient_items' => $hasInsufficientItems
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('MOH Dispense validation service error', [
+                'moh_dispense_id' => $mohDispenseId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 }

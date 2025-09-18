@@ -13,7 +13,6 @@ class MohDispense extends Model
         'facility_id',
         'created_by',
         'status',
-        'processed_by',
     ];
 
     protected static function boot()
@@ -59,8 +58,4 @@ class MohDispense extends Model
         return $this->hasMany(MohDispenseItem::class);
     }
 
-    public function processedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'processed_by');
-    }
 }

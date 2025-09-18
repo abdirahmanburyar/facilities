@@ -222,6 +222,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
                 Route::get('/create', 'create')->name('moh-dispense.create');
                 Route::post('/store', 'store')->name('moh-dispense.store');
                 Route::get('/{id}/show', 'show')->name('moh-dispense.show');
+                Route::post('/{id}/validate-inventory', 'validateInventory')->name('moh-dispense.validate-inventory');
                 Route::post('/{id}/process', 'process')->name('moh-dispense.process');
                 Route::get('/download-template', 'downloadTemplate')->name('moh-dispense.download-template');
                 Route::get('/test', function() {
@@ -229,12 +230,18 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\TwoFactorAuth::class
                         // Test if models can be instantiated
                         $mohDispense = new \App\Models\MohDispense();
                         $mohDispenseItem = new \App\Models\MohDispenseItem();
+                        $inventoryService = new \App\Services\MohDispenseInventoryService();
                         
                         return response()->json([
                             'message' => 'MOH Dispense routes working',
                             'models' => 'Models can be instantiated',
+                            'service' => 'MohDispenseInventoryService can be instantiated',
                             'user' => auth()->user() ? 'User authenticated' : 'No user',
-                            'facility_id' => auth()->user() ? auth()->user()->facility_id : 'No facility'
+                            'facility_id' => auth()->user() ? auth()->user()->facility_id : 'No facility',
+                            'routes' => [
+                                'validate' => route('moh-dispense.validate-inventory', 1),
+                                'process' => route('moh-dispense.process', 1)
+                            ]
                         ]);
                     } catch (\Exception $e) {
                         return response()->json([
