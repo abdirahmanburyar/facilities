@@ -54,7 +54,7 @@ class MohDispenseImport implements ToModel, WithHeadingRow, WithValidation, With
         return [
             'item' => 'required|string',
             'source' => 'nullable|string|max:255',
-            'batch_no' => 'required|string|max:255',
+            'batch_no' => 'required',
             'expiry_date' => 'required',
             'quantity' => 'required|integer|min:1',
             'dispense_date' => 'required',
