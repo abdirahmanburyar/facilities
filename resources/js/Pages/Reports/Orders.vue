@@ -1,5 +1,5 @@
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout title="Orders Report" description="Monitor and analyze order data across your facilities">
         <template #header>
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
@@ -238,7 +238,6 @@
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Order Number</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Order Date</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Items</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Created By</th>
@@ -247,7 +246,7 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr v-if="!orders.data || orders.data.length === 0" class="hover:bg-gray-50">
-                                <td colspan="7" class="px-6 py-12 text-center">
+                                <td colspan="6" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center">
                                         <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -271,11 +270,6 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ formatDate(order.order_date) }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span :class="getOrderTypeClass(order.order_type)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                                        {{ getOrderTypeLabel(order.order_type) }}
-                                    </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span :class="getStatusClass(order.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -342,7 +336,6 @@ export default {
             filters: {
                 search: this.filters.search || '',
                 status: this.filters.status || '',
-                order_type: this.filters.order_type || '',
                 start_date: this.filters.start_date || '',
                 end_date: this.filters.end_date || '',
                 per_page: this.filters.per_page || '15',
@@ -375,7 +368,6 @@ export default {
         clearFilters() {
             this.filters.search = '';
             this.filters.status = '';
-            this.filters.order_type = '';
             this.filters.start_date = '';
             this.filters.end_date = '';
             this.filters.per_page = '15';
@@ -390,7 +382,6 @@ export default {
             // Clear existing filters first
             this.filters.search = '';
             this.filters.status = '';
-            this.filters.order_type = '';
             this.filters.start_date = '';
             this.filters.end_date = '';
             
