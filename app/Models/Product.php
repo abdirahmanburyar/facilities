@@ -235,7 +235,7 @@ class Product extends Model
     }
 
     /**
-     * Calculate AMC using the AMC service with proper 70% deviation screening
+     * Calculate AMC using the same 70% deviation screening as warehouse system
      */
     public function calculateAMC($facilityId = null)
     {
@@ -248,20 +248,133 @@ class Product extends Model
                 return 0;
             }
             
-            $amcService = new \App\Services\AMCService();
-            $result = $amcService->calculateScreenedAMC($facilityId, $this->id);
-            
-            return [
-                'amc' => $result['amc'],
-                'max_amc' => $result['amc'], // For backward compatibility, can be enhanced later
-                'months_used' => $result['eligible_months_count'],
-                'selected_months' => []
-            ];
+            // Get consumption data from monthly consumption reports
+            $monthlyItems = $this->monthlyConsumptionItems()
+                ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
+                ->where('monthly_consumption_reports.facility_id', $facilityId)
+                ->where('monthly_consumption_items.quantity', '>', 0)
+                ->orderBy('monthly_consumption_reports.month_year', 'desc')
+                ->take(12)
+                ->get(['monthly_consumption_reports.month_year as month', 'monthly_consumption_items.quantity as consumption']);
+
+            if ($monthlyItems->count() < 3) {
+                return 0;
+            }
+
+            // Convert to the format expected by the screening algorithm
+            $monthsData = $monthlyItems->map(function ($item) {
+                return [
+                    'month' => $item->month,
+                    'consumption' => (float) $item->consumption
+                ];
+            })->toArray();
+
+            // Use the same screening logic as warehouse
+            return $this->processAmcCalculation($monthsData, $this->id);
             
         } catch (\Exception $e) {
             \Log::warning("Error calculating AMC for product {$this->id}: " . $e->getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Process AMC calculation using 70% deviation screening (same as warehouse)
+     */
+    private function processAmcCalculation($monthsData, $productId)
+    {
+        if (count($monthsData) < 3) {
+            return 0;
+        }
+
+        // Start with the 3 most recent months
+        $selectedMonths = array_slice($monthsData, 0, 3);
+        $passedMonths = [];
+        $maxAttempts = 10;
+        $attempt = 1;
+
+        while ($attempt <= $maxAttempts) {
+            // Calculate average of selected months
+            $average = collect($selectedMonths)->avg('consumption');
+            
+            // Check each month's deviation using the correct formula
+            $allPassed = true;
+            $newPassedMonths = [];
+            
+            foreach ($selectedMonths as $monthData) {
+                $consumption = $monthData['consumption'];
+                // Correct formula: |current - average| / average × 100
+                if ($average > 0) {
+                    $deviation = abs($consumption - $average) / $average * 100;
+                } else {
+                    $deviation = $consumption > 0 ? 100 : 0;
+                }
+                
+                if ($deviation <= 70) {
+                    // Month passed screening
+                    $newPassedMonths[] = $monthData;
+                } else {
+                    // Month failed screening
+                    $allPassed = false;
+                }
+            }
+            
+            // Add newly passed months to the global passed list
+            foreach ($newPassedMonths as $monthData) {
+                if (!collect($passedMonths)->contains('month', $monthData['month'])) {
+                    $passedMonths[] = $monthData;
+                }
+            }
+            
+            // If all months passed, we're done
+            if ($allPassed) {
+                break;
+            }
+            
+            // If we have 3 or more passed months, use them
+            if (count($passedMonths) >= 3) {
+                $selectedMonths = array_slice($passedMonths, 0, 3);
+                break;
+            }
+            
+            // Need to reselect months including passed ones
+            $newSelection = $passedMonths;
+            
+            // Add more months from the original list until we have 3
+            $remainingNeeded = 3 - count($passedMonths);
+            $availableMonths = array_slice($monthsData, count($passedMonths), $remainingNeeded);
+            
+            foreach ($availableMonths as $monthData) {
+                if (!collect($newSelection)->contains('month', $monthData['month'])) {
+                    $newSelection[] = $monthData;
+                    if (count($newSelection) >= 3) break;
+                }
+            }
+            
+            $selectedMonths = $newSelection;
+            $attempt++;
+            
+            // Break if we can't find enough months
+            if (count($selectedMonths) < 3) {
+                break;
+            }
+        }
+        
+        // Calculate final AMC and max AMC from selected months
+        if (count($selectedMonths) >= 3) {
+            $consumptions = collect($selectedMonths)->pluck('consumption');
+            $amc = $consumptions->avg();
+            $maxAmc = $consumptions->max();
+            
+            return [
+                'amc' => round($amc, 2),
+                'max_amc' => round($maxAmc, 2),
+                'months_used' => count($selectedMonths),
+                'selected_months' => $selectedMonths
+            ];
+        }
+        
+        return 0;
     }
 
     /**
