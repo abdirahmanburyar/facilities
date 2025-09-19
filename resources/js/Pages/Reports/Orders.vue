@@ -149,7 +149,7 @@
                                     </svg>
                                 </div>
                                 <input
-                                    v-model="filters.search"
+                                    v-model="form.search"
                                     type="text"
                                     placeholder="Search by Order Number or Notes..."
                                     class="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -162,7 +162,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Items per page</label>
                             <select
-                                v-model="filters.per_page"
+                                v-model="form.per_page"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 @change="applyFilters"
                             >
@@ -180,7 +180,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                             <select
-                                v-model="filters.status"
+                                v-model="form.status"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 @change="applyFilters"
                             >
@@ -197,7 +197,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
                             <input
-                                v-model="filters.start_date"
+                                v-model="form.start_date"
                                 type="date"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 @change="applyFilters"
@@ -207,7 +207,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
                             <input
-                                v-model="filters.end_date"
+                                v-model="form.end_date"
                                 type="date"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 @change="applyFilters"
@@ -333,21 +333,36 @@ export default {
     },
     data() {
         return {
-            filters: {
-                search: this.filters.search || '',
-                status: this.filters.status || '',
-                start_date: this.filters.start_date || '',
-                end_date: this.filters.end_date || '',
-                per_page: this.filters.per_page || '15',
+            form: {
+                search: this.filters?.search || '',
+                status: this.filters?.status || '',
+                start_date: this.filters?.start_date || '',
+                end_date: this.filters?.end_date || '',
+                per_page: this.filters?.per_page || '15',
             },
             debouncedFilter: debounce(this.applyFilters, 300),
             isLoading: false,
         };
     },
+    watch: {
+        filters: {
+            handler(newFilters) {
+                if (newFilters) {
+                    this.form.search = newFilters.search || '';
+                    this.form.status = newFilters.status || '';
+                    this.form.start_date = newFilters.start_date || '';
+                    this.form.end_date = newFilters.end_date || '';
+                    this.form.per_page = newFilters.per_page || '15';
+                }
+            },
+            deep: true,
+            immediate: true
+        }
+    },
     methods: {
         applyFilters() {
             this.isLoading = true;
-            router.get(route('reports.orders'), this.filters, {
+            router.get(route('reports.orders'), this.form, {
                 preserveState: true,
                 preserveScroll: true,
                 onFinish: () => {
@@ -366,11 +381,11 @@ export default {
         },
 
         clearFilters() {
-            this.filters.search = '';
-            this.filters.status = '';
-            this.filters.start_date = '';
-            this.filters.end_date = '';
-            this.filters.per_page = '15';
+            this.form.search = '';
+            this.form.status = '';
+            this.form.start_date = '';
+            this.form.end_date = '';
+            this.form.per_page = '15';
             
             this.applyFilters();
         },
@@ -380,37 +395,37 @@ export default {
             const formatDate = (date) => date.toISOString().split('T')[0];
             
             // Clear existing filters first
-            this.filters.search = '';
-            this.filters.status = '';
-            this.filters.start_date = '';
-            this.filters.end_date = '';
+            this.form.search = '';
+            this.form.status = '';
+            this.form.start_date = '';
+            this.form.end_date = '';
             
             switch (type) {
                 case 'today':
-                    this.filters.start_date = formatDate(today);
-                    this.filters.end_date = formatDate(today);
+                    this.form.start_date = formatDate(today);
+                    this.form.end_date = formatDate(today);
                     break;
                     
                 case 'this_week':
                     const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
                     const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6));
-                    this.filters.start_date = formatDate(startOfWeek);
-                    this.filters.end_date = formatDate(endOfWeek);
+                    this.form.start_date = formatDate(startOfWeek);
+                    this.form.end_date = formatDate(endOfWeek);
                     break;
                     
                 case 'this_month':
                     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
                     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                    this.filters.start_date = formatDate(startOfMonth);
-                    this.filters.end_date = formatDate(endOfMonth);
+                    this.form.start_date = formatDate(startOfMonth);
+                    this.form.end_date = formatDate(endOfMonth);
                     break;
                     
                 case 'pending_only':
-                    this.filters.status = 'pending';
+                    this.form.status = 'pending';
                     break;
                     
                 case 'completed_only':
-                    this.filters.status = 'completed';
+                    this.form.status = 'completed';
                     break;
             }
             
@@ -419,7 +434,7 @@ export default {
 
         goToPage(page) {
             const params = {
-                ...this.filters,
+                ...this.form,
                 page: page
             };
             
@@ -430,7 +445,7 @@ export default {
         },
 
         exportCSV() {
-            const params = new URLSearchParams(this.filters);
+            const params = new URLSearchParams(this.form);
             const url = route('reports.orders.export') + '?' + params.toString();
             window.open(url, '_blank');
         },
