@@ -235,147 +235,31 @@ class Product extends Model
     }
 
     /**
-     * Calculate AMC using percentage deviation screening from monthly consumption reports
+     * Calculate AMC using the AMC service with proper 70% deviation screening
      */
     public function calculateAMC($facilityId = null)
     {
         try {
-                        // Get all consumption values for the product from monthly consumption reports
-            $query = $this->monthlyConsumptionItems()
-                ->join('monthly_consumption_reports', 'monthly_consumption_items.parent_id', '=', 'monthly_consumption_reports.id')
-                ->where('monthly_consumption_items.quantity', '>', 0); // Use quantity as consumption
-            
-            // Filter by facility if specified
-            if ($facilityId) {
-                $query->where('monthly_consumption_reports.facility_id', $facilityId);
+            if (!$facilityId) {
+                $facilityId = auth()->user()->facility_id ?? null;
             }
             
-            $consumptionsWithMonth = $query
-                ->orderBy('monthly_consumption_reports.month_year', 'desc') // Most recent first
-                ->limit(6) // Limit to last 6 months for performance
-                ->get(['monthly_consumption_reports.month_year as month_year', 'monthly_consumption_items.quantity as quantity']);
-
-            // If we have less than 3 values, return 0
-            if ($consumptionsWithMonth->count() < 3) {
+            if (!$facilityId) {
                 return 0;
             }
-
-            // Extract quantities and months (right to left - most recent first)
-            $quantities = $consumptionsWithMonth->pluck('quantity')->values();
-            $months = $consumptionsWithMonth->pluck('month_year')->values();
             
-            // Start with the 3 most recent months (right to left)
-            $selectedMonths = [];
-            $passedMonths = [];
-            $failedMonths = [];
+            $amcService = new \App\Services\AMCService();
+            $result = $amcService->calculateScreenedAMC($facilityId, $this->id);
             
-            // Initial selection: 3 most recent months
-            for ($i = 0; $i < 3; $i++) {
-                $selectedMonths[] = [
-                    'month' => $months[$i],
-                    'quantity' => $quantities[$i]
-                ];
-            }
+            return [
+                'amc' => $result['amc'],
+                'max_amc' => $result['amc'], // For backward compatibility, can be enhanced later
+                'months_used' => $result['eligible_months_count'],
+                'selected_months' => []
+            ];
             
-            $attempt = 1;
-            $maxAttempts = 10; // Prevent infinite loops
-            
-            while ($attempt <= $maxAttempts) {
-                // Calculate average of selected months
-                $average = collect($selectedMonths)->avg('quantity');
-                
-                // Check each month's deviation using the correct formula
-                $allPassed = true;
-                $newPassedMonths = [];
-                $newFailedMonths = [];
-                
-                foreach ($selectedMonths as $monthData) {
-                    $quantity = $monthData['quantity'];
-                    // Correct formula: |average - month_value| / month_value × 100
-                    $deviation = abs($average - $quantity) / $quantity * 100;
-                    
-                    if ($deviation <= 70) {
-                        // Month passed screening
-                        $newPassedMonths[] = $monthData;
-                    } else {
-                        // Month failed screening
-                        $newFailedMonths[] = $monthData;
-                        $allPassed = false;
-                    }
-                }
-                
-                // Add newly passed months to the global passed list
-                foreach ($newPassedMonths as $monthData) {
-                    if (!collect($passedMonths)->contains('month', $monthData['month'])) {
-                        $passedMonths[] = $monthData;
-                    }
-                }
-                
-                // Add newly failed months to the global failed list
-                foreach ($newFailedMonths as $monthData) {
-                    if (!collect($failedMonths)->contains('month', $monthData['month'])) {
-                        $failedMonths[] = $monthData;
-                    }
-                }
-                
-                // If all months passed, we're done
-                if ($allPassed) {
-                    break;
-                }
-                
-                // If we have 3 or more passed months, use them
-                if (count($passedMonths) >= 3) {
-                    $selectedMonths = array_slice($passedMonths, 0, 3);
-                    break;
-                }
-                
-                // Need to reselect months including passed ones
-                $newSelection = [];
-                
-                // First, include all passed months (they don't get screened again)
-                foreach ($passedMonths as $monthData) {
-                    $newSelection[] = $monthData;
-                }
-                
-                // Then add more months from the original list until we have 3
-                $monthIndex = 0;
-                while (count($newSelection) < 3 && $monthIndex < count($quantities)) {
-                    $monthData = [
-                        'month' => $months[$monthIndex],
-                        'quantity' => $quantities[$monthIndex]
-                    ];
-                    
-                    // Only add if not already in selection and not in failed months
-                    $alreadySelected = collect($newSelection)->contains('month', $monthData['month']);
-                    $isFailed = collect($failedMonths)->contains('month', $monthData['month']);
-                    
-                    if (!$alreadySelected && !$isFailed) {
-                        $newSelection[] = $monthData;
-                    }
-                    
-                    $monthIndex++;
-                }
-                
-                // Update selected months for next iteration
-                $selectedMonths = $newSelection;
-                $attempt++;
-            }
-            
-            // Calculate final AMC
-            if (count($selectedMonths) >= 3) {
-                $amc = collect($selectedMonths)->avg('quantity');
-                $maxAmc = collect($selectedMonths)->max('quantity');
-                
-                return [
-                    'amc' => round($amc, 2),
-                    'max_amc' => round($maxAmc, 2),
-                    'months_used' => count($selectedMonths)
-                ];
-            } else {
-                return 0;
-            }
-
         } catch (\Exception $e) {
+            \Log::warning("Error calculating AMC for product {$this->id}: " . $e->getMessage());
             return 0;
         }
     }
@@ -568,7 +452,7 @@ class Product extends Model
                 ];
             }
 
-            // Use the calculateAMC method to get AMC and Max AMC
+            // Use the calculateAMC method to get AMC using AMC service
             $amcData = $this->calculateAMC($facilityId);
             
             if (is_array($amcData) && isset($amcData['amc']) && $amcData['amc'] > 0) {
