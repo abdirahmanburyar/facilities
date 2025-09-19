@@ -186,10 +186,13 @@
                             >
                                 <option value="">All Statuses</option>
                                 <option value="pending">Pending</option>
+                                <option value="reviewed">Reviewed</option>
                                 <option value="approved">Approved</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="processing">Processing</option>
+                                <option value="in_process">In Process</option>
+                                <option value="dispatched">Dispatched</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="received">Received</option>
+                                <option value="rejected">Rejected</option>
                             </select>
                         </div>
 
@@ -424,8 +427,8 @@ export default {
                     this.form.status = 'pending';
                     break;
                     
-                case 'completed_only':
-                    this.form.status = 'completed';
+                case 'received_only':
+                    this.form.status = 'received';
                     break;
             }
             
@@ -480,10 +483,13 @@ export default {
         getStatusClass(status) {
             const classes = {
                 'pending': 'bg-yellow-100 text-yellow-800',
-                'approved': 'bg-blue-100 text-blue-800',
-                'completed': 'bg-green-100 text-green-800',
-                'cancelled': 'bg-red-100 text-red-800',
-                'processing': 'bg-purple-100 text-purple-800',
+                'reviewed': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'in_process': 'bg-blue-100 text-blue-800',
+                'dispatched': 'bg-purple-100 text-purple-800',
+                'delivered': 'bg-orange-100 text-orange-800',
+                'received': 'bg-indigo-100 text-indigo-800',
+                'rejected': 'bg-red-100 text-red-800',
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         },
@@ -491,10 +497,13 @@ export default {
         getStatusLabel(status) {
             const labels = {
                 'pending': 'Pending',
+                'reviewed': 'Reviewed',
                 'approved': 'Approved',
-                'completed': 'Completed',
-                'cancelled': 'Cancelled',
-                'processing': 'Processing',
+                'in_process': 'In Process',
+                'dispatched': 'Dispatched',
+                'delivered': 'Delivered',
+                'received': 'Received',
+                'rejected': 'Rejected',
             };
             return labels[status] || 'Unknown';
         },
@@ -507,10 +516,13 @@ export default {
         getStatusDotClass(status) {
             const classes = {
                 'pending': 'bg-yellow-400',
-                'approved': 'bg-blue-400',
-                'completed': 'bg-green-400',
-                'cancelled': 'bg-red-400',
-                'processing': 'bg-purple-400',
+                'reviewed': 'bg-yellow-400',
+                'approved': 'bg-green-400',
+                'in_process': 'bg-blue-400',
+                'dispatched': 'bg-purple-400',
+                'delivered': 'bg-orange-400',
+                'received': 'bg-indigo-400',
+                'rejected': 'bg-red-400',
             };
             return classes[status] || 'bg-gray-400';
         },
