@@ -146,41 +146,6 @@
                             />
                         </div>
                     </div>
-
-                    <!-- Quick Filter Buttons -->
-                    <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-                        <span class="text-sm text-gray-600 font-medium mr-2">Quick filters:</span>
-                        <button 
-                            @click="setQuickFilter('today')"
-                            class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
-                        >
-                            Today
-                        </button>
-                        <button 
-                            @click="setQuickFilter('this_week')"
-                            class="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors"
-                        >
-                            This Week
-                        </button>
-                        <button 
-                            @click="setQuickFilter('this_month')"
-                            class="px-3 py-1 text-xs bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200 transition-colors"
-                        >
-                            This Month
-                        </button>
-                        <button 
-                            @click="setQuickFilter('pending_only')"
-                            class="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200 transition-colors"
-                        >
-                            Pending Only
-                        </button>
-                        <button 
-                            @click="setQuickFilter('completed_only')"
-                            class="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors"
-                        >
-                            Completed Only
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Orders Table -->
