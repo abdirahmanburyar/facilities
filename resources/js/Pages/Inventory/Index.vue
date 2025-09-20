@@ -468,6 +468,14 @@ const outOfStockCount = computed(() => {
     return stat ? stat.count : 0;
 });
 
+// Combined count for debugging - shows both old and new status names
+const combinedReorderLevelCount = computed(() => {
+    if (!props.inventoryStatusCounts || !Array.isArray(props.inventoryStatusCounts)) return 0;
+    // Just return the low_stock_reorder_level count (no need to double it)
+    const lowStockReorderLevel = props.inventoryStatusCounts.find(s => s.status === 'low_stock_reorder_level')?.count || 0;
+    return lowStockReorderLevel;
+});
+
 function getResults(page = 1) {
     if (props.filters) {
         props.filters.page = page;
@@ -547,11 +555,10 @@ onUnmounted(() => {
                         <select v-model="status" @change="applyFilters"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                             <option value="">All Statuses ({{ props.inventories?.data?.length || 0 }})</option>
-                            <option value="in_stock">In Stock ({{ inStockCount }})</option>
+                            <option value="in_stock">✅ In Stock ({{ inStockCount }})</option>
                             <option value="low_stock">⚠️ Low Stock ({{ lowStockCount }})</option>
-                            <option value="low_stock_reorder_level">Low Stock + Reorder Level ({{
-                                lowStockReorderLevelCount }})</option>
-                            <option value="out_of_stock">Out of Stock ({{ outOfStockCount }})</option>
+                            <option value="low_stock_reorder_level">🚨 Low Stock + Reorder Level ({{ lowStockReorderLevelCount }})</option>
+                            <option value="out_of_stock">❌ Out of Stock ({{ outOfStockCount }})</option>
                         </select>
                     </div>
                 </div>
