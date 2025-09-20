@@ -203,21 +203,30 @@ class InventoryController extends Controller
 				[ 'status' => 'out_of_stock', 'count' => 0 ],
 			];
 	
-			// Calculate status counts using the Product model methods for reliability
-			$allProducts = Product::with(['inventories.items'])
-				->whereHas('eligible', function($query) use ($facility) {
-					$query->where('facility_type', $facility->facility_type);
-				})
-				->where('is_active', true)
-				->get();
+		// Calculate status counts using the same query structure as main inventory
+		$allProducts = Product::with([
+				'category:id,name',
+				'dosage:id,name',
+				'inventories.items' => function($query) use ($facility) {
+					$query->whereHas('inventory', function($subQuery) use ($facility) {
+						$subQuery->where('facility_id', $facility->id);
+					});
+				}
+			])
+			->whereHas('eligible', function($query) use ($facility) {
+				$query->where('facility_type', $facility->facility_type);
+			})
+			->where('is_active', true)
+			->get();
+			
+		// Calculate status counts using the Product model methods
+		foreach ($allProducts as $product) {
+			try {
+				// Set a timeout for each product calculation
+				set_time_limit(10); // 10 seconds per product
 				
-			// Calculate status counts using the Product model methods
-			foreach ($allProducts as $product) {
-				try {
-					// Set a timeout for each product calculation
-					set_time_limit(10); // 10 seconds per product
-					
-					$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
+				// Only sum quantities from items that belong to this facility (already filtered by the with clause)
+				$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
 					$metrics = $product->calculateInventoryMetrics($facility->id);
 					$reorderLevel = $metrics['reorder_level'];
 					
@@ -473,96 +482,6 @@ class InventoryController extends Controller
 		}
 	}
 
-	/**
-	 * Calculate inventory status counts independently of pagination
-	 */
-	protected function calculateInventoryStatusCounts($productQuery, $request)
-	{
-		try {
-			// Get current facility
-			$facility = auth()->user()->facility;
-			if (!$facility) {
-				throw new \Exception('No facility found for current user');
-			}
-
-			// Get all products that match the filters (no pagination)
-			$allProducts = $productQuery->get();
-
-			// Add reorder_level and amc to each product using the Product model methods
-			$allProducts->transform(function ($product) use ($facility) {
-				try {
-					// Set a timeout for each product calculation to prevent hanging
-					set_time_limit(10); // 10 seconds per product
-					
-					$metrics = $product->calculateInventoryMetrics($facility->id);
-					
-					$product->reorder_level = $metrics['reorder_level'];
-					$product->amc = $metrics['amc'];
-					
-				} catch (\Exception $e) {
-					Log::error("Error calculating metrics for product {$product->id}: " . $e->getMessage());
-					// Use fallback values if calculation fails
-					$product->reorder_level = $product->calculateFallbackReorderLevel($facility->id);
-					$product->amc = 0;
-				}
-				
-				return $product;
-			});
-
-			// Initialize status counts
-			$statusCounts = [
-				[ 'status' => 'in_stock', 'count' => 0 ],
-				[ 'status' => 'low_stock', 'count' => 0 ],
-				[ 'status' => 'low_stock_reorder_level', 'count' => 0 ],
-				[ 'status' => 'out_of_stock', 'count' => 0 ],
-			];
-
-			// Calculate status counts for all products using the same logic as main query
-			foreach ($allProducts as $product) {
-				try {
-					$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
-					$reorderLevel = $product->reorder_level ?? 0;
-
-					if ($totalQuantity <= 0) {
-						$statusCounts[3]['count']++; // out_of_stock
-					} elseif ($reorderLevel > 0) {
-						$lowStockThreshold = $reorderLevel * 1.3;
-
-						if ($totalQuantity > $lowStockThreshold) {
-							$statusCounts[0]['count']++; // in_stock
-						} elseif ($totalQuantity > $reorderLevel && $totalQuantity <= $lowStockThreshold) {
-							$statusCounts[1]['count']++; // low_stock
-						} else {
-							$statusCounts[2]['count']++; // low_stock_reorder_level
-						}
-					} else {
-						// No reorder level set - cannot be "low stock", only in_stock or out_of_stock
-						if ($totalQuantity > 0) {
-							$statusCounts[0]['count']++; // in_stock
-						} else {
-							$statusCounts[3]['count']++; // out_of_stock
-						}
-					}
-				} catch (\Exception $e) {
-					Log::warning('[INVENTORY-STATS] Error calculating status for product ' . ($product->id ?? 'unknown') . ': ' . $e->getMessage());
-					// Skip problematic products in counting
-				}
-			}
-
-			return $statusCounts;
-
-		} catch (\Exception $e) {
-			Log::error('[INVENTORY-STATS] Error calculating inventory status counts: ' . $e->getMessage());
-			
-			// Return empty counts if there's an error
-			return [
-				[ 'status' => 'in_stock', 'count' => 0 ],
-				[ 'status' => 'low_stock', 'count' => 0 ],
-				[ 'status' => 'low_stock_reorder_level', 'count' => 0 ],
-				[ 'status' => 'out_of_stock', 'count' => 0 ],
-			];
-		}
-	}
 
 	/**
 	 * Check if an item needs reorder action (out of stock)
