@@ -24,8 +24,22 @@ class AMCService
         // Get monthly consumption data sorted by date (oldest first)
         $monthlyItems = $this->getMonthlyConsumptionData($facilityId, $productId, $monthsToAnalyze);
         
+        // Debug logging
+        \Log::info("AMCService Debug - Product {$productId}:", [
+            'facility_id' => $facilityId,
+            'total_items_found' => $monthlyItems->count(),
+            'raw_data' => $monthlyItems->map(function($item) {
+                return [
+                    'month' => $item->report->month_year ?? 'N/A',
+                    'quantity' => $item->quantity ?? 0
+                ];
+            })->toArray()
+        ]);
+        
         if ($monthlyItems->count() < 4) {
-            return $this->handleInsufficientData($monthlyItems);
+            $result = $this->handleInsufficientData($monthlyItems);
+            \Log::info("AMCService Debug - Insufficient data, returning:", $result);
+            return $result;
         }
 
         // Apply screening logic month by month
@@ -34,7 +48,7 @@ class AMCService
         // Calculate final AMC from eligible months
         $finalAMC = $this->calculateFinalAMC($screeningResults['eligibleMonths']);
         
-        return [
+        $result = [
             'amc' => $finalAMC,
             'total_months_analyzed' => $monthlyItems->count(),
             'eligible_months_count' => $screeningResults['eligibleMonths']->count(),
@@ -42,6 +56,10 @@ class AMCService
             'screening_details' => $screeningResults['details'],
             'months_breakdown' => $screeningResults['monthsBreakdown']
         ];
+        
+        \Log::info("AMCService Debug - Final result for Product {$productId}:", $result);
+        
+        return $result;
     }
 
     /**
