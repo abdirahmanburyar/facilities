@@ -549,7 +549,7 @@ onUnmounted(() => {
                             <option value="">All Statuses ({{ props.inventories?.data?.length || 0 }})</option>
                             <option value="in_stock">In Stock ({{ inStockCount }})</option>
                             <option value="low_stock">⚠️ Low Stock ({{ lowStockCount }})</option>
-                            <option value="low_stock_reorder_level">🚨 Critical - Below Reorder Level ({{
+                            <option value="low_stock_reorder_level">Low Stock + Reorder Level ({{
                                 lowStockReorderLevelCount }})</option>
                             <option value="out_of_stock">Out of Stock ({{ outOfStockCount }})</option>
                         </select>
@@ -591,7 +591,7 @@ onUnmounted(() => {
                         Status: {{
                             status === 'in_stock' ? 'In Stock' :
                                 status === 'low_stock' ? '⚠️ Low Stock' :
-                                    status === 'low_stock_reorder_level' ? '🚨 Critical - Below Reorder Level' :
+                                    status === 'low_stock_reorder_level' ? 'Low Stock + Reorder Level' :
                                         status === 'out_of_stock' ? 'Out of Stock' :
                                             status
                         }}
@@ -818,7 +818,7 @@ onUnmounted(() => {
                                                     </div>
                                                     <div v-else-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
                                                         class="flex items-center justify-center"
-                                                        title="🚨 Critical - Below Reorder Level - Immediate reorder needed">
+                                                        title="Low Stock + Reorder Level - Immediate reorder needed">
                                                         <img src="/assets/images/low_stock.png"
                                                             alt="Low Stock + Reorder Level"
                                                             class="w-8 h-8 drop-shadow-sm" />
@@ -946,7 +946,7 @@ onUnmounted(() => {
                                                     </div>
                                                     <div v-else-if="getInventoryStatus(inventory) === 'low_stock_reorder_level'"
                                                         class="flex items-center justify-center"
-                                                        title="🚨 Critical - Below Reorder Level - Immediate reorder needed">
+                                                        title="Low Stock + Reorder Level - Immediate reorder needed">
                                                         <img src="/assets/images/low_stock.png"
                                                             alt="Low Stock + Reorder Level"
                                                             class="w-8 h-8 drop-shadow-sm" />
@@ -1063,7 +1063,7 @@ onUnmounted(() => {
                                 </div>
                                 <div class="ml-3 flex flex-col flex-1">
                                     <span class="text-lg font-bold text-blue-700">{{ lowStockReorderLevelCount }}</span>
-                                    <span class="text-xs font-medium text-blue-600">🚨 Critical - Below Reorder Level</span>
+                                    <span class="text-xs font-medium text-blue-600">Low Stock + Reorder Level</span>
                                 </div>
                             </div>
 
