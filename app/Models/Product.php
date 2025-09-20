@@ -253,7 +253,7 @@ class Product extends Model
             
             return [
                 'amc' => $result['amc'],
-                'max_amc' => $result['amc'], // For backward compatibility, can be enhanced later
+                'max_amc' => $result['max_amc'],
                 'months_used' => $result['eligible_months_count'],
                 'selected_months' => []
             ];

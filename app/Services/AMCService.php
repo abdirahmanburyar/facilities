@@ -178,8 +178,15 @@ class AMCService
             $calculation = "Only 1 month available, no screening applied. AMC = {$amc}";
         }
 
+        // Calculate max AMC from selected months
+        $maxAmc = 0;
+        if (!empty($selectedMonths)) {
+            $maxAmc = max(array_column($selectedMonths, 'consumption'));
+        }
+
         return [
             'amc' => round($amc, 2),
+            'max_amc' => round($maxAmc, 2),
             'selectedMonths' => $selectedMonths,
             'totalMonths' => $monthsCount,
             'calculation' => $calculation
