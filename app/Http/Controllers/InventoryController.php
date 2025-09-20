@@ -12,7 +12,6 @@ use App\Models\Facility;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -96,35 +95,11 @@ class InventoryController extends Controller
 				$products->setPath(url()->current());
 			}
 			
-			// Add reorder_level and amc to each product using the Product model methods
-			$currentProducts = $statusFilter ? $allProducts : $products->getCollection();
-		$currentProducts->transform(function ($product) use ($facility) {
-			try {
-				// Set a timeout for each product calculation to prevent hanging
-				set_time_limit(10); // 10 seconds per product
-				
-				$metrics = $product->calculateInventoryMetrics($facility->id);
-				
-				// Debug logging
-				Log::info("Product {$product->id} ({$product->name}) metrics:", [
-					'facility_id' => $facility->id,
-					'metrics' => $metrics,
-					'has_inventories' => $product->inventories ? $product->inventories->count() : 0,
-					'total_items' => $product->inventories ? $product->inventories->flatMap->items->count() : 0
-				]);
-				
-				$product->reorder_level = $metrics['reorder_level'];
-				$product->amc = $metrics['amc'];
-				
-			} catch (\Exception $e) {
-				Log::error("Error calculating metrics for product {$product->id}: " . $e->getMessage());
-				// Use fallback values if calculation fails
-				$product->reorder_level = $product->calculateFallbackReorderLevel($facility->id);
-				$product->amc = 0;
-			}
-			
-			return $product;
-		});
+		// Add reorder_level and amc to each product using the Product model methods
+		$currentProducts = $statusFilter ? $allProducts : $products->getCollection();
+		
+		// Batch calculate metrics for better performance
+		$this->calculateMetricsForProducts($currentProducts, $facility);
 			
 			// Apply status filter after data is loaded and calculated
 			if ($statusFilter) {
@@ -161,7 +136,6 @@ class InventoryController extends Controller
 									return true;
 							}
 						} catch (\Exception $e) {
-							Log::warning('[INVENTORY-FILTER] Error filtering product ' . ($product->id ?? 'unknown') . ': ' . $e->getMessage());
 							return false; // Exclude problematic products
 						}
 					});
@@ -184,7 +158,6 @@ class InventoryController extends Controller
 					);
 					$products->withQueryString();
 				} catch (\Exception $e) {
-					Log::error('[INVENTORY-FILTER] Error applying status filter: ' . $e->getMessage());
 					// Continue without filtering if there's an error
 				}
 			}
@@ -219,49 +192,35 @@ class InventoryController extends Controller
 			->where('is_active', true)
 			->get();
 			
-		// Calculate status counts using the Product model methods
+		// Batch calculate metrics for better performance
+		$this->calculateMetricsForProducts($allProducts, $facility);
+		
+		// Calculate status counts using pre-calculated metrics
 		foreach ($allProducts as $product) {
-			try {
-				// Set a timeout for each product calculation
-				set_time_limit(10); // 10 seconds per product
+			$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
+			$reorderLevel = $product->reorder_level ?? 0;
+			
+			if ($totalQuantity <= 0) {
+				$statusCounts[3]['count']++; // out_of_stock
+			} elseif ($reorderLevel > 0) {
+				$lowStockThreshold = $reorderLevel * 1.3;
 				
-				// Only sum quantities from items that belong to this facility (already filtered by the with clause)
-				$totalQuantity = $product->inventories->flatMap->items->sum('quantity');
-					$metrics = $product->calculateInventoryMetrics($facility->id);
-					$reorderLevel = $metrics['reorder_level'];
-					
-					if ($totalQuantity <= 0) {
-						$statusCounts[3]['count']++; // out_of_stock
-					} elseif ($reorderLevel > 0) {
-						$lowStockThreshold = $reorderLevel * 1.3;
-						
-						if ($totalQuantity > $lowStockThreshold) {
-							$statusCounts[0]['count']++; // in_stock
-						} elseif ($totalQuantity > $reorderLevel && $totalQuantity <= $lowStockThreshold) {
-							$statusCounts[1]['count']++; // low_stock
-						} else {
-							$statusCounts[2]['count']++; // low_stock_reorder_level
-						}
-					} else {
-						// No reorder level set - cannot be "low stock", only in_stock or out_of_stock
-						if ($totalQuantity > 0) {
-							$statusCounts[0]['count']++; // in_stock
-						} else {
-							$statusCounts[3]['count']++; // out_of_stock
-						}
-					}
-				} catch (\Exception $e) {
-					Log::warning('[INVENTORY-COUNT] Error counting status for product ' . ($product->id ?? 'unknown') . ': ' . $e->getMessage());
-					// Use fallback reorder level if calculation fails
-					try {
-						$reorderLevel = $product->calculateFallbackReorderLevel($facility->id);
-					} catch (\Exception $fallbackError) {
-						Log::error('[INVENTORY-COUNT] Fallback calculation also failed for product ' . ($product->id ?? 'unknown') . ': ' . $fallbackError->getMessage());
-						$reorderLevel = 10; // Default minimum
-					}
-					// Continue with the product using fallback values
+				if ($totalQuantity > $lowStockThreshold) {
+					$statusCounts[0]['count']++; // in_stock
+				} elseif ($totalQuantity > $reorderLevel && $totalQuantity <= $lowStockThreshold) {
+					$statusCounts[1]['count']++; // low_stock
+				} else {
+					$statusCounts[2]['count']++; // low_stock_reorder_level
+				}
+			} else {
+				// No reorder level set - cannot be "low stock", only in_stock or out_of_stock
+				if ($totalQuantity > 0) {
+					$statusCounts[0]['count']++; // in_stock
+				} else {
+					$statusCounts[3]['count']++; // out_of_stock
 				}
 			}
+		}
 	
 			return Inertia::render('Inventory/Index', [
 				'inventories' => InventoryResource::collection($products),
@@ -272,14 +231,30 @@ class InventoryController extends Controller
 			]);
 	
 		} catch (\Exception $e) {
-			Log::error('[INVENTORY-ERROR] Error in index method: ' . $e->getMessage(), [
-				'exception' => $e,
-				'request' => $request->all()
-			]);
-	
 			return back()->withErrors(['error' => 'An error occurred while loading inventory data.']);
 		}
 	}	
+
+	/**
+	 * Calculate metrics for a collection of products efficiently
+	 */
+	private function calculateMetricsForProducts($products, $facility)
+	{
+		// Set global timeout for the entire batch
+		set_time_limit(120);
+		
+		foreach ($products as $product) {
+			try {
+				$metrics = $product->calculateInventoryMetrics($facility->id);
+				$product->reorder_level = $metrics['reorder_level'];
+				$product->amc = $metrics['amc'];
+			} catch (\Exception $e) {
+				// Use fallback values if calculation fails
+				$product->reorder_level = $product->calculateFallbackReorderLevel($facility->id) ?? 0;
+				$product->amc = 0;
+			}
+		}
+	}
 
 	/**
 	 * Apply status filter to the product query
@@ -347,7 +322,6 @@ class InventoryController extends Controller
 		try {
 			$inventory->delete();
 			event(new InventoryEvent());
-			Log::info('Successfully dispatched InventoryEvent for deleted inventory ID: ' . $inventory->id);
 			return response()->json([
 				'success' => true,
 				'message' => 'Inventory item deleted successfully',
@@ -404,8 +378,6 @@ class InventoryController extends Controller
 				'data' => $inventoryItem
 			]);
 		} catch (\Exception $e) {
-			Log::error('Error updating inventory location: ' . $e->getMessage());
-			
 			return response()->json([
 				'success' => false,
 				'message' => 'Failed to update location: ' . $e->getMessage()
@@ -447,12 +419,6 @@ class InventoryController extends Controller
 		
 			$importId = (string) Str::uuid();
 		
-			Log::info('Queueing product import with Maatwebsite Excel', [
-				'import_id' => $importId,
-				'original_name' => $file->getClientOriginalName(),
-				'file_size' => $file->getSize(),
-				'extension' => $extension
-			]);
 		
 			// Initialize cache progress to 0
 			Cache::put($importId, 0);
@@ -470,11 +436,6 @@ class InventoryController extends Controller
 			]);
 		
 		} catch (\Exception $e) {
-			Log::error('Product import failed', [
-				'error' => $e->getMessage(),
-				'trace' => $e->getTraceAsString()
-			]);
-		
 			return response()->json([
 				'success' => false,
 				'message' => 'Import failed: ' . $e->getMessage()
