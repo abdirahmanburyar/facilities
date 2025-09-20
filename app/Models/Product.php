@@ -389,7 +389,7 @@ class Product extends Model
     }
 
     /**
-     * Calculate reorder level: (AMC × 0.14) + Buffer Stock
+     * Calculate reorder level: (AMC × 0.46) + Buffer Stock
      */
     public function calculateReorderLevel($facilityId = null)
     {
@@ -401,8 +401,8 @@ class Product extends Model
             
             $bufferStock = $this->calculateBufferStock($facilityId);
             
-            // Calculate reorder level: (AMC × 0.14) + Buffer Stock
-            $reorderLevel = ($amc * 0.14) + $bufferStock;
+            // Calculate reorder level: (AMC × 0.46) + Buffer Stock
+            $reorderLevel = ($amc * 0.46) + $bufferStock;
             return round($reorderLevel, 2);
             
         } catch (\Exception $e) {
@@ -427,8 +427,8 @@ class Product extends Model
                 // Calculate buffer stock: (Max AMC - AMC) × 0.46
                 $bufferStock = round(($maxAmc - $amc) * 0.46, 2);
                 
-                // Calculate reorder level: (AMC × 0.14) + Buffer Stock
-                $reorderLevel = ($amc * 0.14) + $bufferStock;
+                // Calculate reorder level: (AMC × 0.46) + Buffer Stock
+                $reorderLevel = ($amc * 0.46) + $bufferStock;
                 $reorderLevel = round($reorderLevel, 2);
                 
                 \Log::info("Product {$this->id} ({$this->name}) calculated metrics:", [
