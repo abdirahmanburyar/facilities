@@ -52,6 +52,7 @@ class AMCService
         
         return [
             'amc' => $result['amc'],
+            'max_amc' => $result['max_amc'],
             'total_months_analyzed' => count($monthsData),
             'eligible_months_count' => count($result['selectedMonths']),
             'excluded_months_count' => count($monthsData) - count($result['selectedMonths']),
@@ -74,6 +75,7 @@ class AMCService
         if ($monthsCount === 0) {
             return [
                 'amc' => 0,
+                'max_amc' => 0,
                 'selectedMonths' => [],
                 'totalMonths' => 0,
                 'calculation' => 'No consumption data available'
