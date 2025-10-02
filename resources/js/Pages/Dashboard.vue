@@ -833,11 +833,6 @@ onMounted(() => {
                 <div v-else class="h-full">
                     <!-- Single Chart -->
                     <div v-if="facilityChartCount === 1" class="h-full">
-                        <div class="mb-4 text-center">
-                            <h3 class="text-lg font-semibold text-gray-800 bg-gray-50 px-4 py-2 rounded-md border inline-block">
-                                {{ localFacilityChartData[0]?.categoryDisplay || localFacilityChartData[0]?.category || 'Unknown Category' }}
-                            </h3>
-                        </div>
                         <div class="h-full">
                             <Bar :data="localFacilityChartData[0]" :options="issuedChartOptions" />
                         </div>
@@ -846,12 +841,6 @@ onMounted(() => {
                     <div v-else class="space-y-6">
                         <div v-for="(chartRow, rowIndex) in facilityChartRows" :key="'facility-row-' + rowIndex" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div v-for="chart in chartRow" :key="'facility-' + chart.id" class="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-                                <!-- Category Title -->
-                                <div class="mb-3 flex items-start">
-                                    <span class="text-sm font-semibold text-gray-700">
-                                        {{ chart.categoryDisplay || chart.category || 'Unknown Category' }}
-                                    </span>
-                                </div>
                                 <div class="h-64">
                                     <Bar :data="chart" :options="issuedChartOptions" />
                                 </div>
