@@ -45,24 +45,21 @@ class DashboardController extends Controller
         $facility = \App\Models\Facility::find($facilityId);
         $facilityType = $facility ? $facility->facility_type : null;
 
-        // Product category counts - filtered by current user's facility through EligibleItem
-        $productCategoryCounts = [
-            'Drugs' => EligibleItem::whereHas('product.category', function($q) { 
-                    $q->where('name', 'Durgs'); 
+        // Product category counts - dynamically fetch from Category model
+        $productCategoryCounts = [];
+        
+        // Get all active categories
+        $categories = \App\Models\Category::where('is_active', true)->get();
+        
+        foreach ($categories as $category) {
+            $count = EligibleItem::whereHas('product.category', function($q) use ($category) { 
+                    $q->where('name', $category->name); 
                 })
                 ->where('facility_type', $facilityType)
-                ->count(),
-            'Consumable' => EligibleItem::whereHas('product.category', function($q) { 
-                    $q->where('name', 'Consumables'); 
-                })
-                ->where('facility_type', $facilityType)
-                ->count(),
-            'Lab' => EligibleItem::whereHas('product.category', function($q) { 
-                    $q->where('name', 'Lab'); 
-                })
-                ->where('facility_type', $facilityType)
-                ->count(),
-        ];
+                ->count();
+                
+            $productCategoryCounts[$category->name] = $count;
+        }
 
         // Transfer received count - filtered by current user's facility
         $transferReceivedCount = Transfer::where(function($query) use ($facilityId) {

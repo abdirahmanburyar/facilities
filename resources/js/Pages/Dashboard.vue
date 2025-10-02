@@ -139,23 +139,43 @@ const filteredOrdersDelayedCount = computed(() => props.ordersDelayedCount);
 
 
 // Chart data computed properties
-const productCategoryChartData = computed(() => ({
-    labels: Object.keys(props.productCategoryCard),
-    datasets: [{
-        data: Object.values(props.productCategoryCard),
-        backgroundColor: [
-            '#3B82F6', // blue
-            '#10B981', // emerald
-            '#F59E0B', // amber
-            '#EF4444', // red
-            '#8B5CF6', // violet
-        ],
-        borderWidth: 0,
-        hoverBorderWidth: 0,
-        borderColor: 'transparent',
-        hoverBorderColor: 'transparent',
-    }]
-}));
+const productCategoryChartData = computed(() => {
+    const labels = Object.keys(props.productCategoryCard);
+    const data = Object.values(props.productCategoryCard);
+    
+    // Dynamic color palette that can handle any number of categories
+    const colorPalette = [
+        '#3B82F6', // blue
+        '#10B981', // emerald
+        '#F59E0B', // amber
+        '#EF4444', // red
+        '#8B5CF6', // violet
+        '#EC4899', // pink
+        '#06B6D4', // cyan
+        '#84CC16', // lime
+        '#F97316', // orange
+        '#6366F1', // indigo
+        '#14B8A6', // teal
+        '#A855F7', // purple
+    ];
+    
+    // Generate background colors for all categories
+    const backgroundColor = labels.map((_, index) => 
+        colorPalette[index % colorPalette.length]
+    );
+    
+    return {
+        labels: labels,
+        datasets: [{
+            data: data,
+            backgroundColor: backgroundColor,
+            borderWidth: 0,
+            hoverBorderWidth: 0,
+            borderColor: 'transparent',
+            hoverBorderColor: 'transparent',
+        }]
+    };
+});
 
 
 
